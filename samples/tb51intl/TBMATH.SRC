@@ -1,0 +1,1000 @@
+;
+;	ARITHMETIC SUBROUTINE PACKAGE  (8/12/80)
+;
+;=======
+;
+POP_TOS:
+;	Verify that stack holds at least on (16-bit) entry.
+;	(Call AES_ER otherwise.)
+;	Pop TOS into registers TOS_H and TOS_L,
+;	update AESP,
+;	and return with R1 pointing to low-order byte of previous NOS.
+;	Do not affect accumulator contents.
+;
+	MOV	R1,AESP
+	CJNE	R1,#AES+1,$+3	;Compare pointer with min. legal level.
+	JC	STK_ER
+	MOV	TOS_L,A
+	MOV	A,@R1
+	MOV	TOS_H,A
+	DEC	R1
+	MOV	A,@R1
+	XCH	A,TOS_L		;Store byte and reload ACC.
+	DEC	R1
+	MOV	AESP,R1
+	DEC	R1
+	RET
+;
+;=======
+;
+POP_ACC:
+;	Pop TOS into accumulator and update AESP.
+;
+	MOV	R1,AESP
+	MOV	A,@R1
+	DEC	AESP
+	RET
+;
+;=======
+;
+PUSH_TOS:
+;	Verify that the AES is not full,
+;	push registers TOS_H and TOS_L onto AES,
+;	and update AESP.
+;
+	MOV	R1,AESP
+	CJNE	R1,#AES+AESLEN-2,$+3	;Compare pointer with max. legal level.
+	JNC	STK_ER
+	INC	R1
+	MOV	A,TOS_L		;Push low-order byte.
+	MOV	@R1,A
+	INC	R1
+	MOV	A,TOS_H		;Push high-order byte.
+	MOV	@R1,A
+	MOV	AESP,R1
+	RET
+;
+STK_ER:	CALL	AES_ER
+	DB	0FH
+;
+;=======
+;
+%*DEFINE(DUPL)
+	(CALL	DUPL)
+;
+DUPL:
+;	Verify that the AES is not full,
+;	then duplicate the top element and update AESP.
+;
+	MOV	R1,AESP
+	CJNE	R1,#AES+AESLEN-2,$+3	;Compare pointer with max. legal level.
+	JNC	STK_ER
+	DEC	R1
+	MOV	A,@R1
+	INC	R1
+	MOV	B,@R1
+	INC	R1
+	MOV	@R1,A			;Push low-order byte.
+	INC	R1
+	MOV	@R1,B
+	MOV	AESP,R1
+	RET
+;
+;=======
+;
+;LIT	(K)
+;	Report error if arithmetic expression stack is full.
+;	Otherwise push the one-byte constant K onto AES.
+;	Return with carry=1, since LIT marks a successful match.
+;
+%*DEFINE(LIT(K))
+       (CALL	LIT
+	  DB	  %K)
+LIT:	POP	DPH		;Get parameter address.
+	POP	DPL
+	CLR	A
+	MOVC	A,@A+DPTR	;Read literal value.
+	INC	AESP		;Reserve storage on top of AES.
+	MOV	R1,AESP		;Point to free entry on stack.
+	CJNE	R1,#AES+AESLEN,LIT_1
+	JMP	AES_ER
+;
+LIT_1:	MOV	@R1,A		;Store literal.
+	MOV	A,#1		;Branch over constant on return.
+	SETB	C
+	JMP	@A+DPTR		;Return to IL program.
+;
+;=======
+$EJECT
+;
+;	BASIC VARIABLE ACCESSING OPERATIONS  (8/20/80)
+;	===== ======== ========= ==========
+;
+;
+;	Direct address mode emulation tables:
+;
+SFRTBL:	DB	80H
+	DB	90H
+	DB	0A0H
+	DB	0B0H
+	DB	88H
+	DB	98H
+	DB	0A8H
+	DB	0B8H
+	DB	89H
+	DB	8AH
+	DB	8BH
+	DB	8CH
+	DB	8DH
+	DB	99H
+NO_SFR	EQU	$-SFRTBL
+;
+;===
+;
+STRTBL:	MOV	80H,TOS_L
+	RET
+	MOV	90H,TOS_L
+	RET
+	MOV	0A0H,TOS_L
+	RET
+	MOV	0B0H,TOS_L
+	RET
+	MOV	88H,TOS_L
+	RET
+	MOV	98H,TOS_L
+	RET
+	MOV	0A8H,TOS_L
+	RET
+	MOV	0B8H,TOS_L
+	RET
+	MOV	89H,TOS_L
+	RET
+	MOV	8AH,TOS_L
+	RET
+	MOV	8BH,TOS_L
+	RET
+	MOV	8CH,TOS_L
+	RET
+	MOV	8DH,TOS_L
+	RET
+	MOV	99H,TOS_L
+	RET
+;
+;===
+;
+INDTBL:	MOV	A,80H
+	RET
+	MOV	A,90H
+	RET
+	MOV	A,0A0H
+	RET
+	MOV	A,0B0H
+	RET
+	MOV	A,88H
+	RET
+	MOV	A,98H
+	RET
+	MOV	A,0A8H
+	RET
+	MOV	A,0B8H
+	RET
+	MOV	A,89H
+	RET
+	MOV	A,8AH
+	RET
+	MOV	A,8BH
+	RET
+	MOV	A,8CH
+	RET
+	MOV	A,8DH
+	RET
+	MOV	A,99H
+	RET
+;
+$EJECT
+SFR_ID:
+;	Identify which SFR is indicated by the contents of R1.
+;	Return with acc holding (Index of said register)*3.
+;	Call error routine if register number not found.
+;
+	MOV	DPTR,#SFRTBL
+	CLR	A
+	MOV	LP_CNT,A
+SFID_1:	MOV	A,LP_CNT
+	MOVC	A,@A+DPTR
+	XRL	A,R1
+	JNZ	SFID_2
+	MOV	A,LP_CNT
+	RL	A
+	ADD	A,LP_CNT
+	RET
+;
+SFID_2:	INC	LP_CNT
+	MOV	A,LP_CNT
+	CJNE	A,#NO_SFR,SFID_1
+ADR_ER:	JMP	EXP_ER
+;
+;=======
+;
+STRDIR:
+;	Store data byte in ACC into direct on-chip RAM address held in R1.
+;
+	MOV	TOS_L,A
+	MOV	A,R1
+	JB	ACC.7,STRSFR	;Direct addresses above 7FH are SFRs.
+	MOV	A,TOS_L
+	MOV	@R1,A		;Store low-order byte in RAM.
+	RET
+;
+STRSFR:	CALL	SFR_ID
+	MOV	DPTR,#STRTBL
+	JMP	@A+DPTR		;Jump into store sequence.
+;
+;=======
+;
+FETDIR:
+;	Fetch on-chip directly addressed byte indicated by R1 into Acc. 
+;	and return.
+;
+	MOV	A,R1
+	JB	ACC.7,FETSFR
+	MOV	A,@R1
+	RET
+;
+FETSFR:	CALL	SFR_ID
+	MOV	DPTR,#INDTBL
+	JMP	@A+DPTR
+;
+;=======
+;
+SPLIT_DBA:
+;	Called with TOS_L containing a direct on-chip bit address.
+;	Return the direct &byte& address of encompassing 
+;	register in R1, and load B with a mask containing a single 1 
+;	corresponding to the bit's position in a field of zeroes.
+;
+	MOV	A,TOS_L
+	ANL	A,#11111000B
+	JB	ACC.7,SPLSFR
+	RL	A
+	SWAP	A
+	ADD	A,#20H		;Address of bit-address space.
+SPLSFR:	MOV	R1,A
+	MOV	A,TOS_L
+	ANL	A,#07H		;Mask off bit-displacement field.
+	ADD	A,#MSKTBL-MSK_PC
+	MOVC	A,@A+PC		;Read mask byte.
+MSK_PC:
+	MOV	B,A
+	RET
+;
+MSKTBL:	DB	00000001B
+	DB	00000010B
+	DB	00000100B
+	DB	00001000B
+	DB	00010000B
+	DB	00100000B
+	DB	01000000B
+	DB	10000000B
+;
+;=======
+;
+%*DEFINE(SEQ_STORE)
+       (CALL	SEQ_STORE)
+;
+SEQ_STORE:
+;	Same as STORE, below, except that index is retained
+;	rather than being popped.
+	SETB	SEQ_FLG
+	SJMP	STOR_0
+;
+%*DEFINE(STORE)
+       (CALL	STORE)
+;
+STORE:
+;	When STORE is called, AES contains
+;	(TOS:)	2 byte VALUE to be stored,
+;		2 byte INDEX of destination variable,
+;		1 byte TYPE code for variable space.
+;			(0=BASIC variable,
+;			 1=DBYTE,
+;			 2=RBIT,
+;			 3=XBYTE,
+;			 4=CBYTE.)
+;	Store (VAR_1) into appropriate variable memory at location of (INDEX).
+;
+	CLR	SEQ_FLG
+STOR_0:	CALL	POP_TOS
+	MOV	TMP0,TOS_L
+	MOV	TMP1,TOS_H
+	CALL	POP_TOS
+	CALL	POP_ACC		;Load TYPE code.
+	JNB	SEQ_FLG,STOR_1	;Jump forward if simple store.
+	INC	AESP
+	INC	AESP
+	INC	AESP
+STOR_1:	MOV	DPTR,#STRJTB
+	MOVC	A,@A+DPTR
+	JMP	@A+DPTR
+;
+STRJTB:	DB	STRVAR-STRJTB
+	DB	STRDBY-STRJTB
+	DB	STRRBI-STRJTB
+	DB	STRXBY-STRJTB
+	DB	STRCBY-STRJTB
+;
+;=======
+;
+;	All of the following routines are called with 
+;	TOS_L holding the low-order address of the destination,
+;	TOS_H holding the high-order address (if necessary),
+;	and <TMP1><TMP0> holding the 8- or 16-bit data to be stored.
+;
+STRVAR:	MOV	A,TOS_L
+	RL	A		;Multiply by two for 2 byte variables.
+	JB	EXTVAR,STREXT	;Branch if vars in external RAM.
+	ADD	A,#US_VAR	;Offset for variable array.
+	MOV	R1,A
+	ADD	A,#-(US_VAR+2*NO_VAR-1)	;Compare with maximum legal address.
+	JC	ADR_ER
+	MOV	@R1,TMP0
+	INC	R1
+	MOV	@R1,TMP1
+	RET
+;
+STREXT:	MOV	R1,A
+%DEBUG	MOV	P2,#HIGH EXTRAM
+	MOV	A,TMP0
+	MOVX	@R1,A
+	INC	R1		;Bump pointers.
+	MOV	A,TMP1		;Move high-order byte into variable array.
+	MOVX	@R1,A
+	RET
+;
+;===
+;
+STRDBY:	MOV	A,TOS_L		;Load acc. with low-order dest. addr.
+	MOV	R1,A
+	MOV	A,TMP0
+	JMP	STRDIR
+;
+;===
+;
+STRRBI:	CALL	SPLIT_DBA
+	CALL	FETDIR
+	MOV	TOS_L,A
+	MOV	A,TMP0
+	JB	ACC.0,SETRBI
+;
+;	Clear RBIT.
+;
+	MOV	A,B
+	CPL	A
+	ANL	A,TOS_L
+	JMP	STRDIR
+;
+SETRBI:	MOV	A,B
+	ORL	A,TOS_L
+	JMP	STRDIR
+;
+;===
+;
+STRXBY:
+STRCBY:	MOV	P2,TOS_H
+	MOV	A,TOS_L
+	MOV	R1,A
+	MOV	A,TMP0
+	MOVX	@R1,A
+	RET
+;
+;===============
+;
+%*DEFINE(SEQ_FETCH)
+       (CALL	SEQ_FETCH)
+;
+SEQ_FETCH:
+;	Same as FETCH, below, except that index is retained
+;	rather than being popped.
+	SETB	SEQ_FLG
+	SJMP	FET_0
+;
+%*DEFINE(IND)
+       (CALL	FETCH)
+;
+FETCH:
+;	When FETCH is called, AES contains
+;	(TOS:)	2 byte INDEX of source variable,
+;		1 byte TYPE code for variable space.
+;			(0=BASIC variable,
+;			 1=DBYTE,
+;			 2=RBIT,
+;			 3=XBYTE,
+;			 4=CBYTE.)
+;	Read 8- or 16-bit variable from the appropriate variable 
+;	memory at location of (INDEX) and return on AES.
+;
+	CLR	SEQ_FLG
+FET_0:	CALL	POP_TOS
+	CALL	POP_ACC
+	JNB	SEQ_FLG,FET_1	;Jump forward if simple store.
+	INC	AESP
+	INC	AESP
+	INC	AESP
+FET_1:	MOV	DPTR,#FETJTB
+	MOVC	A,@A+DPTR
+	JMP	@A+DPTR
+;
+FETJTB:	DB	FETVAR-FETJTB
+	DB	FETDBY-FETJTB
+	DB	FETRBI-FETJTB
+	DB	FETXBY-FETJTB
+	DB	FETCBY-FETJTB
+;
+;=======
+;
+;	All of the following routines are called with 
+;	TOS_L holding the low-order index of the desired variable,
+;	and TOS_H holding the high-order index (if necessary).
+;
+FETVAR:	MOV	A,TOS_L
+	RL	A		;Correct for double-byte entries.
+	JB	EXTVAR,FETEXT
+	ADD	A,#US_VAR	;Offset for variable array.
+	MOV	R1,A		;Index to variable storage array.
+	ADD	A,#-(US_VAR+2*NO_VAR-1)
+	JC	FETERR
+	MOV	A,@R1		;Load low-order byte of variable.
+	MOV	TOS_L,A		;And store on AES.
+	INC	R1		;Bump pointer.
+	MOV	A,@R1		;Transfer high-order byte of variable.
+	MOV	TOS_H,A
+	JMP	PUSH_TOS
+;
+;===
+;
+FETEXT:	MOV	R1,A		;Index to variable storage array.
+%DEBUG	MOV	P2,#HIGH EXTRAM
+	MOVX	A,@R1		;Load low-order byte of variable.
+	MOV	TOS_L,A		;And store on AES.
+	INC	R1		;Bump pointers.
+	MOVX	A,@R1		;Transfer high-order byte of variable.
+	MOV	TOS_H,A
+	JMP	PUSH_TOS
+;
+FETERR:	JMP	ADR_ER
+;
+;===
+;
+FETDBY:	MOV	A,TOS_L
+	MOV	R1,A
+	CALL	FETDIR
+	SJMP	FETBDN		;Byte fetch done.
+;
+;===
+;
+FETRBI:	CALL	SPLIT_DBA
+	CALL	FETDIR
+	ANL	A,B
+	ADD	A,#0FFH
+	CLR	A
+	RLC	A
+	SJMP	FETBDN
+;
+;===
+;
+FETXBY:	MOV	P2,TOS_H
+	MOV	A,TOS_L
+	MOV	R1,A
+	MOVX	A,@R1
+	SJMP	FETBDN
+;
+;===
+;
+FETCBY:	MOV	DPH,TOS_H
+	MOV	DPL,TOS_L
+	CLR	A
+	MOVC	A,@A+DPTR
+FETBDN:	MOV	TOS_H,#00H	;FETCH sequence for Bytes Done.
+	MOV	TOS_L,A		;FETCH sequence for words done.
+	JMP	PUSH_TOS
+;
+;=======
+$EJECT
+;
+;CREATE
+;	Test the contents of Acc.
+;	If CHAR holds the ASCII code for a legitimate decimal digit,
+;	create a two-byte entry in <TOS_H><TOS_L> holding low-order ACC nibble
+;	and return with CY set.
+;	Otherwise, return with CY cleared.
+;
+CREATE:	ADD	A,#-'0'		;Correct for ASCII digit offset.
+	CJNE	A,#10,$+3	;Compare to maximum legal digit.
+	JNC	CREA_1		;Abort if first char is not decimal digit.
+	MOV	TOS_L,A		;Save initial digit read.
+	MOV	TOS_H,#0	;Clear high-order bits.
+	CLR	H_FLG
+CREA_1:	RET
+;
+;===============
+;
+;APPEND
+;	Test ASCII code in Acc.
+;	If it is a legal digit in the current radix,
+;	modify <TOS_H><TOS_L> to include this digit and return with CY set.
+;	Otherwise leave AES and CHAR unchanged and return with CY cleared.
+;	Operating mode determined by HEXMOD flag (1=Hex).
+;
+APPEND:	JB	H_FLG,APND_2	;Nothing allowed after trailing 'H' received.
+	ADD	A,#-'0'		;Correct for ASCII offset.
+	CJNE	A,#10,$+3	;Verify whether legal digit.
+	JC	APND_1		;Insert decimal digit as is.
+	JNB	HEXMOD,APND_2	;If in decimal mode, character isn't legal.
+	ADD	A,#'0'-'A'	;Acc now equals 0 if 'A' received.
+	CJNE	A,#6,$+3
+	JC	APND_4		;Process Hex digit.
+;
+;	Char was not hexidecimal digit, but if it was the first 'H', that's OK.
+;
+	CJNE	A,#'H'-'A',APND_2	;Compare original input with 'H'.
+	SETB	H_FLG		;Mark that 'H' was detected but don't process.
+	SETB	C
+	RET
+;
+APND_4:	ADD	A,#10		;Value of lowest hex digit.
+APND_1:	XCH	A,TOS_L		;Save nibble to be appended.
+	MOV	B,#10		;(Assuming radix=decimal.)
+	JNB	HEXMOD,XRAD_1	;Skip ahead if assumption correct.
+	MOV	B,#16		;If mode is actually hex.
+XRAD_1:	PUSH	B		;Save for re-use.
+	MUL	AB		;Multiply by radix.
+	ADD	A,TOS_L		;Append new digit.
+	MOV	TOS_L,A		;Save low-order shifted value.
+	CLR	A
+	ADDC	A,B		;Incremented high-order product if carry.
+	XCH	A,TOS_H
+	POP	B
+	MUL	AB
+	ADD	A,TOS_H
+	MOV	TOS_H,A
+	ORL	C,ACC.7		;Detect if most significant bit set.
+	MOV	A,B
+	ADDC	A,#0FFH		;Simulate "ORL	C,NZ" instruction.
+	ANL	C,/HEXMOD	;Overflow only relevent in decimal mode.
+	JC	APN_ER		;Error if bit 7 overflow occurred.
+	SETB	C		;CHAR processed as legal character.
+	RET
+;
+APND_2:	CLR	C
+	RET
+;
+;
+APN_ER:	CALL	EXP_ER		;Indicate illegal entry.
+	DB	2
+;
+$EJECT
+;
+OV_TST:
+;	If OV is set and operation is BCD mode then call EXP_ER routine.
+;
+	MOV	C,OV
+	ANL	C,/HEXMOD
+	JC	EXP_OV
+	RET
+;
+EXP_OV:	CALL	EXP_ER
+	DB	6
+;
+;=======
+;
+ADD_16:	MOV	A,@R1		;Add low-order bytes.
+	ADD	A,TOS_L
+	MOV	@R1,A		;Save sum.
+	INC	R1
+	MOV	A,@R1		;Add high-order bytes.
+	ADDC	A,TOS_H
+	MOV	@R1,A		;Save sum.
+	RET
+;
+;=======
+;
+%*DEFINE(IADD)
+       (CALL	IADD)
+;
+IADD:
+;	Pop VAR from AES (two bytes).
+;	TOS <= TOS + VAR
+;
+	CALL	POP_TOS
+	CALL	ADD_16
+	JMP	OV_TST
+;
+;===============
+;
+;ISUB
+;	Pop VAR from AES (two bytes).
+;	TOS <= TOS - VAR
+;
+%*DEFINE(ISUB)
+       (CALL	ISUB)
+;
+ISUB:	ACALL	POP_TOS
+	CLR	C		;Set up for subtraction with borrow.
+	MOV	A,@R1		;Subtract low-order bytes.
+	SUBB	A,TOS_L
+	MOV	@R1,A		;Save difference.
+	INC	R1		;Bump pointers.
+	MOV	A,@R1		;Subtract high-order bytes.
+	SUBB	A,TOS_H
+	MOV	@R1,A		;Save difference.
+	JMP	OV_TST
+;
+;=======
+;
+%*DEFINE(IAND)
+       (CALL	IAND)
+;
+IAND:
+;	Pop VAR from AES (two bytes).
+;	TOS <= TOS AND VAR
+;
+	CALL	POP_TOS
+	MOV	A,@R1		;AND low-order bytes.
+	ANL	A,TOS_L
+	MOV	@R1,A		;Save result.
+	INC	R1
+	MOV	A,@R1		;AND high-order bytes.
+	ANL	A,TOS_H
+	MOV	@R1,A		;Save result.
+	RET
+;
+;=======
+;
+%*DEFINE(IOR)
+       (CALL	IOR)
+;
+IOR:
+;	Pop VAR from AES (two bytes).
+;	TOS <= TOS OR VAR
+;
+	CALL	POP_TOS
+	MOV	A,@R1		;OR low-order bytes.
+	ORL	A,TOS_L
+	MOV	@R1,A		;Save result.
+	INC	R1
+	MOV	A,@R1		;OR high-order bytes.
+	ORL	A,TOS_H
+	MOV	@R1,A		;Save result.
+	RET
+;
+;=======
+;
+%*DEFINE(IXOR)
+       (CALL	IXOR)
+;
+IXOR:
+;	Pop VAR from AES (two bytes).
+;	TOS <= TOS XOR VAR
+;
+	CALL	POP_TOS
+	MOV	A,@R1		;XOR low-order bytes.
+	XRL	A,TOS_L
+	MOV	@R1,A		;Save result.
+	INC	R1
+	MOV	A,@R1		;XOR high-order bytes.
+	XRL	A,TOS_H
+	MOV	@R1,A		;Save result.
+	RET
+;
+;===============
+;
+%*DEFINE(NEG)
+       (CALL	NEG)
+;
+NEG:
+;	TOS <= -TOS
+;
+	CLR	C
+	CPL	SGN_FLG
+NEG_0:	MOV	R1,AESP		;Compute variable address.
+	DEC	R1		;Index for low-order byte of VAR_1.
+	CLR	A		;Subtract VAR_1 from 0000H.
+	SUBB	A,@R1
+	MOV	@R1,A		;Save difference.
+	INC	R1		;Bump pointer.
+	CLR	A
+	SUBB	A,@R1		;Subtract high-order byte.
+	MOV	@R1,A		;Save difference.
+	JMP	OV_TST
+;
+;=======
+;
+%*DEFINE(ICPL)
+	(CALL	ICPL)
+;
+ICPL:
+;	TOS <= /TOS  (ones complement)
+	SETB	C
+	SJMP	NEG_0
+;
+;===============
+;
+%*DEFINE(IABS)
+	(CALL	IABS)
+;
+IABS:
+;	If in decimal mode and TOS < 0 
+;	then complement SGN_FLG and negate TOS.
+;
+	MOV	R1,AESP
+	MOV	A,@R1
+	MOV	C,ACC.7
+	ANL	C,/HEXMOD
+	JC	NEG
+	RET
+;
+;=======
+;
+NEG_IF_NEG:
+;	If SGN_FLG is set then negate TOS and complement SGN_FLG,
+;	else return with TOS unchanged.
+	JB	SGN_FLG,NEG
+	RET
+;
+;=======
+;
+%*DEFINE(IINC)
+       (CALL	IINC)
+;
+IINC:
+;	TOS <= TOS+1
+;
+	MOV	R1,AESP		;Compute variable address.
+	DEC	R1		;Index for low-order byte of VAR_1.
+	INC	@R1
+	CJNE	@R1,#00,IINC_1
+	INC	R1		;Bump pointer.
+	INC	@R1
+IINC_1:	RET
+;
+;=======
+;
+MUL_16:
+;	Multiply unsigned 16-bit quantity in <TOS_H><TOS_L> by entry
+;	on top of stack, and return with product on stack.
+;	If product exceeds 16-bits, set OV flag.
+;
+	CLR	F0		;Initialize overflow flag.
+	MOV	R1,AESP		;Point to MSB of NOS.
+	MOV	A,@R1
+	JZ	IMUL_1		;High-order byte of either param. must be 0.
+	MOV	A,TOS_H
+	JZ	IMUL_1
+	SETB	F0		;Mark that both parameters exceed 255.
+IMUL_1:	DEC	R1		;Index low-order NOS.
+	MOV	A,@R1
+	MOV	B,TOS_H
+	MUL	AB		;Low-order product.
+	JNB	OV,IMUL_2
+	SETB	F0
+IMUL_2:	INC	R1
+	XCH	A,@R1		;Save low-order prod. and load high-order NOS.
+	MOV	B,TOS_L
+	MUL	AB
+	JNB	OV,IMUL_3	;Mark if overflow.
+	SETB	F0
+IMUL_3:	ADD	A,@R1
+	MOV	@R1,A		;Save high-order sum.
+	ORL	C,F0
+	MOV	F0,C
+	DEC	R1		;Address low-order NOS.
+	MOV	A,@R1
+	MOV	B,TOS_L
+	MUL	AB
+	MOV	@R1,A
+	MOV	A,B
+	INC	R1
+	ADD	A,@R1
+	MOV	@R1,A		;Save high-order product.
+	ORL	C,F0		;Check if carry or sign-bit set.
+	ORL	C,ACC.7		;Check if sign-bit set.
+	MOV	OV,C
+	RET
+;
+;=======
+;
+%*DEFINE(IMUL)
+       (CALL	IMUL)
+;
+IMUL:
+;	Pop VAR from AES (two bytes).
+;	TOS <= TOS * VAR
+;
+	CLR	SGN_FLG		;Initialize sign monitor flag.
+	CALL	IABS		;Take absolute value of TOS.
+	CALL	POP_TOS		;Pop top entry.
+	CALL	IABS		;Take absolute value of NOS.
+	CALL	MUL_16
+	CALL	OV_TST		;Check if OV relevent.
+	CALL	NEG_IF_NEG
+	RET
+;
+;===============
+;
+%*DEFINE(IMOD)
+       (CALL	IMOD)
+;
+IMOD:	SETB	MOD_FLG		;Indicate modulo entry point.
+	SJMP	IDIV_0
+;
+;=======
+;
+%*DEFINE(IDIV)
+       (CALL	IDIV)
+;
+IDIV:
+;	Pop VAR from AES (two bytes).
+;	TOS <= TOS / VAR
+;	If divide-by-zero attempted report error.
+;
+	CLR	MOD_FLG		;Indicate division entry point.
+IDIV_0:	SETB	SGN_FLG		;Initialize sign monitor flag.
+	CALL	IABS
+	CALL	NEG
+	CALL	POP_TOS
+;???
+; The next line of code added by lss 21-dec-1982
+;???
+	mov	a,tos_l
+	ORL	A,TOS_H
+	JZ	DIV_NG
+	MOV	C,SGN_FLG
+	ANL	C,/MOD_FLG	;Clear SGN_FLG if MOD funtion being done.
+	MOV	SGN_FLG,C
+	CALL	IABS
+	MOV	TMP1,A
+	DEC	R1
+	MOV	A,@R1
+	MOV	TMP0,A
+	CLR	A
+	MOV	TMP3,A
+	MOV	TMP2,A
+	MOV	LP_CNT,#17
+	CLR	C
+	SJMP	DIV_RP
+;
+DIV_LP:	MOV	A,TMP2
+	RLC	A
+	MOV	TMP2,A
+	XCH	A,TMP3
+	RLC	A
+	XCH	A,TMP3
+	ADD	A,TOS_L
+	MOV	TMP4,A
+	MOV	A,TMP3
+	ADDC	A,TOS_H
+	JNC	DIV_RP
+	MOV	TMP2,TMP4
+	MOV	TMP3,A
+DIV_RP:	MOV	A,TMP0
+	RLC	A
+	MOV	TMP0,A
+	MOV	A,TMP1
+	RLC	A
+	MOV	TMP1,A
+	DJNZ	LP_CNT,DIV_LP
+	JB	MOD_FLG,DIV_1
+	MOV	@R1,TMP0
+	INC	R1
+	MOV	@R1,TMP1
+	SJMP	DIV_2
+;
+DIV_1:	MOV	@R1,TMP2
+	INC	R1
+	MOV	@R1,TMP3
+DIV_2:	CALL	NEG_IF_NEG
+	RET
+;
+DIV_NG:	AJMP	EXP_OV		;Report expression overflow.
+;
+;===============
+;
+$EJECT
+;
+%*DEFINE(RND)
+	(CALL	RND)
+;
+RND:
+;	Generate a new 16-bit random number from RND_KEY,
+;	and push onto the AES.
+	MOV	TOS_L,SEED_L
+	MOV	TOS_H,SEED_H
+	CALL	PUSH_TOS
+	MOV	TOS_L,#LOW 25173
+	MOV	TOS_H,#HIGH 25173
+	CALL	MUL_16
+	MOV	TOS_L,#LOW 13849
+	MOV	TOS_H,#HIGH 13849
+	MOV	R1,AESP
+	DEC	R1
+	CALL	ADD_16
+	CALL	POP_TOS
+;
+;???
+; The code from here to label no_problem added by lss 21 dec 1982
+; to cure a extraneous overflow if seed=8000h.
+;???
+;
+	cjne	tos_l,#0,no_problem
+	cjne	tos_h,#80h,no_problem
+big_problem:				   ; tos=8000h will generate an overflow
+	mov	tos_l,#low(12586)          ; when control gets to iabs.
+	mov	tos_h,#high(12586)         ; Load the precalculated seed.
+no_problem:
+	MOV	SEED_L,TOS_L
+	MOV	SEED_H,TOS_H
+	CALL	PUSH_TOS
+	RET
+;
+;===============
+;
+%*DEFINE(CMPR)
+       (CALL	CMPR)
+;
+CMPR:
+;	When CMPR is called, AES contains:
+;	(TOS:)	VAR_2 (two bytes),
+;		C_CODE (one byte),
+;		VAR_1 (two bytes).
+;	Pop all 5 bytes from stack and test relation between VAR_1 and VAR_2.
+;	    If C_CODE=010 then test whether (VAR_1) =  (VAR_2)
+;	    If C_CODE=100 then test whether (VAR_1) <  (VAR_2)
+;	    If C_CODE=110 then test whether (VAR_1) <= (VAR_2)
+;	    If C_CODE=101 then test whether (VAR_1) <> (VAR_2)
+;	    If C_CODE=001 then test whether (VAR_1) >  (VAR_2)
+;	    If C_CODE=011 then test whether (VAR_1) >= (VAR_2)
+;	If true then return 0001H on AES;
+;	otherwise return 0000H.
+;
+	CALL	POP_TOS
+	CALL	POP_ACC
+	MOV	B,A
+	MOV	R1,AESP
+	DEC	R1
+	CLR	C		;...in preparation for string subtract.
+	MOV	A,@R1		;Compare low-order parameter bytes.
+	SUBB	A,TOS_L
+	INC	R1		;Bump pointer.
+	XCH	A,@R1		;Save difference.
+	JB	HEXMOD,CMPR_4
+	XRL	A,#80H		;Offset variable by 80H for unsigned compare.
+	XCH	A,TOS_H
+	XRL	A,#80H
+	XCH	A,TOS_H
+CMPR_4:	SUBB	A,TOS_H
+	ORL	A,@R1		;Add any non-zero high-order bits to acc.
+	JNZ	CMPR_1		;Jump ahead VAR_1 <> VAR_2.
+;
+;	VAR_1 = VAR_2:
+;
+	MOV	C,B.1		;Load VAR_1 = VAR_2 test flag.
+	SJMP	PUSH_C
+;
+CMPR_1:	JC	CMPR_2		;Jump ahead if VAR_1 < VAR_2.
+;
+;	VAR_1 > VAR_2:
+;
+	MOV	C,B.0		;Load VAR_1 > VAR_2 test flag.
+	SJMP	PUSH_C
+;
+;	VAR_1 < VAR_2:
+;
+CMPR_2:	MOV	C,B.2		;Load VAR_1 < VAR_2 test flag.
+PUSH_C:	CLR	A
+	MOV	@R1,A
+	RLC	A
+	DEC	R1
+	MOV	@R1,A
+	RET
+;
+$EJECT

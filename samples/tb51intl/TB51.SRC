@@ -1,0 +1,1466 @@
+$ERRORPRINT TITLE(MCS-51(TM) TINY BASIC INTERPRETER 8/26/80)
+;
+;	TINY BASIC INTERPRETER PROGRAM  (CREATED 3/10/80   JHW)
+;	==============================
+;
+;	INSITE ORDER NO. BF10
+;
+VERS	EQU	22H
+;
+;
+; Modified from 2.1 to 2.2 by lss 4 jan 1983 to fix errors in the divide routine; and the random number generator.
+;
+;
+%*DEFINE(DEBUG)()
+;	STATUS:
+;	======
+;
+;
+;	NEW FEATURES/GIMMICKS TO BE CONSIDERED:
+;
+;	On power-up, system should adapt itself to whatever RAM it can
+;	find off-chip.
+;	Should allow for and/or identify multiple baud rates for serial link.
+;	Should allow other physical devices (software serial I/O, etc.).
+;
+;	Amount of RAM consumed by BASIC variables should be user-alterable.
+;	16-bit variable array handling should be provided when external RAM
+;	is available.
+;	Program buffering in internal RAM and/or line buffering in external RAM
+;	(when available/not available) might be nice.
+;
+;	INNUM could be changed to allow line editing and expression input.
+;
+;	Interrupt handlers should be provided for, and supported by strapping
+;	options so that CRT is not required.
+;
+;	Symbolically-accessable 8-bit pseudo CPU-registers, ports,
+;	etc. desired to support ML debug.
+;	During CALL, pseudo-registers should be loaded/saved.
+;
+;	Capability to load and dump programs to MDS or twin system desired.
+;	Download command desired compatible with ISIS hex file format.
+;	Line buffering should ignore initial line-feed to be compatible
+;	with down-load or cross-load, and terminate on <cntrl-Z>.
+;
+;	Expression evaluation algorithm should be changed to use less stack
+;	and allow more precedence levels.
+;	Since EXPR recursive, hardware stack can overflow (not checked).
+;
+;	NEXT command should verify that a valid loop record is on the AES 
+;	as opposed to GOSUB return address, and vice-versa.
+;	STEP values other than +1 should be considered.
+;
+;	Error reporting could re-type line and indicate error point.
+;	Error numbers (if retained) should make some sense.
+;	Might be indices for error message strings.
+;
+;	TRACE mode could aid BASIC debug by typing each source line # executed.
+;
+;	RND number seed should be easily alterable for games, etc.
+;
+$EJECT
+;
+;	AESTHETIC IMPROVEMENTS DESIRED:
+;
+;	Disallow 0 and >7FFFH line numbers.
+;
+;	Source modules could be re-grouped to be more readable
+;	and re-ordered to minimize use of LJMPs and LCALLs.
+;	Linkage jumps might be created in second 2K page to provide efficient
+;	access to first 2K.
+;
+;	PRN could insert zeros before leading Hex digits.
+;
+;	IDIV uses variable storage inefficiently (TMP0-TMP4).
+;	Should be modified to make use of actual stack variables.
+;
+;	TST could use optimized algorithm for single character token tests.
+;	String tests should skip over unsearched strings more efficiently.
+;
+;	Program buffer searching could be speeded by giving line length 
+;	before text string and computing branch over undesired lines.
+;
+;	Math and AES operations might be optimized by dedicating R1 as AESP
+;	to be loaded and saved only on entering/leaving execution mode.
+;
+;	Input radix should be determined by 'H' suffix presence.
+;	Otherwise labels (GOTO destinations) should always be decimal.
+;
+;	Space between GO and TO might be forgiven.
+;
+;	Certain commands might be disallowed in each operating mode:
+;	No LIST in execution, no INPUT in interactive, for instance.
+;	Some commands (FOR, GOTO, RETURN, etc.) must be last command in line.
+;
+;	GETLN could be made somewhat more abstract, so that L_INIT and READ_C
+;	return characters from edited line buffer in interactive mode and
+;	code buffer in execution mode.  Dual execution loops in main IL program
+;	can then be combined.  (Line insertion should default when no keyword
+;	tokens would be detected during parsing.)
+;
+;	Get rid of LIST and FNDLBL kludge which falsely sets RUNFLG to fool
+;	READ_C subroutine.
+;
+;	Sequential string testing (command parsing, operator recognition, etc.)
+;	could be made table-driven, eliminating repeated "CALL TST"s.
+;
+;	All data structures need to be better defined in listing.
+;	It would be a wise exercize to gather each 
+;	data-structure definition/declaration/accessing-routine set
+;	into isolated functional modules (like objects),
+;	with communication only via global variables.
+
+;
+$EJECT
+;
+;	GLOBAL VARIABLE AND DATA STRUCTURE DECLARATIONS:
+;	====== ======== === ==== ========= ============
+;
+;	Intended System Configuration Constants:
+;
+EXTRAM	EQU	2034H		;External program buffer begins after 26 vars.
+RAMLIM	EQU	3000H		;Allowance made for 4K RAM buffer.
+EXTROM	EQU	1080H		;Start of external ROM space.
+TABSIZ	EQU	8		;Formatted column spacing.
+AESLEN	EQU	36		;AES Length.
+;
+;	Working Register Definitions.
+;
+PNTR_L	EQU	R0		;Program buffer pointer.
+DEST_L	EQU	R1		;Destination pointer for line insertion.
+PNTR_H	EQU	R2		;High-order pointer byte (temp. cursor)
+DEST_H	EQU	R3
+CHAR	EQU	R4		;BASIC source string character being parsed.
+LP_CNT	EQU	R5
+TOS_L	EQU	R6
+TOS_H	EQU	R7		;Variable popped from stack for math routines.
+;
+	DSEG
+	ORG	08H
+;
+;	Temporary variables used by IDIV routine.
+;
+TMP0:	DS	1
+TMP1:	DS	1
+TMP2:	DS	1
+TMP3:	DS	1
+TMP4:	DS	1
+;
+;	Random number key.
+;
+SEED_L:	DS	1
+SEED_H:	DS	1
+;
+;
+STRLEN:	DS	1		;Length of text string in L_BUF.
+;
+;US_VAR		User Variable (A,B,...) Array:
+;
+NO_VAR	EQU	12		;Allow 12 internal variables A - L.
+US_VAR:	DS	2*NO_VAR	;Allocate variable storage space.
+;
+MODE:	DS	1		;Operating mode bits.
+EXTVAR	BIT	MODE.0		;Set when BASIC variables in external RAM.
+ROMMOD	BIT	MODE.1		;Set when BASIC programs executed from ROM.
+EXTMOD	BIT	MODE.2		;Set when BASIC programs fetched externally.
+RUNMOD	BIT	MODE.3		;Set when stored BASIC program is running.
+HEXMOD	BIT	MODE.4		;Set when operations should use HEX radix.
+;
+FLAGS:	DS	1		;Interroutine communication flags.
+ZERSUP	BIT	FLAGS.0		;If set, suppress printing leading zeroes.
+CHAR_FLG  BIT	FLAGS.1		;Set when CHAR has not been processed.
+SGN_FLG	BIT	FLAGS.2		;Keeps track of operand(s) sign during math.
+SEQ_FLG	BIT	FLAGS.3		;
+MOD_FLG	BIT	FLAGS.4		;Set if divide routine should return MOD value.
+H_FLG	BIT	FLAGS.5		;Used to sense allow 'H' suffix in HEX mode.
+;
+;AES	Arithmetic Expression Stack.
+;
+AESP:	DS	1		;AES Stack Pointer
+AES:	DS	AESLEN		;Buffer allocation.
+;
+;
+;	Line Buffer Variables:
+L_CURS:	DS	1		;Cursor for line buffer.
+;
+TABCNT:	DS	1		;Column formatting count.
+;
+;CURSOR	Source line cursor.
+CURS_L:	DS	1
+CURS_H:	DS	1
+C_SAVE:	DS	1		;CHAR saved during SAVE_PNTR.
+;
+LABL_L:	DS	1		;BASIC program source line counter.
+LABL_H:	DS	1		;  "       "       "     high byte.
+;
+SP_BASE	EQU	$-1		;Initialization value for hardware SP.
+;
+CR	EQU	0DH		;ASCII CODE FOR <CARRIAGE RETURN>.
+LF	EQU	0AH		;  "    "    "  <LINE FEED>.
+BEL	EQU	07H		;  "    "    "  <BELL>.
+;
+$EJECT
+$SAVE NOGEN
+;
+	CSEG
+	ORG	0000H
+	JMP	S_INIT		;Jump to system initialization routine.
+;
+;	Interrupt routine expansion hooks:
+;
+%DEBUG	ORG	0003H
+%DEBUG	JMP	1003H		;External interrupt 0 service routine.
+;
+%DEBUG	ORG	000BH
+%DEBUG	JMP	100BH		;Timer 0 service routine.
+;
+%DEBUG	ORG	0013H
+%DEBUG	JMP	1013H		;External interrupt 1 service routine.
+;
+%DEBUG	ORG	001BH
+%DEBUG	JMP	101BH		;Timer 1 service routine.
+;
+%DEBUG	ORG	0023H
+%DEBUG	JMP	1023H		;Serial port interrupt service routine.
+;
+$EJECT
+;
+;	CONSOLE I/O ROUTINES AND DRIVERS:
+;	======= === ======== === =======
+;
+S_INIT:	CLR	A
+	MOV	PSW,A
+	MOV	SEED_H,A
+	MOV	SEED_L,A
+	MOV	SP,#SP_BASE	;Re-initialize hardware stack.
+	CALL	RAM_INIT	;Clear-out variable RAM.
+SP_INI:	JNB	RXD,RUNROM
+	CLR	TR1
+	MOV	SCON,#01011010B	;TI set indicates transmitter ready.
+	MOV	TMOD,#00100001B	;Timer 1 is set to auto-reload timer mode.
+	MOV	TH1,#0		;Assume fastest rate.
+	MOV	R0,#144
+	JB	RXD,$
+BAUDID:	DJNZ	R0,$
+	DEC	TH1
+	MOV	R0,#94
+	JNB	RXD,BAUDID
+	JB	RXD,$		;Hang-up here until space char. over.
+	JNB	RXD,$
+	SETB	TR1
+	CALL	STROUT
+	DB	CR,'MCS-51 TINY BASIC V'
+	DB	'0'+VERS/10H,'.','0'+(VERS AND 0FH),CR OR 80H
+	JMP	START
+;
+RUNROM:	SETB	EXTMOD
+	SETB	ROMMOD
+	JMP	XEC
+;
+;=======
+;
+C_IN:
+;	Console character input routine.
+;	Waits for next input from console device and returns with character
+;	code in accumulator.
+;	If character is <CNTRL-C> process syntax error.
+;	Adjust lower-case alphabetics to upper case.
+;
+%DEBUG	JNB	RI,$		;Wait until character received.
+	MOV	A,SBUF		;Read input character.
+	CLR	RI		;Clear reception flag.
+	ANL	A,#7FH		;Mask off data bits.
+	CJNE	A,#03H,C_IN_2	;Test for CNTRL-C code.
+	JMP	SYN_ER		;Abort if detected.
+;
+C_IN_2:	CJNE	A,#'a',$+3	;Check for lower-case alphabetics.
+	JC	C_IN_1
+	CJNE	A,#'z'+1,$+3
+	JNC	C_IN_1
+	ANL	A,#11011111B	;Force upper-case code.
+C_IN_1:	RET			;Return to calling routine.
+;
+;=======
+;
+%*DEFINE(NLINE)
+	(CALL	NLINE)
+;
+NLINE:
+;	Transmit <CR><LF> sequence to console device.
+;
+	MOV	A,#CR
+C_OUT:
+;	Console character output routine.
+;	Outputs character received in accumulator to console output device.
+;
+%DEBUG	JNB	TI,$		;Wait until transmission completed.
+%DEBUG	CLR	TI		;Clear interrupt flag.
+	MOV	SBUF,A		;Write out character.
+	CJNE	A,#CR,COUT_2
+%DEBUG	JNB	TI,$
+%DEBUG	CLR	TI
+	MOV	SBUF,#LF	;Output linefeed.
+	SJMP	COUT_3
+;
+COUT_2:	CLR	C
+	DJNZ	TABCNT,COUT_1	;Monitor output field position.
+COUT_3:	MOV	TABCNT,#TABSIZ	;Reload field counter.
+	SETB	C
+COUT_1:	RET
+;
+;=======
+;
+%*DEFINE(CNTRL)
+	(CALL	CNTRL)
+;
+CNTRL:	JNB	RI,CNTRET	;Poll whether character has been typed.
+	CALL	C_IN
+	CJNE	A,#13H,CNTRET	;Check if char. is <CNTRL-S>.
+CNTR_2:	CALL	C_IN		;If so, hang up...
+	CJNE	A,#11H,CNTR_2	;    ...until <CNTRL-Q> received.
+CNTRET:	RET
+;
+;=======
+;
+%*DEFINE(SPC)
+	(CALL	SPC)
+;
+SPC:
+;	Transmit one or more space characters to console to move console
+;	cursor to start of next field.
+;
+	MOV	A,#' '	;Load ASCII code for space character.
+	CALL	C_OUT
+	JNC	SPC		;Repeat until at TAB boundary.
+	RET
+;
+;===============
+;
+;NIBOUT
+;	If low-order nibble in Acc. is non-zero or ZERSUP flag is cleared,
+;	output the corresponding ASCII value and clear ZERSUP flag.
+;	Otherwise return without affecting output or ZERSUP.
+;
+NIBOUT:	ANL	A,#0FH		;Mask out low-order bits.
+	JNZ	NIBO_2		;Output ASCII code for Acc contents.
+	JB	ZERSUP,NIBO_3
+NIBO_2:	CLR	ZERSUP		;Mark that non-zero character encountered.
+	ADD	A,#(ASCTBL-(NIBO_1+1))	;Offset to start of table.
+NIBO_1:	MOVC	A,@A+PC		;Look up corresponding code.
+	CALL	C_OUT		;Output character.
+NIBO_3:	RET
+;
+ASCTBL:	DB	'0123456789ABCDEF'
+;
+;=======
+;
+;STROUT
+;	Copy in-line character string to console output device.
+;
+STROUT:	POP	DPH		;Access in-line string.
+	POP	DPL
+STRO_1:	CLR	A
+	MOVC	A,@A+DPTR	;Read next byte.
+	INC	DPTR		;Bump pointer.
+	JBC	ACC.7,STRO_2	;Escape after last character.
+	CALL	C_OUT		;Output character.
+	SJMP	STRO_1		;Loop until done.
+;
+STRO_2:	CALL	C_OUT		;Output character.
+	CLR	A
+	JMP	@A+DPTR		;Return to program.
+;
+;=======
+$EJECT
+ERROUT:
+;	Error handling routine common entry point. 
+;	(Could retype bad line, etc.)
+;
+	JMP	ERRENT		;Return to executive.
+;
+;=======
+;
+;EXP_ER	Expression evaluation error.
+EXP_ER:	CALL	STROUT		;Output error message.
+	DB	'HOW?',CR OR 80H
+	JMP	ERROUT		;Return to executive.
+;
+;=======
+;
+;AES_ER	Arithmetic expression stack error handling routine.
+AES_ER:	CALL	STROUT		;Output error message.
+	DB	'SORRY!',CR OR 80H
+	JMP	ERROUT		;Return to executive.
+;
+;
+;=======
+;
+;SYN_ER	Syntax error handling routine.
+SYN_ER:	CALL	STROUT		;Output error message.
+	DB	CR,'WHAT?',CR OR 80H
+	JMP	ERROUT		;Process error.
+;
+;=======
+$EJECT
+$INCLUDE(TBMATH.SRC)
+$INCLUDE(TBPARS.SRC)
+$EJECT
+READ_LABEL:
+;	Read next two characters from program buffer into <LABL_H><LABL_L>.
+;	Return with carry set if bit 15 of LABL is set (indicating EOF).
+;
+	CALL	READ_CHAR
+	MOV	LABL_H,A
+	CALL	READ_CHAR
+	MOV	LABL_L,A
+	MOV	A,LABL_H
+	MOV	C,ACC.7
+	RET
+;
+;=======
+;
+%*DEFINE(LINIT)
+	(CALL	L_INIT
+	  JC	  ERRENT)
+;
+L_INIT:
+;	Initialize for execution of new BASIC source line.
+;	If none present, or if not in sequential execution mode, 
+;	then return to line collection operation.
+;
+	JNB	RUNMOD,LINI_1	;Determine operating mode.
+	JMP	READ_LABEL
+;
+LINI_1:	SETB	C
+	RET
+;
+;=======
+;
+%*DEFINE(NL_NXT)
+       (JMP	NL_NXT)
+;
+%*DEFINE(NXT)
+       (JMP	NXT)
+;
+NL_NXT:
+;	Output a <CR><LF> and continue with NXT routine.
+;
+	CALL	NLINE
+;
+NXT:
+;	A colon or carriage return has been previously READ_CHARed.
+;	If CHAR holds a colon,
+;	continue interpretation of source line in current mode
+;	from IL program instruction "TOKEN".
+;	Otherwise CHAR is a <CR>, and line has been completed.
+;	Resume execution from IL instruction "STMT".
+;
+	CJNE	CHAR,#':',NXT_1	;Skip ahead unless colon detected.
+	CALL	D_BLNK
+	JMP	TOKEN		;Continue with interpretation.
+;
+NXT_1:	JMP	STMT
+;
+;=======
+;
+$EJECT
+;
+%*DEFINE(GETLN)
+       (CALL	GETLN)
+;
+GETLN:
+;	Input a line from console input device and put in line buffer
+;	in internal RAM.
+;
+	MOV	A,AESP
+	ADD	A,#4
+	MOV	TMP0,A
+GETL_0:	MOV	R0,TMP0		;Point to beginning of line buffer.
+	CALL	STROUT
+	DB	'>' OR 80H
+GETL_1:	CALL	C_IN		;Get next character from console.
+	CJNE	A,#12H,GETL_5	;Re-type line on <CNTRL-R>.
+	CALL	STROUT
+	DB	CR OR 80H	;Newline.
+	MOV	CURS_L,R0	;Save old value of cursor.
+	MOV	R0,TMP0		;Start at beginning of line buffer.
+GETL_6:	MOV	A,R0		;Check if re-write done.
+	XRL	A,CURS_L
+	JZ	GETL_1		;Continue with line input.
+	MOV	A,@R0		;Load character to re-write.
+	CALL	C_OUT
+	INC	R0
+	SJMP	GETL_6		;Continue until done.
+;
+GETL_5:	CJNE	A,#18H,GETL_7	;Cancel whole line on <CNTRL-X>.
+	CALL	STROUT
+	DB	'#',CR OR 80H	;Advance to next line.
+	SJMP	GETL_0
+;
+GETL_7:	CJNE	A,#7FH,GETL_3
+	MOV	A,R0
+	CJNE	A,TMP0,GETL_4	;Delete previous character (if any).
+	CALL	STROUT
+	DB	BEL OR 80H	;Echo <BEL>.
+	SJMP	GETL_1		;Ignore rubouts at beginning of line
+;
+GETL_4:	CALL	STROUT
+	DB	08H,' ',88H	;BKSP,SPC,BKSP
+	DEC	R0		;Wipeout last char.
+	SJMP	GETL_1
+;
+GETL_3:	CJNE	R0,#AES+AESLEN-1,GETL_2	;Test if buffer full.
+	CALL	STROUT		;Echo <BEL>.
+	DB	BEL OR 80H
+	SJMP	GETL_1		;If so, override character received.
+;
+GETL_2:	MOV	@R0,A		;Store into line buffer.
+	CALL	C_OUT		;Echo character.
+	INC	R0		;Bump pointer.
+	CJNE	A,#CR,GETL_1	;Repeat for next character.
+	MOV	PNTR_L,TMP0	;Point cursor to beginning of line buffer.
+	CLR	CHAR_FLG
+	RET
+;
+;===============
+;
+%*DEFINE(PRN)
+	(CALL	PRN)
+;
+PRN:
+;	Pop top of arithmetic expression stack (AES), 
+;	convert to decimal number,
+;	and print to console output device, suppressing leading zeroes.
+;
+	CLR	SGN_FLG
+	CALL	IABS
+	CALL	POP_TOS
+PRNTOS:	SETB	ZERSUP		;Set zero suppression flag.
+	CLR	A
+	MOV	TMP0,A
+	MOV	LP_CNT,#16	;Conversion precision.
+	JB	HEXMOD,PRNHEX
+	JNB	SGN_FLG,PRN_1	;Skip ahead if positive number.
+	CALL	STROUT		;Output minus sign if negative.
+	DB	'-' OR 80H
+PRN_1:	XCH	A,TOS_L
+	RLC	A
+	XCH	A,TOS_L
+	XCH	A,TOS_H
+	RLC	A
+	XCH	A,TOS_H
+	XCH	A,TMP0
+	ADDC	A,ACC
+	DA	A
+	XCH	A,TMP0
+	ADDC	A,ACC
+	DA	A
+	DJNZ	LP_CNT,PRN_1
+	MOV	TOS_H,A
+	MOV	A,TOS_L
+	RLC	A
+	MOV	TOS_L,TMP0
+PRNHEX:	CALL	NIBOUT
+	MOV	A,TOS_H
+	SWAP	A
+	CALL	NIBOUT		;Print second digit.
+	MOV	A,TOS_H
+	CALL	NIBOUT		;Print third digit.
+	JNB	HEXMOD,PRNH_1
+	CLR	ZERSUP		;Print out last two chars. (at least) in hex.
+PRNH_1:	MOV	A,TOS_L		;Read into Acc.
+	SWAP	A		;Interchange nibbles.
+	CALL	NIBOUT		;Print fourth digit.
+	CLR	ZERSUP
+	MOV	A,TOS_L		;Reload byte.
+	CALL	NIBOUT		;Print last digit.
+	JNB	HEXMOD,PRNRET
+	CALL	STROUT		;Print trailing "H".
+	DB	'H' OR 80H
+PRNRET:	RET
+;
+;===============
+;
+LSTLIN:
+;	Check Label of Program line pointed to by Cursor.
+;	If legal, print line number, source line, and <CR><LF> to console,
+;	adjust Cursor to start of next line, 
+;	and return with carry set.
+;	Else return with carry cleared.
+;
+	CALL	READ_LABEL
+	JC	LSTL_1
+	MOV	TOS_H,LABL_H
+	MOV	TOS_L,LABL_L
+	CLR	SGN_FLG
+	CALL	PRNTOS
+	CALL	STROUT		;Insert space before user's source line.
+	DB	' ' OR 80H
+LSTL_2:	CALL	READ_CHAR
+	CALL	C_OUT
+	CJNE	A,#CR,LSTL_2
+LSTL_1:	RET
+;
+;===============
+;
+;LST
+;	List the contents of the program memory area.
+;
+%*DEFINE(LST)
+       (CALL	LST)
+;
+LST:	SETB	RUNMOD
+	CALL	REWIND		;Point to first char of external buffer.
+LST_1:	CALL	CNTRL
+	JC	LSTRET
+	CALL	LSTLIN		;Print out current line if present.
+	JNC	LST_1		;Repeat if successful.
+LSTRET:	CLR	RUNMOD
+	RET
+;
+;===============
+;
+%*DEFINE(INNUM)
+       (CALL	INNUM)
+;
+INNUM:
+;	Read a numeric character string from the console input device.
+;	Convert to binary value and push onto arithmetic expression stack.
+;	Report error if illegal characters read.
+;
+	CLR	SGN_FLG		;Assume number will be positive.
+	CALL	STROUT
+	DB	':',' ' OR 80H	;Print input prompt.
+INUM_0:	CALL	C_IN
+	CALL	C_OUT		;Echo input
+	CJNE	A,#' ',INUM_3
+	SJMP	INUM_0
+;
+INUM_3:	CJNE	A,#'+',INUM_4
+	SJMP	INUM_0
+;
+INUM_4:	CJNE	A,#'-',INUM_5
+	CPL	SGN_FLG
+	SJMP	INUM_0
+;
+INUM_5:	CALL	CREATE		;Create value on stack if legal decimal digit.
+	JNC	INUM_2		;Abort if first character received not legal.
+INUM_1:	CALL	C_IN		;Get additional characters.
+	CALL	C_OUT		;Echo input.
+	CJNE	A,#7FH,INUM_6	;Start over if delete char detected.
+INUM_2:	CALL	STROUT
+	DB	'#',CR OR 80H
+	SJMP	INNUM
+;
+INUM_6:	CALL	APPEND		;Incorporate into stack entry.
+	JC	INUM_1		;Loop while legal characters arrive.
+	CALL	PUSH_TOS
+	JMP	NEG_IF_NEG
+;
+;===============
+$EJECT
+RAM_INIT:
+	CLR	A		;Many bytes to be cleared...
+	MOV	MODE,A		;Interactive mode, decimal radix.
+	MOV	FLAGS,A		;Interroutine flags.
+%DEBUG	MOV	P2,#HIGH EXTRAM	;Select first External RAM page.
+	MOV	R0,A
+	MOV	A,#5AH		;Random bit pattern.
+	MOVX	@R0,A
+	MOVX	A,@R0
+	XRL	A,#5AH
+	JZ	EXTINI
+	CLR	A
+	MOV	R0,#US_VAR	;Clear variable array.
+INIT_1:	MOV	@R0,A
+	INC	R0
+	CJNE	R0,#US_VAR+2*NO_VAR,INIT_1	;Loop until all vars cleared.
+	SJMP	INIT_3
+;
+EXTINI:	SETB	EXTVAR
+	CLR	A
+	MOV	R0,A		;Clear variable array.
+INIT_2:	MOVX	@R0,A
+	INC	R0
+	CJNE	R0,#2*26,INIT_2	;Loop until all vars cleared.
+INIT_3:	RET
+;
+;========
+;
+;INIT
+;	Perform global initialization:
+;	Clear program memory, empty all I/O buffers, reset all stack
+;	pointers, etc.
+;
+%*DEFINE(INIT)
+       (CALL	INIT)
+;
+INIT:	CALL	RAM_INIT
+	MOV	R0,#LOW EXTRAM
+	MOV	A,#0FFH
+	MOVX	@R0,A
+	RET
+;
+;===============
+;
+$EJECT
+;
+;	BASIC PROGRAM LINE SEQUENCE CONTROL MACROS:
+;	===== ======= ==== ======== ======= ======
+;
+;XINIT
+;	Perform initialization needed before starting sequential execution.
+;	Empty stacks, set BASIC line number to 1, etc.
+;
+%*DEFINE(XINIT)
+       (CALL	XINIT)
+;
+XINIT:	MOV	AESP,#AES-1	;Initialize AE Stack.
+	CALL	REWIND
+	SETB	RUNMOD
+	RET			;Begin execution.
+;
+;===============
+;
+FNDLBL:
+;	Search program buffer for line with label passed on AES (Pop AES).
+;	If found, return with CURSOR pointing to start of line (before label)
+;	and carry cleared.
+;	If not found return with carry set and pointer at start of first
+;	line with a greater label value (possible EOF).
+;
+	SETB	RUNMOD		;Kludge to make GET_C fetch from prog. buffer.
+	CALL	REWIND
+	CALL	POP_TOS
+FND_1:	CALL	SAVE_PNTR	;Store position of beginning of line.
+	CALL	READ_LABEL
+	JC	FNDDON
+	MOV	A,TOS_L
+	SUBB	A,LABL_L
+	MOV	LABL_L,A	;Save non-zero bits.
+	MOV	A,TOS_H
+	SUBB	A,LABL_H
+	ORL	A,LABL_L	;Test for non-zero bits.
+	JZ	FNDDON
+	JC	FNDDON		;Carry=1 if a greater label value found.
+	CALL	SKPTXT		;Skip over remaining text portion of line.
+	SJMP	FND_1
+;
+FNDDON:	JMP	LOAD_PNTR
+;
+;=======
+;
+KILL_L:
+;	Kill (delete) line from code buffer indicated by pointer.
+;	When called, CURSOR and POINTER hold the address of first LABEL byte of
+;	line to be deleted.
+;
+	MOV	DEST_L,CURS_L
+	MOV	DEST_H,CURS_H
+	CALL	SKPLIN		;Pass pointer over full text line.
+;
+;	Pointer now indicates first label byte of following line.
+;	Cursor and DEST still indicate first label byte of obsolete line.
+;
+KILL_2:	CALL	READ_CHAR	;Copy down first label byte.
+	CALL	WRITE_CHAR	;Transfer first byte of label number.
+	JB	ACC.7,KILL_9	;Quit when End of Code sentinel reached.
+	CALL	READ_CHAR	;Copy down second label byte.
+	CALL	WRITE_CHAR	;Store second byte of label number.
+KILL_3:	CALL	READ_CHAR	;Transfer text character.
+	CALL	WRITE_CHAR
+	CJNE	A,#CR,KILL_3	;Loop until full line moved.
+	SJMP	KILL_2		;Continue until all code moved forward.
+;
+KILL_9:	RET			;Full line now deleted.
+;
+;=======
+;
+OPEN_L:
+;	Open space for new line in code buffer starting at Cursor.
+;
+	CALL	LOAD_PNTR	;Load address of point for insertion.
+	CLR	CHAR_FLG
+OPEN_3:	CALL	READ_CHAR	;Test first label byte of following line.
+	JB	ACC.7,OPEN_4
+	CALL	READ_CHAR	;Pass over next LABEL byte.
+OPEN_5:	CALL	READ_CHAR
+	CJNE	A,#CR,OPEN_5
+	SJMP	OPEN_3
+;
+;	Pointer now indicates end-of-buffer sentinel.
+;
+OPEN_4:	MOV	A,STRLEN	;Number of bytes needed for BASIC text.
+	ADD	A,#3		;Space needed for for label and <CR>.
+	ADD	A,R0		;Low-order byte of old pointer.
+	MOV	DEST_L,A
+	CLR	A
+	ADDC	A,PNTR_H
+	MOV	DEST_H,A
+	CJNE	A,#HIGH RAMLIM,OPEN_1
+	JMP	AES_ER
+;
+;	Transfer characters from source back to destination
+;	until pointer at original CURSOR value.
+;
+OPEN_1:	CALL	GET_BUF		;Move back next character.
+	CALL	PUT_BUF
+	MOV	A,PNTR_L
+	CJNE	A,CURS_L,OPEN_2
+	MOV	A,PNTR_H
+	CJNE	A,CURS_H,OPEN_2
+;
+;	All bytes have been moved back.
+;
+	RET
+;
+OPEN_2:
+;	Decrement src. and dest. pointers and repeat.
+;
+	DEC	PNTR_L
+	CJNE	PNTR_L,#0FFH,OPEN_6
+	DEC	PNTR_H
+OPEN_6:	DEC	DEST_L
+	CJNE	DEST_L,#0FFH,OPEN_1
+	DEC	DEST_H
+	SJMP	OPEN_1		;Repeat for next character.
+;
+;=======
+;
+INSR_L:
+;	Insert program line label (still held in <TOS_H><TOS_L> from earlier
+;	call to FNDLBL)
+;	and character string in line buffer (pointed at by L_CURS)
+;	into program buffer gap created by OPEN_L routine
+;	(still pointed at by CURSOR).
+;
+	MOV	DEST_L,CURS_L
+	MOV	DEST_H,CURS_H
+	MOV	A,TOS_H
+	CALL	WRITE_CHAR
+	MOV	A,TOS_L
+	CALL	WRITE_CHAR
+	MOV	PNTR_L,L_CURS
+INSL_1:	MOV	A,@PNTR_L
+	CALL	WRITE_CHAR
+	INC	PNTR_L
+	CJNE	A,#CR,INSL_1
+	RET
+;
+;=======
+;
+%*DEFINE(INSRT)
+       (CALL	INSRT)
+;
+INSRT:
+;	Pop line number from top of arithmetic expression stack.
+;	Search BASIC source program for corresponding line number.
+;	If found, delete old line.
+;	Otherwise position cursor before next sequential line number.
+;	If line buffer is not empty then insert line number, contents of
+;	line buffer, and line terminator.
+;
+	DEC	PNTR_L		;Since previous D_BLNK passed over first char.
+	MOV	L_CURS,PNTR_L
+	CALL	FNDLBL
+	JC	INSR_1
+	CALL	KILL_L		;Delete line iff label found in buffer.
+INSR_1:	MOV	R1,L_CURS
+	DEC	R1
+INSR_2:	INC	R1
+	MOV	A,@R1
+	CJNE	A,#CR,INSR_2
+	MOV	A,R1
+	CLR	C
+	SUBB	A,L_CURS
+	MOV	STRLEN,A
+	JZ	INSR_4
+	CALL	OPEN_L
+	CALL	INSR_L
+INSR_4:	CLR	RUNMOD
+	RET
+;
+;===============
+;
+%*DEFINE(COND(LBL))
+	(CALL	COND
+	  JNC	%LBL)
+;
+COND:	CALL	POP_TOS
+	MOV	A,TOS_L
+	RRC	A
+	RET
+;
+;=======
+;
+;XFER
+;	Pop the value from the top of the arithmetic expression stack (AES).
+;	Position cursor at beginning of the BASIC source program line
+;	with that label and begin source interpretation.
+;	(Report error if corresponding source line not found.)
+;
+%*DEFINE(XFER)
+       (JMP	XFER)
+;
+XFER:	CALL	FNDLBL
+	JC	XFERNG
+	JMP	STMT		;Begin execution of source line.
+;
+XFERNG:	JMP	EXP_ER
+;
+;===============
+;
+%*DEFINE(SAV)
+       (CALL	SAV)
+;
+SAV:
+;	Push BASIC line number of current source line onto AES.
+;
+	MOV	TOS_H,LABL_H
+	MOV	TOS_L,LABL_L
+	JMP	PUSH_TOS
+;
+;===============
+%*DEFINE(RSTR)
+       (JMP	RSTR)
+;
+;
+RSTR:
+;	If AES is empty report a nesting error.
+;	Otherwise, pop AES into current BASIC souce program line number.
+;
+	CALL	FNDLBL
+	CALL	SKPLIN		;Pass over statement initiating transfer.
+	JMP	STMT
+;
+;===============
+;
+%*DEFINE(NEXT_LOOP(LBL))
+	(CALL	LOOP
+	  JC	  %LBL)
+;
+LOOP:
+;	LOOP is called with the AES holding:
+;	(TOS:)	2 byte VALUE of variable after being incremented,
+;		2 byte INDEX of variable being incremented,
+;		1 byte TYPE of variable code,
+;		2 byte LABEL of line initiating FOR loop,
+;		2 byte LIMIT specified by FOR statement,
+;		2 byte INDEX of variable used by FOR loop,
+;		1 byte TYPE of variable code.
+;	If indices disagree, then generate syntax error.
+;	Otherwise, store incremented value in variable popping both from AES.
+;	If the incremented value <= LIMIT then return with carry set.
+;	If incr. val. > LIMIT looping is done, so return with carry not set.
+;
+;	Compare all three bytes of variable index.
+	MOV	A,R0
+	PUSH	ACC
+	MOV	A,AESP
+	ADD	A,#-2
+	MOV	R1,A
+	ADD	A,#-7
+	MOV	R0,A
+	MOV	LP_CNT,#3	;Set to test three bytes.
+LOOP_0:	MOV	A,@R1
+	XRL	A,@R0
+	JNZ	LOOP_1
+	DEC	R0
+	DEC	R1
+	DJNZ	LP_CNT,LOOP_0
+;
+;	All three bytes of variable code match.
+	POP	ACC
+	MOV	R0,A
+	CALL	STORE
+	MOV	A,AESP
+	ADD	A,#-3
+	MOV	R1,A
+	CLR	C
+	MOV	A,@R1
+	SUBB	A,TMP0
+	INC	R1
+	MOV	A,@R1
+	JB	HEXMOD,LOOP_2	;Branch forward if unsigned compare correct.
+	XRL	A,#80H		;Adjust sign bits so signed compare valid.
+	XRL	TMP1,#80H
+LOOP_2:	SUBB	A,TMP1
+	RET
+;
+;	Indices don't match.
+;
+LOOP_1:	POP	ACC
+	MOV	R0,A
+	JMP	SYN_ER
+;
+;=======
+;
+;FIN
+;	Return to line collection routine.
+;
+%*DEFINE(FIN)
+       (JMP	FIN)
+;
+FIN:	CLR	RUNMOD
+	JMP	CONT		;Return to line collection mode.
+;
+;===============
+;
+$EJECT
+;
+;	IL SEQUENCE CONTROL INSTRUCTIONS:
+;	== ======== ======= ============
+;
+;IJMP	(LBL)
+;	Jump to the (potentially distant) IL instruction at location LBL.
+;Note:	In this implementation IL addresses are equivalent to machine
+;	language addresses, so IJMP performs a generic JMP.
+;
+%*DEFINE(IJMP(LBL))
+       (JMP	%LBL)
+;
+;===============
+;
+;HOP	(LBL)
+;	Perform a branch to the IL instruction at (nearby) location LBL.
+;Note:	In this implementation IL addresses are equivalent to machine
+;	language addresses, so HOP performs a simple relative SJMP.
+;
+%*DEFINE(HOP(LBL))
+       (SJMP	%LBL)
+;
+;===============
+;
+;ICALL	(LBL)
+;	Call the IL subroutine starting at instruction LBL.
+;	Save the location of the next IL instruction on the control stack.
+;Note:	In this implementation, IL addresses are identical with 
+;	machine language addresses, and are saved on the MCS-51 hardware stack.
+;
+%*DEFINE(ICALL(LBL))
+       (CALL	%LBL)
+;
+;===============
+;
+;IRET
+;	Return from IL subroutine to location on top of control stack.
+;Note:	In this implementation, IL addresses are identical with machine 
+;	language addresses, which are saved on the hardware stack.
+;
+%*DEFINE(IRET)
+       (RET)
+;
+;===============
+;
+;MLCALL
+;	Call the ML subroutine starting at the address on top of AES.
+;
+%*DEFINE(MLCALL)
+       (CALL	MLCALL
+	  ANL	  PSW,#11100111B)
+;
+MLCALL:	MOV	R1,AESP
+	MOV	B,@R1
+	DEC	R1
+	MOV	A,@R1
+	DEC	R1
+	MOV	AESP,R1
+	PUSH	ACC
+	PUSH	B
+	ORL	PSW,#00011000B	;Select RB3.
+	RET			;Branch to user routine.
+;
+;=======
+$EJECT
+$RESTORE
+;
+;	STATEMENT EXECUTOR WRITTEN IN IL (INTERPRETIVE LANGUAGE)
+;	OPERATIONS IMPLEMENTED BY ASM51 MPL MACRO PROCESSING LANGUAGE
+;			(8/11/80)
+;
+CMD_NG:	JMP	SYN_ER
+;
+START:	%INIT
+ERRENT:	CLR	RUNMOD
+	MOV	SP,#SP_BASE	;Re-initialize hardware stack.
+	MOV	AESP,#AES-1	;Initialize AES pointer.
+CONT:	CALL	STROUT
+	DB	'OK',CR OR 80H
+CONT_1:	%GETLN		;Receive interactive command line.
+	CALL	D_BLNK
+	%TSTL	(TOKEN)
+	%INSRT
+	%HOP	(CONT_1)
+;
+;=======
+;
+XEC:	%XINIT		;Initialize for sequential execution.
+STMT:	%LINIT		;Initialize for line execution.
+TOKEN:	%CNTRL
+	CALL	D_BLNK
+	%TSTV	(S0)		;Parse implied LET command.
+	%TST	(SE4,=)
+	%HOP	(SE3)
+;
+S0:	%TST	(S1,LET)		;Parse explicit LET command.
+	%TSTV	(CMD_NG)
+	%TST	(CMD_NG,=)
+SE3:	%ICALL	(EXPR)
+	%TST	(SE3A,%1,)
+	%SEQ_STORE
+	%IINC
+	%HOP	(SE3)
+;
+SE3A:	%DONE
+	%STORE
+	%NXT
+;
+SE4:	%DONE		;Process implied PRINT command.
+	%IND
+	%PRN
+	%NL_NXT
+;
+;=======
+;
+S1:	%TST	(S2,GOTO)		;Parse GOTO command.
+	%ICALL	(EXPR)
+	%LNDONE
+	%XFER
+;
+;=======
+;
+S2:	%TST	(S3,GOSUB)		;Parse GOSUB command.
+	%SAV
+	%ICALL	(EXPR)
+	%LNDONE
+	%XFER
+;
+;=======
+;
+S3:	%TST	(S8,PRINT)		;Parse PRINT command.
+	%IFDONE	(S6B)
+S3A:	%TST	(S3B,;)
+	%HOP	(S3A)
+;
+S3B:	%TST	(S3C,%1,)
+	%SPC
+	%HOP	(S3A)
+;
+S3C:	%IFDONE	(S6A)
+	%TSTS	(S5)
+	%ICALL	(EXPR)
+	%PRN
+S5:	%TST	(S5A,%1,)
+	%SPC
+	%HOP	(S3A)
+;
+S5A:	%TST	(S6,;)
+	%HOP	(S3A)
+;
+S6:	%DONE
+S6B:	%NL_NXT
+;
+S6A:	%NXT
+;
+;=======
+;
+S8:	%TST	(S9,IF)		;Parse IF command.
+	%ICALL	(EXPR)
+	%TST	(S8A,THEN)
+S8A:	%COND	(S8B)
+	%IJMP	(TOKEN)		;Continue parsing command.
+;
+S8B:	%SKPTXT
+	%IJMP	(STMT)
+;
+;=======
+;
+S9:	%TST	(S12,INPUT)		;Parse INPUT command.
+S10:	%TSTS	(S10B)
+	%TSTV	(S10D)
+	%INNUM
+	%STORE
+S10B:	%TST	(S10C,;)
+	%HOP	(S10)
+;
+S10C:	%TST	(S11,%1,)
+	%SPC
+	%HOP	(S10)
+;
+S10D:	%IJMP	(SYN_NG)
+;
+S11:	%DONE
+	%NL_NXT
+;
+;=======
+;
+S12:	%TST	(S13,RETURN)		;Parse RETURN command.
+	%LNDONE
+	%RSTR
+;
+;=======
+;
+S13:	%TST	(S13A,CALL)		;Machine language CALL.
+	%ICALL	(EXPR)
+	%LNDONE
+	%MLCALL
+	%NXT
+;
+;=======
+;
+S13A:	%TST	(S13B,FOR)
+	%TSTV	(FOR_ER)
+	%TST	(FOR_ER,=)
+	%ICALL	(EXPR)
+	%SEQ_STORE
+	%TST	(FOR_ER,TO)
+	%ICALL	(EXPR)
+	%LNDONE
+	%SAV
+	%NXT
+;
+;=======
+;
+S13B:	%TST	(S13C,NEXT)
+	%TSTV	(FOR_ER)
+	%DONE
+	CALL	SEQ_FETCH
+	%IINC
+	%NEXT_LOOP	(FORDON)
+	%DUPL
+	%RSTR
+;
+FORDON:	CALL	POP_TOS
+	CALL	POP_TOS
+	CALL	POP_TOS
+	CALL	POP_ACC
+	%NXT
+;
+;=======
+;
+FOR_ER:	%IJMP	(CMD_NG)
+;
+;=======
+;
+S13C:	%TST	(S14,END)		;Parse END command.
+	%LNDONE
+	%FIN
+;
+;=======
+;
+S14:	%TST	(S15,LIST)		;Parse LIST command.
+	%IFDONE	(S14B)
+	%ICALL	(EXPR)
+	CALL	FNDLBL
+	CALL	LST_1
+	%IJMP	(CONT)
+;
+S14B:	%LST
+	%IJMP	(CONT)
+;
+;=======
+;
+S15:	%TST	(S16,RUN)		;Parse LIST command.
+	%LNDONE
+	%IJMP	(XEC)
+;
+;=======
+;
+S16:	%TST	(S16A,NEW)
+	%DONE
+	%IJMP	(START)
+;
+;=======
+S16A:	%TST	(S17,RESET)
+	%DONE
+	JMP	0000H
+;
+;=======
+;
+S17:	%TST	(S17A,ROM)
+	%DONE
+	SETB	ROMMOD
+	CLR	EXTMOD
+	%NXT
+;
+S17A:	%TST	(S17B,RAM)
+	%DONE
+	CLR	ROMMOD
+	%NXT
+;
+S17B:	%TST	(S17C,PROM)
+	%DONE
+	SETB	ROMMOD
+	SETB	EXTMOD
+	%NXT
+;
+S17C:	%TST	(S18,HEX)
+	%DONE
+	SETB	HEXMOD
+	%NXT
+;
+S18:	%TST	(S19,DECIMAL)
+	%DONE
+	CLR	HEXMOD
+	%NXT
+;
+S19:	%TST	(S20,REM)
+	%SKPTXT
+	%IJMP	(STMT)
+;
+S20:	%IJMP	(CMD_NG)
+;
+$EJECT
+;
+;	INTERPRETIVE LANGUAGE SUBROUTINES:
+;	============ ======== ===========
+;
+EXPR:	%ICALL	(AR_EXP)
+E0:	%ICALL	(RELOP)
+	JNC	E5
+	%ICALL	(AR_EXP)
+	%CMPR
+	%HOP	(E0)
+;
+AR_EXP:	%ICALL	(TERM)
+E1:	%TST	(E2,+)
+	%ICALL	(TERM)
+	%IADD
+	%HOP	(E1)
+;
+E2:	%TST	(E3,-)
+	%ICALL	(TERM)
+	%ISUB
+	%HOP	(E1)
+;
+E3:	%TST	(E4,OR)
+	%ICALL	(TERM)
+	%IOR
+	%HOP	(E1)
+;
+E4:	%TST	(E5,XOR)
+	%ICALL	(TERM)
+	%IXOR
+	%HOP	(E1)
+;
+E5:	%IRET
+;
+;=======
+;
+TERM:	%ICALL	(FACT)
+TERM_0:	%TST	(TERM_1,*)
+	%ICALL	(FACT)
+	%IMUL
+	%HOP	(TERM_0)
+;
+TERM_1:	%TST	(TERM_2,/)
+	%ICALL	(FACT)
+	%IDIV
+	%HOP	(TERM_0)
+;
+TERM_2:	%TST	(TERM_3,AND)
+	%ICALL	(FACT)
+	%IAND
+	%HOP	(TERM_0)
+;
+TERM_3:	%TST	(TERM_4,MOD)
+	%ICALL	(FACT)
+	%IMOD
+	%HOP	(TERM_0)
+;
+TERM_4:	%IRET
+;
+;=======
+;
+FACT:	%TST	(FACT_1,-)
+	%ICALL	(VAR)
+	%NEG
+	%IRET
+;
+FACT_1:	%TST	(VAR,NOT)
+	%ICALL	(VAR)
+	%ICPL
+	%IRET
+;
+;
+;=======
+;
+VAR:	%TSTV	(VAR_0)
+	%IND
+	%IRET
+;
+VAR_0:	%TSTN	(VAR_1)
+	%IRET
+;
+VAR_1:	%TST	(VAR_1A,RND)
+	%RND
+	%ICALL	(VAR_2)
+	%IMOD
+	%IABS
+	%IINC
+	%IRET
+;
+VAR_1A:	%TST	(VAR_2,ABS)
+	%ICALL	(VAR_2)
+	%IABS
+	%IRET
+;
+VAR_2:	%TST	(SYN_NG,%1()
+	%ICALL	(EXPR)
+	%TST	(SYN_NG,%1))
+	%IRET
+;
+;=======
+;
+SYN_NG:	%IJMP	(CMD_NG)
+;
+$EJECT
+;
+RELOP:
+;	Search for relational operator in text string.
+;	If found, push appropriate operator code on AES and return with
+;	carry set.
+;	Otherwise restore cursor and return with carry=0.
+;
+	%TST	(REL_1,=)
+	%LIT	(010B)		;Test for _=_
+	%IRET
+;
+REL_1:	%TST	(REL_2,<=)
+	%LIT	(110B)		;Test for <=_
+	%IRET
+;
+REL_2:	%TST	(REL_3,<>)
+	%LIT	(101B)		;Test for <_>
+	%IRET
+;
+REL_3:	%TST	(REL_4,<)
+	%LIT	(100B)		;Test for <__
+	%IRET
+;
+REL_4:	%TST	(REL_5,>=)
+	%LIT	(011B)		;Test for _=>
+	%IRET
+;
+REL_5:	%TST	(REL_6,>)
+	%LIT	(001B)		;Test for __>
+	%IRET
+;
+REL_6:	CLR	C
+	%IRET
+;
+;=======
+;
+$EJECT
+$LIST
+;
+	INC	R7		;Dummy ML program.
+	MOV	P1,R7
+	RET
+;
+INTROM:				;Start of ROM program buffer.
+$INCLUDE(TBACEY.SRC)
+	DB	80H		;Marks end of program.
+;
+	END

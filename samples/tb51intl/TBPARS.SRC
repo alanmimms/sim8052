@@ -1,0 +1,414 @@
+;	BASIC SOURCE PROGRAM LINE ACCESSING ROUTINES:
+;	===== ====== ======= ==== ======= ==========
+;
+;	The general methodology of the various parsing routines is as follows:
+;	The POINTER (PNTR_L, PNTR_H) is used to indicate the next BASIC
+;	source character or string to be parsed
+;	by routines TST, TSTV, TSTN, TSTL, and TSTS.
+;	GET_C reads the indicated character from the appropriate
+;	program buffer space into acc. and returns.
+;	READ_CHAR reads the character into CHAR as well as acc. and 
+;	increments the 16-bit pointer.
+;	When done, each routine calls D_BLANK to remove any trailing spaces,
+;	and leaves READ_CHAR ready to fetch the next non-blank character.
+;
+;=======
+;
+;REWIND
+;	Reset Cursor to start of current program buffer space.
+;
+REWIND:	CLR	CHAR_FLG
+	JB	ROMMOD,REWROM
+	MOV	PNTR_H,#HIGH EXTRAM
+	MOV	PNTR_L,#LOW EXTRAM
+	RET
+;
+REWROM:	JB	EXTMOD,RWXROM
+	MOV	PNTR_H,#HIGH INTROM
+	MOV	PNTR_L,#LOW INTROM
+	RET
+;
+RWXROM:	MOV	PNTR_H,#HIGH EXTROM
+	MOV	PNTR_L,#LOW EXTROM
+	RET
+;
+;=======
+;
+SAVE_PNTR:
+;	Save PNTR variables in cursor.
+;
+	MOV	CURS_L,PNTR_L
+	MOV	CURS_H,PNTR_H
+	MOV	C_SAVE,CHAR
+	RET
+;
+;=======
+;
+LOAD_PNTR:
+;	Reload pointer with value saved earlier by SAVE_PNTR.
+;
+	MOV	PNTR_H,CURS_H
+	MOV	PNTR_L,CURS_L
+	MOV	CHAR,C_SAVE
+	RET
+;
+;=======
+;
+GET_C:
+;	Read character from logical buffer space into A and return.
+;
+	JB	RUNMOD,GET_BUF
+	MOV	A,@PNTR_L
+	RET
+;
+GET_BUF:
+;	Read character from active program buffer space into A and return.
+	JB	ROMMOD,GETROM
+%DEBUG	MOV	P2,PNTR_H	;Select variable storage page.
+	MOVX	A,@PNTR_L		;Read from external address space.
+	RET
+;
+GETROM:	MOV	A,PNTR_L
+	XCH	A,DPL
+	XCH	A,PNTR_H
+	XCH	A,DPH
+	MOV	PNTR_L,A
+	CLR	A
+	MOVC	A,@A+DPTR
+	XCH	A,PNTR_L		;Save char. and load old DPH.
+	XCH	A,DPH
+	XCH	A,PNTR_H
+	XCH	A,DPL
+	XCH	A,PNTR_L		;Store DPL and reload byte read.
+	RET
+;
+;=======
+;
+READ_CHAR:
+;	READ_CHAR first tests the state of CHAR_FLG.
+;	If it is still cleared, the character most recently read from the line
+;	buffer or program buffer has been processed, so read the next
+;	character, bump the buffer pointer, and return with the character
+;	in both Acc. and CHAR and the CHAR_FLG cleared.
+;	If CHAR_FLG has been set by the parsing routines,
+;	then CHAR still holds a previously read character which has
+;	not yet been processed.  Read this character into Acc. and return
+;	with CHAR_FLG again cleared.
+;
+	JBC	CHAR_FLG,REREAD
+	CALL	GET_C
+	MOV	CHAR,A
+	INC	PNTR_L
+	CJNE	PNTR_L,#00,RDCHDN
+	INC	PNTR_H
+RDCHDN:	RET
+;
+REREAD:	MOV	A,CHAR
+	RET
+;
+;=======
+;
+PUT_BUF:
+;	Put the contents of the acc. into program buffer space
+;	currently active at the address held in <DEST_H><DEST_L>.
+;
+	JB	ROMMOD,PUTROM
+%DEBUG	MOV	P2,DEST_H
+	MOVX	@DEST_L,A
+	RET
+;
+PUTROM:	JMP	EXP_ER
+;
+;=======
+;
+WRITE_CHAR:
+;	Converse of READ_CHAR.
+;	Write contents of acc. into appropriate memory space (@DEST),
+;	increment DEST, and return.
+;
+	CALL	PUT_BUF
+	INC	DEST_L
+	CJNE	DEST_L,#00H,WRCH_1
+	INC	DEST_H
+WRCH_1:	RET
+;
+;=======
+;
+D_BLNK:
+;	Remove leading blanks from BASIC source line, update cursor,
+;	load first non-blank character into CHAR,
+;	and leave pointer loaded with its address.
+;	(This routine is jumped to by parsing routines when successful,
+;	so set C before returning to original routines.)
+;
+	CALL	READ_CHAR
+	XRL	A,#' '		;Verify that it is non-blank.
+	JZ	D_BLNK		;Loop until non-blank leading character.
+	SETB	CHAR_FLG
+	SETB	C
+	RET			;Return to scanning code.
+;
+;=======
+;
+;SKPLIN
+;	Skip Cursor over entire BASIC source line, leaving
+;	cursor pointing to character after terminating <CR>.
+;SKPTXT
+;	Skip remainder of line in progress, assuming line number 
+;	has already been passed over.
+;	(Note that either byte of binary line number could be
+;	mis-interpreted as a CR.)
+;
+%*DEFINE(SKPTXT)
+	(CALL	SKPTXT)
+;
+SKPLIN:	CALL	READ_CHAR
+	CALL	READ_CHAR
+SKPTXT:	CALL	READ_CHAR
+	CJNE	A,#CR,SKPTXT	;Verify that it is non-<CR>.
+	RET			;Return to scanning code.
+;
+;=======
+$EJECT
+;
+;	Token recognition and processing routines.
+;
+%*DEFINE(TST(LBL,TEMPLATE))
+       (CALL	TST
+%IF	(%LEN(%TEMPLATE) GT 1) THEN
+(	  DB	  '%SUBSTR(%TEMPLATE,1,%LEN(%TEMPLATE)-1)','%SUBSTR(%TEMPLATE,
+			%LEN(%TEMPLATE),1)' OR 80H)
+ELSE
+(	  DB	  '%TEMPLATE' OR 80H)
+FI
+	  JNC	  %LBL)
+;
+TST:
+;	If "TEMPLATE" matches the BASIC character string read by 
+;	READ_CHAR then move pointer over string and any trailing blanks
+;	and continue with the following IL instruction.
+;	Otherwise leave pointer unchanged and branch to IL instruction at LBL.
+;
+	POP	DPH		;Get in-line parameter base address from stack.
+	POP	DPL
+	CALL	READ_CHAR
+	CALL	SAVE_PNTR
+TST_1:	CLR	A
+	MOVC	A,@A+DPTR	;Read next character from template string.
+	MOV	C,ACC.7		;Save terminator bit.
+	ANL	A,#7FH		;Mask off terminator.
+	XRL	A,CHAR		;Compare with template.
+	JNZ	T_BAD		;Abort if first characters miscompare.
+	INC	DPTR		;Pass over template character just checked.
+	JC	T_GOOD		;Done if template character bit 7 set.
+	CALL	READ_CHAR	;Fetch next character for test.
+	CJNE	CHAR,#'.',TST_1	;Done if input string abbreviated at this point
+TST_2:	CLR	A		;Fetch template characters until end of string
+	MOVC	A,@A+DPTR
+	INC	DPTR
+	JNB	ACC.7,TST_2	;Loop until last character detected.
+T_GOOD:	CALL	D_BLNK
+	CLR	A
+	JMP	@A+DPTR		;Return to next IL instruction
+;
+;	Strings do not match.  Leave cursor at start of string.
+;
+T_BAD:	CLR	A
+	MOVC	A,@A+DPTR	;Search for final template character.
+	INC	DPTR
+	JNB	ACC.7,T_BAD	;Loop until terminator found.
+	CALL	LOAD_PNTR
+	SETB	CHAR_FLG
+	CLR	C		;Mark string not found.
+	CLR	A
+	JMP	@A+DPTR		;Return to mismatch branch instruction.
+;
+;===============
+;
+;TSTV	(LBL)
+%*DEFINE(TSTV(LBL))
+       (CALL	TSTV
+	  JNC	  %LBL)
+;
+;
+TSTV:
+;	Test if first non-blank string is a legal variable symbol.
+;	If so, move cursor over string and any trailing blanks,
+;	compute variable index value,
+;	push onto arithmetic expression stack,
+;	and continue with following IL instruction.
+;	Otherwise branch to IL instruction at LBL with cursor unaffected.
+;
+	CALL	READ_CHAR
+	ADD	A,#-'A'		;Subtract offset for base variable.
+	MOV	TOS_L,A		;Save index in case needed later.
+	ADD	A,#-26
+	JNC	ALPHAB		;First character is alphabetic if C=0.
+	SETB	CHAR_FLG
+	CLR	C
+	RET
+;
+ALPHAB:	CALL	SAVE_PNTR	;In case variable name not found.
+	CALL	READ_CHAR	;Verify that next character is not alphabetic.
+	ADD	A,#-'A'		;Alphabetic characters now <= 25.
+	ADD	A,#-26		;Non-alphabetics cause overflow.
+	JNC	NOTVAR		;Alphabetic character means illegal var. name.
+	CJNE	CHAR,#'.',TSTV_1	;Period indicates abbreviated keyword.
+NOTVAR:	CALL	LOAD_PNTR
+	SETB	CHAR_FLG
+	%TST	(TSTRBI,DBYTE)	;Test if direct byte token.
+	%LIT	(1)
+	SJMP	INDEX
+;
+TSTRBI:	%TST	(TSTXBY,RBIT)
+	%LIT	(2)
+	SJMP	INDEX
+;
+TSTXBY:	%TST	(TSTCBY,XBYTE)	;Test if expansion RAM byte token.
+	%LIT	(3)
+	SJMP	INDEX
+;
+TSTCBY:	%TST	(NOTSYM,CBYTE)	;Test if program memory byte token.
+	%LIT	(4)
+INDEX:	CALL	VAR
+	SETB	C
+	RET
+;
+NOTSYM:	CLR	C		;Indicate that condition tested wasn't true.
+	RET
+;
+;	BASIC Variable name is legitimate (A-Z).
+;
+TSTV_1:	%LIT	(0)
+	MOV	TOS_H,#0
+	CALL	PUSH_TOS
+	SETB	CHAR_FLG
+	JMP	D_BLNK		;Remove leading blanks from source line.
+;
+;===============
+;
+;TSTN	(LBL)
+;	Test if indicated string is an unsigned number.
+;	If so, move cursor over string and trailing blanks,
+;	compute number's binary value,
+;	push onto arithmetic expression stack, and continue with
+;	following IL instruction.
+;	Otherwise restore cursor and branch to IL instruction at LBL.
+;
+%*DEFINE(TSTN(LBL))
+       (CALL	TSTN
+	  JNC	  %LBL)
+;
+TSTN:	CALL	READ_CHAR
+	CALL	CREATE		;Create entry on AES if legit. digit.
+	JC	TSTN_1		;Abort if CHAR is not decimal digit.
+	SETB	CHAR_FLG
+	RET
+;
+TSTN_1:	CALL	READ_CHAR	;Move over matched character.
+	CALL	APPEND		;Append new digit to entry on TOS.
+	JC	TSTN_1		;Continue processing while legal characters.
+	CALL	PUSH_TOS
+	SETB	CHAR_FLG
+	JMP	D_BLNK		;Remove leading blank characters.
+;
+;===============
+;
+;TSTL	(LBL)
+;	Test if first non-blank string is a BASIC source line number.
+;	If so, move cursor over string and following blanks,
+;	compute number's binary value,
+;	push onto arithmetic expression stack, 
+;	and continue with next IL instruction.
+;	If invalid source line number report syntax error.
+;	If line number not present restore cursor
+;	and branch to IL instruction at LBL.
+;
+%*DEFINE(TSTL(LBL))
+       (CALL	TSTN
+	  JNC	  %LBL)
+;
+;===============
+;
+;TSTS	(LBL)
+;	Test if first character is a quote.
+;	If so, print characters from the BASIC source program to the console
+;	until a (closing) quote is encountered,
+;	pass over any trailing blanks,
+;	leave source cursor pointing to first non-blank character,
+;	and branch to IL instruction at location (LBL).
+;	(Report syntax error if <CR> encountered before quote.)
+;	If first character is not a quote, return to next
+;	sequential IL instruction with cursor unchanged.
+;
+%*DEFINE(TSTS(LBL))
+       (CALL	TSTS
+	  JC	  %LBL)
+;
+TSTS:	CALL	READ_CHAR
+	MOV	TMP0,A
+	XRL	A,#'"'
+	JZ	TSTS_1
+	XRL	A,#'''' XOR '"'
+	JZ	TSTS_1
+	CLR	C
+	SETB	CHAR_FLG
+	RET
+;
+TSTS_1:	CALL	READ_CHAR	;Read next string character.
+	CJNE	A,TMP0,TSTS_2
+	JMP	D_BLNK
+;
+TSTS_2:	CALL	C_OUT		;Call output routine.
+	CJNE	A,#CR,TSTS_1	;<CR> before closing quote is illegal.
+	JMP	SYN_ER		;Transmit error message.
+;
+;===============
+;
+;DONE
+;	Delete leading blanks from the BASIC source line.
+;	Return with the cursor positioned over the first non-blank
+;	character, which must be a colon or <CR> in the source line.
+;	If any other characters are encountered report a syntax error.
+;
+%*DEFINE(DONE)
+       (CALL	DONE)
+;
+%*DEFINE(LNDONE)
+       (CALL	LNDONE)
+;
+DONE:	CALL	READ_CHAR
+	CJNE	CHAR,#':',DONE_1	;Colon indicates resume interpretation.
+	RET			;Return to IL.
+;
+LNDONE:	CALL	READ_CHAR
+DONE_1:	CJNE	CHAR,#CR,DONE_2	;Any non-colon, non-CR characters are illegal.
+	RET
+;
+DONE_2:	SETB	CHAR_FLG
+	JMP	SYN_ER		;Process syntax error if so.
+;
+;=======
+;
+;IFDONE	(LBL)
+;	If the first non-blank character is a colon or <CR> in the source line
+;	then branch to the IL instruction specified by (LBL).
+;	If any other characters are encountered
+;	then continue with next IL instruction.
+;
+%*DEFINE(IFDONE(LBL))
+       (CALL	IFDONE
+	  JNC	  %LBL)
+;
+IFDONE:	CALL	READ_CHAR
+	CJNE	CHAR,#':',IFDN_1	;Colon indicates resume interpretation.
+	RET			;Return to IL.
+;
+IFDN_1:	CJNE	CHAR,#CR,IFDN_2	;Any non-colon, non-CR characters are illegal.
+	RET
+;
+IFDN_2:	SETB	CHAR_FLG
+	SETB	C
+	RET
+;
+;=======

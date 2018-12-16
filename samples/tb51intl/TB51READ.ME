@@ -1,0 +1,37 @@
+2/8/91
+
+   This little gem is an 8051 BASIC interpreter that takes up only 3K and can 
+run using only the internal memory of the 8051.  I obtained it from the INTEL
+Insite library (bulletin board: (503) 681-0956), and cleaned it up a little.
+The version from Intel had a .HEX file from an earlier release of the program,
+and came without documentation. I generated .BIN and .HEX files for the current
+version, and typed in the photo-copied documentation Intel mailed me, making a
+few corrections as I went along (unfortunately including two new entries to 
+the errata section!).
+
+   I would appreciate hearing from anyone who fixes the bugs mentioned in the
+errata section, or who ports the code to one of the common shareware 8051 
+assemblers (TASM, Metalink, PseudoCode, etc.).  The code currently assembles
+under Intel's ASM-51, and makes extensive use of that assembler's macro pro-
+cessing capabilities.
+
+   I would also like to hear from people who extend the interpreter in any way.
+I have made some small changes (accessing the upper 128 bytes of internal mem-
+ory on an 8052 being the most important), but since I have not been able to get
+the code to assemble so far, I have made these changes by patching the .BIN
+file in hex. I do not recommend this if you are interested in retaining
+your sanity.ÿ
+
+   Many thanks to Tom Lehman at Intel, who first posted TB51 on the Insite 
+Library board after I nagged him, and then mailed me the documentation after I 
+nagged him some more.  Even more thanks to JHW, the mysterious programmer known 
+only by his initials, who created TB51.
+
+Good luck!
+
+Tom Schotland
+25 Main Street
+Setauket, NY 11733
+(516) 689-9889
+
+

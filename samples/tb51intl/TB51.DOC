@@ -1,0 +1,732 @@
+
+
+
+
+
+
+
+
+
+
+
+
+                        INTEL INSITE LIBRARY FILE BF10:
+ 
+                         TB51 V2.2 (MCS-51 TINY BASIC)
+
+
+FUNCTION:
+
+   TB51 is an interpreter program for a language based on the Palo Alto
+   Tiny Basic specifications modified for Intel's MCS-51 family of
+   single-chip microcontrollers.
+
+
+REQUIRED HARDWARE:
+
+   An 8051 or 8751 with the interpreter program in the ROM or EPROM, CRT,
+   level shifters on the serial I/O pins.  External program and/or data
+   memory may be added to develop and execute larger programs.  The
+   interpreter program occupies 4K (3K if the included BASIC example
+   program is eliminated), and can operate in a limited manner using only
+   the 128 bytes of RAM available on the 8051.  Full use is possible
+   only with the addition of external RAM.
+
+
+SOURCE LANGUAGE:
+
+   ASM-51 V 2.0
+
+                                                                          Page 1
+
+
+
+Intel MCS-51 Tiny BASIC
+-----------------------
+
+   In 1976, Dr. Dobb's Journal of Computer Calisthenics and Orthodontia
+proposed a subset of the BASIC language which would be appropriate for 
+small microcomputer systems.  One early version of the language (dubbed
+"Palo Alto Tiny BASIC") was defined and implemented by Dr. Li-Chen Wang,
+and was later adapted for the 8085 and 8088 MPUs.
+
+   TB51 is an interpreter program for a language based on the Palo Alto Tiny 
+BASIC specification which has been implemented for the Intel MCS-51 family of
+single-chip microcontrollers.  Extensions to the language facilitate hexa-
+decimal arithmetic, logical operations, and bit manipulation for controller-
+oriented applications.  Rudimentary system monitor capabilities are also
+provided.  Some minor changes have been made to make TB51 more closely resemble
+BASIC-80, PLM-80, and the ISIS-II operating system.
+
+   TB51 operates in a number of modes to support various hardware configura-
+tions.  The simplest configuration requires only an 8051 or 8751 single-chip
+microcomputer containing the interpreter program in on-chip ROM/EPROM, a CRT,
+and level shifters on the microcomputer serial I/O pins.  External program
+and/or data memory may be added by the user to develop and execute larger pro-
+grams.  The following discussion defines the operation of TB51 initially 
+assuming there is at least one page (256 bytes) of external RAM provided,
+describes the difference between the DECIMAL and HEX operating modes, explains
+the additional system monitor capabilities, and lists the special considera-
+tions for true single-chip operation.
+
+   TB51 has an auto-baud detection algorithm.  Following system reset, typing
+either a space character or a lower-case "c" once or twice will initialize the 
+baud rate.  Which character works, and how many times it must be typed, is a
+function of the baud rate of the connected terminal, and of the system clock 
+rate.  Sometimes other characters work as well.
+
+   If the RxD serial I/O pin is jumpered to ground, TB51 will automatically 
+begin execution of a program stored in external PROM following a reset, and the
+auto-baud detection will be skipped.
+
+                                                                          Page 2
+
+
+
+                               THE LANGUAGE
+                               ------------
+
+Numbers
+
+   All numbers are signed integers and must be between -32767 and 32767.
+
+BASIC Variables
+
+   There are 26 variables denoted by the letters A through Z.  These are
+represented internally as 16-bit, two's-complement integers.
+
+Functions
+
+      There are 2 functions:
+
+      ABS(X) gives the absolute value of X.
+      RND(X) gives a random number between 1 and X (inclusive).
+
+Arithmetic, Logical, and Compare Operations
+
+   All operations are performed to 16 bits of precision.  Arithmetic operations
+which overflow 15 bits of magnitude will produce an error message.  The arith-
+metic operators are:
+
+        +  addition.
+        -  subtraction.
+        *  multiplication.
+        /  integer division  (note that 14/5 = 2).
+      MOD  remainder from division (14 MOD 5 = 4).
+
+The logical operators are:
+
+      NOT  bit-wise logical complement (NOT 0 = -1).
+      AND  bit-wise logical AND (3 AND 6 = 2).
+       OR  bit-wise logical OR (3 or 6 = 7).
+      XOR  bit-wise logical Exclusive - OR (3 XOR 6 = 5).
+
+The compare operators are:
+
+        >  greater than.
+        <  less than.
+        =  equal to.
+       <>  not equal to.
+       >=  greater than or equal to.
+       <=  less than or equal to.
+
+   Arithmetic and logical operations result in a value between -32767 and 
+32767.  (-32768 is also allowed in some cases.)  All compare operators
+result in a 1 if true and a 0 if not true.
+
+                                                                          Page 3
+
+
+Expressions
+
+   Expressions are formed with numbers, variables, and functions with 
+arithmetic, logical, and compare operators between them.  Operations are per-
+formed with four levels of precedence.  The first step is to perform Unary
+operations (+, -, NOT), then Multiplicative operations (*, /, MOD, AND), 
+additive operations (+, -, OR, XOR), and finally, 
+Relational operations (>, <, =, <>, >=, <=).
+
+   Within each precedence level, the value of an expression is computed from
+left to right.  Parentheses can also be used to alter the order of evaluation.
+Note that compare operators can be used in any expression.  For example:
+
+10  LET A = (X>Y) * 123 + (X=Y) * 456 + (X<Y) *789
+20  IF (U=1) AND (V<2) or (U>V) AND (U<99) PRINT "YES"
+30  LET R = RND(100): A = (R>3) + (R>15) + (R>56) + (R>98)
+
+   In statement 10, A will be set to 123 if X>Y, to 456 if X=Y, and to 789 if
+X<Y.  In statement 30, Y will be a random number between 0 and 4 with a pre-
+scribed probability distribution of: 3% being 0, 15 - 3 = 12% being 1, 
+56 - 15 = 41% being 2, 98 - 56 = 42% being 3, and 100 - 98 = 2% being 4.
+
+                                                                          Page 4
+
+
+
+Direct Commands
+
+   Commands may be entered in upper or lower case, but the letter will be con-
+verted to upper case.  All the commands described later can be used as direct
+commands except the following three; they should only be used as direct commands
+and not as part of a statement:
+
+RUN
+
+      Will start to execute the program starting at the lowest statement number.   
+
+LIST
+    
+      Will print out all the statements in numerical order.
+
+LIST 120
+
+      Will print out all the statements in numerical order starting at statement
+120.
+
+NEW
+    
+      Will delete all statements and set variables A-Z to zero.
+
+
+Abbreviation and Blanks
+
+   You may use blanks freely, except that numbers, command key words, and func-
+tion names can not have embedded blanks.
+
+   You may truncate all commands keywords and function names and follow them by 
+a period.  "P.", "PR.", "PRI.", and "PRIN." all stand for "PRINT".  Also, the
+words LET in the LET command and THEN in the IF command can be omitted.  A var-
+iable name by itself will print the value of that variable on the console.
+
+   The "shortest" abbreviation of all command keywords are as follows:
+
+      C. = CALL            D. = DECIMAL     E. = END
+      F. = FOR             G. = GOTO      GOS. = GOSUB
+      H. = HEX             I. = IF         IN. = INPUT
+      L. = LET(Optional)  LI. = LIST        N. = NEXT
+     NEW = NEW             P. = PRINT     PRO. = PROM
+      R. = RETURN         RA. = RAM       RES. = RESET
+     RO. = ROM            RU. = RUN        REM = REMARK
+      T. = TO              T. = THEN(Optional)
+      Implied = LET   Variable name = PRINT variable 
+
+                                                                          Page 5
+
+
+
+   The following abbreviations are the shortest allowed within a variable name 
+or expression:
+
+      A. = ABS         A. = AND         C. = CBYTE
+      D. = DBYTE       M. = MOD         N. = NOT
+      O. = OR          R. = RBIT       RN. = RND
+      X. = XBYTE       X. = XOR
+
+Statements
+
+   A statement consists of a statement number between 1 and 32767 followed by 
+one or more commands.  Commands in the same statement are separated by a 
+colon ":".  "GOTO", "STOP", "FOR", and "RETURN" commands must be the last 
+command in any given statement.
+
+Commands
+
+   Tiny Basic commands are listed below with examples.  Remember that commands
+can be concatenated with colons.  In order to store the statement, you must 
+also have a statement number in front of the commands.  The statement number 
+and the concatenation are not shown in the examples.
+
+REM or REMARK Command
+
+REM anything goes
+
+   This line will be ignored by TB51
+
+LET Command
+
+LET A = 234 - 5 * 6: A = A/2: X = A - 100
+
+   Will set the variable A to the value of the expression 234 - 5*6 (i.e., 204),
+set the variable A (again) to the value of the expression A/2 (i.e., 102), and
+set the variable X to the value of the expression A - 100 (i.e., 2).
+
+LET U = A <> B: V = (A>B) * X + (A<B) * Y
+
+   Will set the variable U to either 1 or 0 depending on whether A is not equal
+to or is equal to B; and set the variable V to either X, Y or 0 depending on
+whether A is greater than, less than, or equal to B.
+
+                                                                          Page 6
+
+
+
+   Sequential variables may be initialized by separating sequential expressions
+by commas.
+
+LET A = 1, 2, 3, A, B * C
+
+   Will set variable A to 1, B to 2, C to 3, D to 1 (the updated contents of A),
+and E to 6.
+
+PRINT Command
+ 
+PRINT
+
+   Will cause a carriage-return (CR) and a line-feed (LF) on the output device.
+
+PRINT A * 3 + 1, "ABC 123 !@#", 'CBA'
+
+   Will print the value of the expression A * 3 + 1 (i.e., 4), the string of 
+characters "ABC 123 !@#", and the string "CBA", and then a CR-LF.  Note that
+'single' or "double" quote marks may be used to bracket a string.
+
+PRINT A * 3 + 1, "ABC 123 !@#", 'CBA',
+
+   Will produce the same output as before, except that there is no CR-LF after
+the last item is printed.  This enables the program to continue printing on the
+same line with another "PRINT".
+
+   Each comma in the above examples causes one or more spaces to be printed 
+until the cursor has reached a tabulation column, which occur every eight
+spaces.  All spaces between variables and character strings may be eliminated
+by using semicolons instead of commas.  (There are no spaces inserted auto-
+matically before or after numbers or strings.)
+
+PRINT , , , "X="; :X = -1: PRINT X; "!"
+
+   Will print the five characters "X=-1!" on one line, starting in column 25.
+
+                                                                          Page 7
+
+
+
+INPUT Command
+
+INPUT A,B
+
+   When this command is executed, Tiny BASIC will print ":" and wait to read in
+a number from the input device.  The variable A will be set to this value.  A 
+tab and another ":" is printed and variable B is set to the value of the next 
+number read from the input device.  A number being entered may be terminated 
+with any non-numeric character, such as a space or <CR>.
+
+INPUT "WHAT IS THE WEIGHT", A, "AND SIZE", B
+
+   This is the same as the command above, except the prompt ":" is replaced by
+"WHAT IS THE WEIGHT:" and the second ":" is replaced by "AND SIZE:".
+
+INPUT A, 'STRING'; "ANOTHER STRING", B;
+
+   The strings and semicolons have the same effect as in "PRINT".
+
+IF Command
+
+IF A < B LET X = 3: PRINT 'THIS STRING'
+
+   Will test the value of the expression A < B.  If it is odd (i.e., if it is 
+true), the commands in the rest of this statement will be executed.  If the 
+value of the expression is even or zero (i.e., if it is not true), the rest of
+this statement will be skipped over and execution continues at the next state-
+ment.  The keyword "THEN" may optionally be used after the expression.
+
+GOTO Command
+
+GOTO 120
+
+   Will cause the execution to jump to statement 120.  Note that the GOTO 
+command cannot be followed by a colon and other commands.  It must be ended 
+with a CR.
+
+                                                                          Page 8
+
+
+
+GOTO A * 10 + B
+
+   Will cause the execution to jump to a different statement number as computed
+from the value of the expression.
+
+GOSUB and RETURN Commands
+
+   GOSUB command is similar to GOTO command except that the current statement
+number is remembered.
+
+GOSUB 120
+
+   Will cause the execution to jump to statement 120.
+
+GOSUB A * 10 + B
+
+   Will cause the execution to jump to different statements as computed from the
+value of the expression 10 * A + B.
+
+RETURN
+
+   A RETURN command must be the last command in a statement and followed by CR.
+When a RETURN command is encountered, it will cause the execution to jump back 
+to the command line following the most recent GOSUB command.
+
+   GOSUB can be nested.  The depth of nesting is limited only by the stack 
+space.
+
+FOR and NEXT Commands
+
+FOR X = A + 1 TO 3 * B
+
+   The variable X is set to the value of the expression A + 1.  The value of the
+expression (not the expression itself) 3 * B is remembered.  The name of the
+variable X and the statement number are also remembered.  Execution continues in
+the normal way until a NEXT command is encountered.
+
+                                                                          Page 9
+
+
+
+NEXT X
+
+   The name of the variable (X) is checked with that of the most recent FOR com-
+mand.  If they do not agree, an error message is generated.  When a match is 
+found, this variable will be set to its current value plus 1.  The updated value
+is then compared with the value of the TO expression also saved by the FOR com-
+mand.  If this is within the limit, execution will jump back to the command 
+following the FOR command.  If this is outside the limit, execution continues
+following the NEXT command itself.
+
+   FOR can be nested.  The depth of nesting is limited only by the stack space.
+
+END Command
+
+END
+
+   This command stops the execution of the program and returns control to direct
+commands from the input device.  It can appear many times in a program but must 
+be the last command in any given statement, i.e., it cannot be followed by a 
+colon and other commands.  END is optional as the last line of a program.
+
+Stopping the Execution
+
+  The execution or listing of the program can be aborted by pressing the 
+Control-C key on the input device.  The command in progress or line being listed
+will first be completed.  Output to the console may be momentarily stopped by
+typing Control-S.  Output will resume when Control-Q is typed.
+
+RESET Command
+
+RESET
+
+   Will restart the TB51 interpreter from the beginning, as if a hardware reset
+were performed.
+
+                                                                         Page 10
+
+
+
+Error Report
+
+  There are only three error conditions in TINY BASIC.
+
+(1) WHAT? means it does not understand you.  Example:
+
+      210  PTINT "THIS"        where PRINT is mistyped
+
+    When this line is executed, TB51 will halt and print "WHAT?".
+
+
+(2) HOW? means is understands you but does not know how to do it.  Examples:
+
+      310  LET A = B * C + 2   where B * C is greater than 32767
+      410  GOTO 412            where 412 does not exist
+
+    When these lines are executed, TB51 will halt and print "HOW?".
+   
+
+(3) SORRY means it understands you and knows how to do it, but there is not
+enough memory to do it.
+
+   Note: TB51 does not retype the erroneous statement or indicate where the 
+error occurred.
+
+                                                                         Page 11
+
+
+
+Error Corrections
+ 
+   In interactive command or line insertion mode, line editing capabilities 
+similar to ISIS-II are allowed.  If you notice an error in typing before you
+hit CR, you can delete previously typed characters with the rubout key (ASCII
+127).  TB51 will echo a BKSP-SP-BKSP for each rubout.  A line may be retyped by
+hitting Control-R, or cancelled by typing Control-X.  A BELL will be echoed 
+when the input line buffer is full (32 characters).
+
+   When numbers are being entered during the execution of an input command, the
+rubout key will be echoed by a "#" and CR, the current entry will be aborted, 
+and a new number may be entered.
+
+   To correct a statement, you can retype the statement number and the correct
+commands.  Tiny BASIC will replace the old statement with the new one.
+
+   To delete a statement, type the statement number and a CR only.
+
+   Verify the corrections by "LIST nnnn" and hit the Control-C key as soon as
+the printing of the line begins.  (Note that TB51 will not honor the Control-C
+until it completes the current line.)
+
+                                                                         Page 12
+
+
+
+BASIC Program Buffer Data Structure
+
+   Each BASIC statement is stored in the program buffer using the following for-
+mat.  At the beginning of the line is a two-byte field giving the 16-bit binary
+value of the statement number, high-order byte first.  Thus line number 10 will
+be stored as 00H, 0AH.  These numbers may range from 0000H to 7FFFH.  Then comes
+an arbitrary number of bytes giving the ASCII codes for the characters compris-
+ing any legal sequence of commands.  At the end of each line comes the byte 0DH,
+the ASCII representation for a carriage return.  Following the CR after the last
+source statement, in place of what would be the high-order byte of the following
+statement number, is the data byte 0FFH.
+
+RAM, ROM, PROM
+
+   TB51 provides for BASIC programs to be buffered in three different address
+spaces.  Following a reset or the RAM command, programs entered from the key-
+board will be buffered in up to 4K bytes of external RAM, beginning at location
+2000H.  By typing the command ROM, the RAM buffer will be disabled and a BASIC
+program included with the TB51 4K byte ROM code will be activated.  Thereafter
+this program can be LISTed, RUN, terminated by Control-C, and so forth, but ob-
+viously cannot be modified from the keyboard.  Similarly, a user-written BASIC
+program stored in an external PROM or EPROM may be activated by typing PROM.
+This program is assumed to begin at location 1080H, and may be up to 60K bytes 
+long.  It is also assumed that this PROM be addressed as 8051 program memory.
+
+   For example, a program to print the first 10 squares:
+
+      10  FOR A = 1 TO 10
+      20  PRINT A * A: NEXT A
+
+could be translated for an external EPROM using ASM51 and the following assem-
+bly language source lines:
+
+     ORG  1080H
+      DW  10
+      DB  'FOR A = 1 TO 10', 0DH
+      DW  20
+      DB  'PRINT A * A: NEXT A', 0DH
+      DB  0FFH
+
+(Note -- to insert an apostrophe into a text string such as those above, ASM51
+requires two adjacent apostrophes in its place.)
+
+                                                                         Page 13
+
+
+
+   A program located in external PROM will be enabled and executed automatically
+following a reset if the RxD pin is jumpered to ground.  As noted earlier, the
+auto-baud detection routine will be skipped, so if the program in PROM needs to
+use serial communications, it will have to initialize the appropriate registers.
+
+   The above has been a discussion of the BASIC-like aspects of TB51.  In addi-
+tion to these features, the following monitor-like capabilities are provided.
+Note that these capabilities are fully compatible with, and may be freely inter-
+changed with, the commands and statements described thus far.
+
+
+DBYTE, RBIT, CBYTE, XBYTE Variable Arrays
+
+   In addition to the 16-bit BASIC variables denoted A through Z, various 8051 
+system resources may be read or written as 8-bit or one-bit positive variables.
+Anywhere an alphabetic variable name is allowed, these variables may be accessed
+by a keyword representing a memory space followed by a number, simple variable,
+or parenthesized expression indicating the address of the byte or bit desired.
+The addresses interpreted by the DBYTE and RBIT commands are the same as those 
+used by the 8051 CPU for direct byte or bit addressing.  Addresses between 0 and
+127 access the on-chip RAM array; between 128 and 255 access bytes or bits in
+the special function register space.  (Only the low-order eight bits of the spe-
+cified address are significant.)  The decimal addresses of accessible registers
+are:
+
+      SFR     DBYTE      SFR     DBYTE
+      ---     -----      ---     -----
+      P0      128        SCON    152
+      P1      144        SBUF    153
+      P2      160        IE      168
+      P3      176        IP      184
+      TCON    136
+      TMOD    137
+      TL0     138
+      TL1     139
+      TH0     140
+      TH1     141
+
+   Attempting to read or write registers other than those above will cause an
+error message.
+
+                                                                         Page 14
+
+
+
+PRINT DBYTE 144
+
+   Will print the input data present at P1 to the console.
+
+LET DBYTE 144 = DBYTE 8 + 1
+
+   Will read the contents of register 0 of register bank 1, increment that 
+value, and output it on P1.
+
+PRINT DBYTE (DBYTE 8)
+
+   Will print the contents of the internal RAM location or SFR indirectly 
+addressed by the same register.
+
+   Reading a bit address will return a one or zero, depending on the state of
+that bit.  The value written to a bit address is the least significant bit of 
+the expression specified.  Other bits of the affected register are not changed.
+
+RBIT 144 = RBIT 145 AND NOT RBIT 146
+
+   Will set P1.0 only if P1.1 = 1 and P1.2 = 0.
+
+   XBYTE is used to access up to 64K bytes of external data memory controlled by
+the 8051  RD and WR strobes.  CBYTE is used to read internal program memory at
+addresses less that 4096, and external program memory controlled by the PSEN
+strobe.  Writing to CBYTE addresses uses the WR strobe, the same as the XBYTE
+command.
+
+   Notice that the implicit PRINT and LET commands can be used to examine reg-
+isters and initialize sequential memory locations using a syntax similar to that
+of Intel's In-Circuit Emulators.
+
+DBYTE 140
+
+   Will print the current contents of the byte TH0.
+
+XBYTE 8192 = 0, 1, 2, 3, 4, 5
+
+   Will initialize six bytes of external data RAM with values from 0 to 5.
+
+                                                                         Page 15
+
+
+
+HEX, DECIMAL Commands
+
+   In the DECIMAL operating mode, variables are treated as two's-complement
+signed decimal integers.  An error message is generated whenever the magnitude
+of a number or expression exceeds 32767.  DECIMAL is the default radix follow-
+ing a reset or the NEW command.
+
+   To facilitate monitor interaction, TB51 also has a hexadecimal operating mode
+invoked by the command HEX.  In this mode all variables are treated as unsigned
+16-bit values.  Numbers may be entered as a combination of decimal and hexadeci-
+mal digits, provided the first digit is between 0 and 9.  If more than four dig-
+its are entered, the higher order bits are ignored.  In the interest of compati-
+bility with other Intel software conventions, a hex number may be optionally
+followed by an "H", but its presence or absence will not affect the radix as-
+sumed.  Numbers will be printed out in HEX mode as two to four hex digits fol-
+lowed by an "H".  All arithmetic will be performed modulo 2^16 (65536), and 
+arithmetic overflow (other than division by zero) will be ignored.
+
+   Decimal operation may be restored by the command DECIMAL.
+
+   Caution must be exercised when changing modes while a program is being 
+developed.  Line numbers preceding stored commands are interpreted and saved 
+assuming the radix in effect as the line is entered.  Line numbers included in 
+a command (as in GOTO  20) are interpreted using the radix in effect as the 
+statement is executed.
+
+CALL Command
+
+   CALL 8192 will call an 8051 machine language subroutine assumed to be present
+starting at address 2000H.  This routine will execute until a RET instruction
+(machine code 22H) is encountered, at which time execution of the BASIC program
+will continue with the following command.
+
+   When the machine language program begins executing, register bank 3 will be
+enabled, but all CPU registers will be undefined.  The 8051 stack pointer will
+hold 57H; internal RAM locations 56H and 57H contain a return address to within
+the TB51 interpreter.  RAM locations 68H - 7FH are available for the user's 
+stack.  In addition, register bank 2, register bank 3, and RAM locations 20H -
+27H are not touched by TB51 (except in the single-chip mode described below) and
+may be used by the machine language program.  Notice that the DBYTE accessing
+capability allows these variables to be read, monitored, and written by the 
+interpreter programs.
+
+                                                                         Page 16
+
+
+
+Single Chip Operation
+
+   As implied at the beginning of this discussion, the TB51 interpreter may be
+used even in systems with no external RAM.  However, this naturally requires
+certain limitations.
+
+   1.) With no program line buffering, BASIC and machine language programs can-
+not be written and edited.  However, single and compound command lines may be
+executed from the keyboard.
+
+   2.) Variables used by BASIC commands and expressions are automatically stored
+in internal RAM, rather than external.  To conserve this RAM, only 12 such var-
+iables (A-L) are supported, overlapping internal RAM locations 10H - 28H.  R0 of
+register bank 1 would be the same location as the high order byte of variable E.
+Conversion to internal variable memory is automatic, following a hardware reset.
+
+   Notice that these restrictions do not preclude the execution of programs 
+stored in internal ROM or external PROM, provided they are written to use only
+variables A through L.
+
+                                                                         Page 17
+
+
+
+Errata
+
+   TB51 release V2.2 (as identified in the sign-on message) contains the follow-
+ing known bugs.  They should not seriously affect the program's usability.
+
+   1.) The random number generator seed is initialized to 0 on reset, and is
+thereafter permuted by the recurrence relation 
+
+      R(n) = [(25,173 * R(n-1)) + 13,849] mod 65536.
+
+(reference "Programming in PASCAL" by Peter Grogono, pg. 117).  A characteristic
+of this algorithm is that the low-order bits of the seed produce a cyclically
+repeating pattern.  If the argument of the RND function is a low-order power of
+two (such as 4, 8, or 16) then the values returned by the function will follow
+a similar sequence.  One solution is to obtain a random number within wider 
+limits, then eliminate certain cases:
+
+   120  A = RND(3): IF A = 3 GOTO 120
+   Will produce a random number between 1 and 2.
+
+
+   2.) If the upper limit of a FOR-NEXT loop (the TO clause) is equal to the 
+maximum integer representable in 16 bits (32767 in DECIMAL mode, 0FFFFH in HEX
+mode), the loop will not terminate.  TB51 increments the loop variable before
+testing it, with the result that the loop variable can overflow, wrapping around
+to the bottom of the number range (32767 becomes -32768, 0FFFFH becomes 0H).  It 
+then passes the comparison test to the upper bound of the loop.  For example:
+
+   120  FOR I = 32766 to 32767
+   Will loop forever, with I taking all values from -32768 to 32767.
+
+
+   3.) The value -32768 is legal when in DECIMAL mode, but cannot be printed or
+input.  The following program will halt with a HOW? message:
+
+   10  A = -32767
+   20  A = A - 1
+   30  PRINT A
+
+If statement 30 is changed to PRINT A + 1, the program will output -32767, in-
+dicating that A actually has the value -32768 even though it cannot be dis-
+played.  Furthermore, the following statements
+
+   10  A = -32768
+   20  INPUT A      where -32768 is typed in response to the input prompt
+
+will both result in error messages when executed.
