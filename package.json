@@ -1,0 +1,11 @@
+{
+  "name": "mcs8051",
+  "version": "0.0.1",
+  "main": "sim.js",
+  "repository": "ssh://alan@git.thefuture.place:/home/alan/alan-git/mcs8051",
+  "author": "Alan Mimms <alanmimms@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "nrf-intel-hex": "^1.3.0"
+  }
+}

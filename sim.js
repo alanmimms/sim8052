@@ -371,16 +371,8 @@ const cpu = {
   },
 
 
-  toHex2(v) {
-    return (v | 0x100).toString(16).slice(-2);
-  },
-
-  toHex4(v) {
-    return `${this.toHex2(v >>> 8)}${this.toHex2(v & 0xFF)}`;
-  },
-
   push1(v) {
-    this.imem[++this.sp] = v;
+    this.iram[++this.sp] = v;
   },
 
   push2(v) {
@@ -487,13 +479,14 @@ const cpu = {
   },
 
 
-  disassemble(op, pc) {
+  disassemble(pc) {
+    const op = this.pmem[pc];
     const ope = opTable[op];
     return `\
-${this.toHex2(op)} \
-${this.pmem.slice(pc, pc + ope.n - 1)
-    .map(byte => this.toHex2(byte))
-    .join(' ')
+${toHex4(this.pc-1)}: \
+${this.pmem.slice(pc, pc + ope.n).toString('hex')
+  .match(/.{2}/g)
+  .join(' ')
 }  \
 ${ope.name} ${ope.operands}`;
   },
@@ -517,11 +510,11 @@ ${ope.name} ${ope.operands}`;
       if (this.tracing) {
         const regs = [0, 1, 2, 3, 4, 5, 6, 7];
         console.log(`
-${this.toHex4(this.pc-1)}: ${this.disassemble(op, this.pc)}
-a=${this.toHex2(this.a)}  b=${this.toHex2(this.b)}  \
-sp=${this.toHex2(this.sp)}  psw=${this.toHex2(this.getPSW())}  dptr=${this.toHex4(this.dptr)}
+${this.disassemble(this.pc-1)}
+a=${toHex2(this.a)}  b=${toHex2(this.b)}  \
+sp=${toHex2(this.sp)}  psw=${toHex2(this.getPSW())}  dptr=${toHex4(this.dptr)}
 ${regs
-  .map((v, rn) => `r${rn}=${this.toHex2(this.getR(rn))}`)
+  .map((v, rn) => `r${rn}=${toHex2(this.getR(rn))}`)
   .join('  ')
 }`);
       }
@@ -916,19 +909,19 @@ ${regs
 
 
       ////////// LCALL
-      case 0xF1:                // LCALL addr16
+      case 0x12:                // LCALL addr16
         a = this.pmem[this.pc++];
         b = this.pmem[this.pc++];
         this.push2(this.pc);
-        this.pc = a | (b << 8);
+        this.pc = (a << 8) | b;
         break;
 
 
       ////////// LJMP
-      case 0xF1:                // LJMP addr16
+      case 0x02:                // LJMP addr16
         a = this.pmem[this.pc++];
         b = this.pmem[this.pc++];
-        this.pc = a | (b << 8);
+        this.pc = (a << 8) | b;
         break;
 
 
@@ -1382,13 +1375,22 @@ ${regs
 
       default:
         console.log(`\
-Unimplmented opcode=0x${this.toHex2(op)} at 0x${this.toHex4(this.pc-1)}`);
+Unimplmented opcode=0x${toHex2(op)} at 0x${toHex4(this.pc-1)}`);
         this.running = false;
         break;
       }
     }
   },
 };
+
+
+function toHex2(v) {
+  return (v | 0x100000).toString(16).slice(-2) + '';
+}
+
+function toHex4(v) {
+  return `${toHex2(v >>> 8)}${toHex2(v & 0xFF)}`;
+}
 
 
 // Take a string and return a bit field object containing xBit and
@@ -1447,12 +1449,18 @@ try {
 
 
 const fs = require('fs');
-const pmem = fs.readFileSync('./samples/bas52/BASIC-52.BIN', {
-  encoding: 'binary',
-  flag: 'r',
-});
 
+const hexName = './samples/bas52/BASIC-52.HEX';
+const hex = fs.readFileSync(hexName, {encoding: 'utf-8'});
 
-cpu.pmem = Buffer.from(pmem, 'binary');
+const MemoryMap = require('nrf-intel-hex');
+const memMap = MemoryMap.fromHex(hex);
+
+for (let [base, block] of memMap) {
+  console.log(`Block ${toHex4(base)}: ${toHex4(block.length)} bytes`);
+  const buf = Buffer.from(block);
+  buf.copy(cpu.pmem, base);
+}
+
 cpu.run();
 
