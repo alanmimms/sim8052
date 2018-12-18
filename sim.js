@@ -350,7 +350,8 @@ const cpu = {
   tracing: true,
   running: true,
 
-  iram: Buffer.alloc(256, 0x00, 'binary'),
+  iram: Buffer.alloc(0x100, 0x00, 'binary'),
+  sfrSpace: Buffer.alloc(0x80, 0x00, 'binary'),
   pmem: Buffer.alloc(PMEMSize, 0x00, 'binary'),
   xram: Buffer.alloc(XRAMSize, 0x00, 'binary'),
 
@@ -425,15 +426,112 @@ const cpu = {
   },
 
 
+  // Return SCON RXD bit as if it were toggling. This allows us to
+  // fake our way through autobaud stuff.
+  rxdState: 0,
+
+
   getIRAM(ra) {
-    // XXX: TODO: Implement SFRs
-    return this.iram[ra];
+    if (ra < 0x80) return this.iram[ra];
+
+    // SFR
+    switch (ra) {
+    case sfr.acc:
+    case sfr.b:
+    case sfr.sp:
+    case sfr.p0:
+    case sfr.p1:
+    case sfr.p2:
+    case sfr.p3:
+    case sfr.ip:
+    case sfr.ie:
+    case sfr.tmod:
+    case sfr.tcon:
+    case sfr.t2con:
+    case sfr.t2mod:
+    case sfr.th0:
+    case sfr.tl0:
+    case sfr.th1:
+    case sfr.tl1:
+    case sfr.th2:
+    case sfr.tl2:
+    case sfr.rcap2h:
+    case sfr.rcap2l:
+    case sfr.scon:
+    case sfr.pcon:
+      return this.sfrSpace[ra - 0x80];
+
+    case sfr.psw:
+      this.updatePSW();
+      return this.psw;
+
+    case sfr.dpl:
+      return this.dptr & 0xFF;
+
+    case sfr.dph:
+      return this.dptr >>> 8;
+
+    case sfr.sbuf:
+      return 0x20;              // Always type a space.
+      break;
+
+    default:
+      return 0xFF;
+    }
   },
 
 
   putIRAM(v, ra) {
-    // XXX: TODO: Implement SFRs
-    this.iram[ra] = v & 0xFF;
+    if (ra < 0x80) this.iram[ra] = v & 0xFF;
+
+    // SFR
+    switch (ra) {
+    case sfr.acc:
+    case sfr.b:
+    case sfr.sp:
+    case sfr.p0:
+    case sfr.p1:
+    case sfr.p2:
+    case sfr.p3:
+    case sfr.ip:
+    case sfr.ie:
+    case sfr.tmod:
+    case sfr.tcon:
+    case sfr.t2con:
+    case sfr.t2mod:
+    case sfr.th0:
+    case sfr.tl0:
+    case sfr.th1:
+    case sfr.tl1:
+    case sfr.th2:
+    case sfr.tl2:
+    case sfr.rcap2h:
+    case sfr.rcap2l:
+    case sfr.scon:
+    case sfr.pcon:
+      this.sfrSpace[ra - 0x80] = v;
+      break;
+
+    case sfr.psw:
+      this.psw = v;
+      break;
+
+    case sfr.dpl:
+      this.dptr = this.dptr & 0xFF00 | v;
+      break;
+
+    case sfr.dph:
+      this.dptr = this.dptr & 0xFF | (v << 8);
+      break;
+
+    case sfr.sbuf:
+      console.log(`                                                \
+SBUF: ${toHex2(v)} '${String.fromCharCode(v)}'`);
+      break;
+
+    default:
+      break;
+    }
   },
 
 
@@ -443,6 +541,9 @@ const cpu = {
     if (bn < 0x30) {
       const ba = 0x20 + (bn >> 3);
       return (this.iram[ba] & bm) ? 1 : 0;
+    } else if (bn === 0x99) {
+      this.rxdState = this.rxdState ^ 1;
+      return this.rxdState;
     } else {
       const ba = bn & 0xF8;
       return (this.getIRAM(ba) & bm) ? 1 : 0;
@@ -455,7 +556,7 @@ const cpu = {
 
     if (bn < 0x30) {
       const ba = 0x20 + (bn >> 3);
-      const v = this.iram[ba];
+      let v = this.iram[ba];
 
       if (b) {
         v = v | bm;
@@ -466,7 +567,7 @@ const cpu = {
       this.iram[ba] = v;
     } else {
       const ba = bn & 0xF8;
-      const v = this.getIRAM(ba);
+      let v = this.getIRAM(ba);
 
       if (b) {
         v = v | bm;
@@ -656,7 +757,7 @@ ${regs
         imm = this.pmem[this.pc++];
         b = imm;
         rela = this.toSigned(this.pmem[this.pc++]);
-        if (a === b) this.pc += rela;
+        if (a !== b) this.pc += rela;
         this.c = a < b ? 1 : 0;
         break;
 
@@ -665,7 +766,7 @@ ${regs
         ira = this.pmem[this.pc++];
         b = this.getIRAM(ira);
         rela = this.toSigned(this.pmem[this.pc++]);
-        if (a === b) this.pc += rela;
+        if (a !== b) this.pc += rela;
         this.c = a < b ? 1 : 0;
         break;
 
@@ -676,7 +777,7 @@ ${regs
         imm = this.pmem[this.pc++];
         b = imm;
         rela = this.toSigned(this.pmem[this.pc++]);
-        if (a === b) this.pc += rela;
+        if (a !== b) this.pc += rela;
         this.c = a < b ? 1 : 0;
         break;
 
@@ -693,13 +794,13 @@ ${regs
         imm = this.pmem[this.pc++];
         b = imm;
         rela = this.toSigned(this.pmem[this.pc++]);
-        if (a === b) this.pc += rela;
+        if (a !== b) this.pc += rela;
         this.c = a < b ? 1 : 0;
         break;
 
       ////////// CLR
       case 0xC2:                // CLR bit
-        bit = this.xmem[this.pc++];
+        bit = this.xram[this.pc++];
         this.putBit(0, bit);
         break;
         
@@ -714,7 +815,7 @@ ${regs
 
       ////////// CPL
       case 0xB2:                // CPL bit
-        bit = this.xmem[this.pc++];
+        bit = this.xram[this.pc++];
         this.putBit(1 ^ this.getBit(bit), bit);
         break;
         
@@ -738,35 +839,31 @@ ${regs
         
 
       ////////// DEC
-      case 0x04:                // DEC A
+      case 0x14:                // DEC A
         this.a = (this.a - 1) & 0xFF;
         break;
 
-      case 0x05:                // DEC dir
+      case 0x15:                // DEC dir
         ira = this.pmem[this.pc++];
         this.putIRAM(this.getIRAM(ira) - 1, ira);
         break;
 
-      case 0x06:                // DEC @R0
-      case 0x07:                // DEC @R1
+      case 0x16:                // DEC @R0
+      case 0x17:                // DEC @R1
         ira = this.getR(op & 1);
         this.putIRAM(this.iram[ira] - 1, ira);
         break;
 
-      case 0x08:                // DEC Rn
-      case 0x09:                // DEC Rn
-      case 0x0A:                // DEC Rn
-      case 0x0B:                // DEC Rn
-      case 0x0C:                // DEC Rn
-      case 0x0D:                // DEC Rn
-      case 0x0E:                // DEC Rn
-      case 0x0F:                // DEC Rn
+      case 0x18:                // DEC Rn
+      case 0x19:                // DEC Rn
+      case 0x1A:                // DEC Rn
+      case 0x1B:                // DEC Rn
+      case 0x1C:                // DEC Rn
+      case 0x1D:                // DEC Rn
+      case 0x1E:                // DEC Rn
+      case 0x1F:                // DEC Rn
         r = op & 0x07;
         this.putR(this.getR(r) - 1, r);
-        break;
-
-      case 0xA3:                // DEC DPTR
-        this.dptr = (this.dptr - 1) & 0xFFFF;
         break;
 
 
@@ -1059,6 +1156,11 @@ ${regs
         this.putIRAM(a, ira);
         break;
 
+      case 0xF5:                // MOV dir,A
+        ira = this.pmem[this.pc++];
+        this.putIRAM(this.a, ira);
+        break;
+
       case 0x85:                // MOV dir,dir
         ira = this.pmem[this.pc++];
         a = this.getIRAM(ira);
@@ -1081,27 +1183,27 @@ ${regs
       case 0xF0:                // MOVX @DPTR,A
         this.p1 = this.dptr & 0xFF;
         this.p2 = this.dptr >>> 8;
-        this.xmem[this.dptr] = this.a;
+        this.xram[this.dptr] = this.a;
         break;
 
       case 0xF2:                // MOVX @R0,A
       case 0xF3:                // MOVX @R1,A
         r = op & 1;
         this.p1 = this.getR(r);
-        this.xmem[(this.p2 << 8) | this.p1] = this.a;
+        this.xram[(this.p2 << 8) | this.p1] = this.a;
         break;
 
       case 0xE0:                // MOVX A,@DPTR
         this.p1 = this.dptr & 0xFF;
         this.p2 = this.dptr >>> 8;
-        this.a = this.xmem[this.dptr];
+        this.a = this.xram[this.dptr];
         break;
 
       case 0xE2:                // MOVX A,@R0
       case 0xE3:                // MOVX A,@R1
         r = op & 1;
         this.p1 = this.getR(r);
-        this.a = this.xmem[(this.p2 << 8) | this.p1];
+        this.a = this.xram[(this.p2 << 8) | this.p1];
         break;
 
 
@@ -1240,7 +1342,7 @@ ${regs
 
       ////////// SETB
       case 0xD2:                // SETB bit
-        bit = this.xmem[this.pc++];
+        bit = this.xram[this.pc++];
         this.putBit(1, bit);
         break;
         
@@ -1450,7 +1552,7 @@ try {
 
 const fs = require('fs');
 
-const hexName = './samples/bas52/BASIC-52.HEX';
+const hexName = './sim.hex';
 const hex = fs.readFileSync(hexName, {encoding: 'utf-8'});
 
 const MemoryMap = require('nrf-intel-hex');
