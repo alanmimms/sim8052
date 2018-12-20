@@ -415,13 +415,13 @@ const cpu = {
 
 
   getR(r) {
-    const ra = (this.rs0 << 3) | (this.rs1 << 4);
+    const ra = ((this.rs0 << 3) | (this.rs1 << 4)) + r;
     return this.iram[ra];
   },
 
 
   putR(v, r) {
-    const ra = (this.rs0 << 3) | (this.rs1 << 4);
+    const ra = ((this.rs0 << 3) | (this.rs1 << 4)) + r;
     this.iram[ra] = v & 0xFF;
   },
 
