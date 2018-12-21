@@ -298,7 +298,7 @@ const sfr = {
   scon: 0x98,
   sbuf: 0x99,
   pcon: 0x87,
-};
+ };
 
 const addrToSFR = Object.keys(sfr)
         .reduce((acc, name) => {
@@ -571,12 +571,65 @@ const cpu = {
     if (bn < 0x30) {
       const ba = 0x20 + (bn >> 3);
       return (this.iram[ba] & bm) ? 1 : 0;
-    } else if (bn === 0x98) {
-      return this.sbufQueue.length > 0 ? 1 : 0;
-    } else if (bn === 0x99) {
-      this.tiState = this.tiState ^ 1;
-      return this.tiState;
-    } else {
+    } 
+
+    const sfrNum = bn & 0xF8;
+    const bbn = bn & 0x07;
+
+    switch (sfrNum) {
+    case 0x98:                  // SCON0
+
+      switch (bbn) {
+      case 0:
+        return this.sbufQueue.length > 0 ? 1 : 0;
+
+      case 1:
+        this.tiState = this.tiState ^ 1;
+        return this.tiState;
+
+      default:
+        return 0;
+      }
+      
+    case 0xb0:                  // RXD
+      return 0;
+      
+    case 0xE0:                  // ACC
+      return (this.a >> bbn) & 1;
+
+    case 0xF0:                  // B
+      return (this.b >> bbn) & 1;
+
+    case 0xD0:                  // PSW
+      this.updatePSW();
+      return (this.psw >> bbn) & 1;
+
+    case 0x81:                  // SP
+    case 0x82:                  // DPL
+    case 0x83:                  // DPH
+    case 0x80:                  // P0
+    case 0x90:                  // P1
+    case 0xA0:                  // P2
+    case 0xB0:                  // P3
+    case 0xB8:                  // IP
+    case 0xA8:                  // IE
+    case 0x89:                  // TMOD
+    case 0x88:                  // TCON
+    case 0xC8:                  // T2CON
+    case 0xC9:                  // T2MOD
+    case 0x8C:                  // TH0
+    case 0x8D:                  // TL0
+    case 0x8B:                  // TH1
+    case 0x8B:                  // TL1
+    case 0xCD:                  // TH2
+    case 0xCC:                  // TL2
+    case 0xCB:                  // RCAP2H
+    case 0xCA:                  // TCAP2L
+    case 0x98:                  // SCON
+    case 0x87:                  // PCON
+      break;
+
+    default:
       const ba = bn & 0xF8;
       return (this.getIRAM(ba) & bm) ? 1 : 0;
     }
