@@ -271,7 +271,7 @@ const opTable = [
 
 
 const sfr = {
-  acc: 0xE0,
+  a: 0xE0,
   b: 0xF0,
   psw: 0xD0,
   sp: 0x81,
@@ -456,12 +456,12 @@ const cpu = {
   tiState: 0,
 
 
-  getIRAM(ra) {
+  getDirect(ra) {
     if (ra < 0x80) return this.iram[ra];
 
     // SFR
     switch (ra) {
-    case sfr.acc:
+    case sfr.a:
     case sfr.b:
     case sfr.sp:
     case sfr.p0:
@@ -512,12 +512,12 @@ const cpu = {
   },
 
 
-  putIRAM(v, ra) {
+  putDirect(v, ra) {
     if (ra < 0x80) this.iram[ra] = v & 0xFF;
 
     // SFR
     switch (ra) {
-    case sfr.acc:
+    case sfr.a:
     case sfr.b:
     case sfr.sp:
     case sfr.p0:
@@ -594,7 +594,7 @@ const cpu = {
     case 0xb0:                  // RXD
       return 0;
       
-    case 0xE0:                  // ACC
+    case 0xE0:                  // A
       return (this.a >> bbn) & 1;
 
     case 0xF0:                  // B
@@ -631,7 +631,7 @@ const cpu = {
 
     default:
       const ba = bn & 0xF8;
-      return (this.getIRAM(ba) & bm) ? 1 : 0;
+      return (this.iram[ba] & bm) ? 1 : 0;
     }
   },
 
@@ -652,7 +652,7 @@ const cpu = {
       this.iram[ba] = v;
     } else {
       const ba = bn & 0xF8;
-      let v = this.getIRAM(ba);
+      let v = this.getDirect(ba);
 
       if (b) {
         v = v | bm;
@@ -660,7 +660,7 @@ const cpu = {
         v = v & ~bm;
       }
 
-      this.putIRAM(v, ba);
+      this.putDirect(v, ba);
     }
   },
 
@@ -771,7 +771,7 @@ ${_.range(0, 8)
     case 0x25:                // ADD A,dir
     case 0x35:                // ADDC A,dir
       ira = this.pmem[this.pc++];
-      this.doADD(op, this.getIRAM(ira));
+      this.doADD(op, this.getDirect(ira));
       break;
 
     case 0x26:                // ADD A,@R0
@@ -820,13 +820,13 @@ ${_.range(0, 8)
       ////////// ANL
     case 0x52:                // ANL dir,A
       ira = this.pmem[this.pc++];
-      a = this.getIRAM(ira);
-      this.putIRAM(this.a & a, ira);
+      a = this.getDirect(ira);
+      this.putDirect(this.a & a, ira);
       break;
 
     case 0x53:                // ANL dir,#imm
       ira = this.pmem[this.pc++];
-      this.putIRAM(this.a & this.getIRAM(ira), ira);
+      this.putDirect(this.a & this.getDirect(ira), ira);
       break;
 
     case 0x54:                // ANL A,#imm
@@ -836,7 +836,7 @@ ${_.range(0, 8)
 
     case 0x55:                // ANL A,dir
       ira = this.pmem[this.pc++];
-      this.a = this.a & this.getIRAM(ira);
+      this.a = this.a & this.getDirect(ira);
       break;
 
     case 0x56:                // ANL A,@R0
@@ -883,7 +883,7 @@ ${_.range(0, 8)
     case 0xB5:                // CJNE A,dir,rela
       a = this.a;
       ira = this.pmem[this.pc++];
-      b = this.getIRAM(ira);
+      b = this.getDirect(ira);
       rela = this.toSigned(this.pmem[this.pc++]);
       if (a !== b) this.pc += rela;
       this.c = a < b ? 1 : 0;
@@ -964,13 +964,13 @@ ${_.range(0, 8)
 
     case 0x15:                // DEC dir
       ira = this.pmem[this.pc++];
-      this.putIRAM(this.getIRAM(ira) - 1, ira);
+      this.putDirect(this.getDirect(ira) - 1, ira);
       break;
 
     case 0x16:                // DEC @R0
     case 0x17:                // DEC @R1
       ira = this.getR(op & 1);
-      this.putIRAM(this.iram[ira] - 1, ira);
+      this.iram[ira] = this.iram[ira] - 1;
       break;
 
     case 0x18:                // DEC Rn
@@ -1003,10 +1003,10 @@ ${_.range(0, 8)
       ////////// DJNZ
     case 0xD5:                // DJNZ dir,rela
       ira = this.pmem[this.pc++];
-      a = this.getIRAM(ira) - 1;
+      a = this.getDirect(ira) - 1;
       rela = this.toSigned(this.pmem[this.pc++]);
       if (a !== 0) this.pc += rela;
-      this.putIRAM(a, ira);
+      this.putDirect(a, ira);
       break;
 
     case 0xD8:                // DJNZ R0,rela
@@ -1032,7 +1032,7 @@ ${_.range(0, 8)
 
     case 0x05:                // INC dir
       ira = this.pmem[this.pc++];
-      this.putIRAM(this.getIRAM(ira) + 1, ira);
+      this.putDirect(this.getDirect(ira) + 1, ira);
       break;
 
     case 0x06:                // INC @R0
@@ -1160,7 +1160,7 @@ ${_.range(0, 8)
     case 0xA6:                // MOV @R0,dir
     case 0xA7:                // MOV @R1,dir
       ira = this.pmem[this.pc++];
-      a = this.getIRAM(ira);
+      a = this.iram[ira];
       r = op & 1;
       ira = this.getR(r);
       this.iram[ira] = a;
@@ -1190,7 +1190,7 @@ ${_.range(0, 8)
 
     case 0xE5:                // MOV A,dir
       ira = this.pmem[this.pc++];
-      this.a = this.getIRAM(ira);
+      this.a = this.getDirect(ira);
       break;
 
     case 0xA2:                // MOV C,bit
@@ -1239,7 +1239,7 @@ ${_.range(0, 8)
     case 0xAF:                // MOV R7,dir
       r = op & 0x07;
       ira = this.pmem[this.pc++];
-      this.putR(this.getIRAM(ira), r);
+      this.putR(this.getDirect(ira), r);
       break;
 
     case 0x92:                // MOV bit,C
@@ -1250,7 +1250,7 @@ ${_.range(0, 8)
     case 0x75:                // MOV dir,#imm
       ira = this.pmem[this.pc++];
       imm = this.pmem[this.pc++];
-      this.putIRAM(imm, ira);
+      this.putDirect(imm, ira);
       break;
 
     case 0x86:                // MOV dir,@R0
@@ -1258,7 +1258,7 @@ ${_.range(0, 8)
       ira = this.getR(r);
       a = this.iram[ira];
       ira = this.pmem[this.pc++];
-      this.putIRAM(a, ira);
+      this.putDirect(a, ira);
       break;
 
     case 0x88:                // MOV dir,R0
@@ -1272,19 +1272,19 @@ ${_.range(0, 8)
       r = op & 0x07;
       a = this.getR(r);
       ira = this.pmem[this.pc++];
-      this.putIRAM(a, ira);
+      this.putDirect(a, ira);
       break;
 
     case 0xF5:                // MOV dir,A
       ira = this.pmem[this.pc++];
-      this.putIRAM(this.a, ira);
+      this.putDirect(this.a, ira);
       break;
 
     case 0x85:                // MOV dir,dir
       ira = this.pmem[this.pc++];
-      a = this.getIRAM(ira);
+      a = this.getDirect(ira);
       ira = this.pmem[this.pc++];
-      this.putIRAM(a, ira);
+      this.putDirect(a, ira);
       break;
 
 
@@ -1339,13 +1339,13 @@ ${_.range(0, 8)
       ////////// ORL
     case 0x42:                // ORL dir,A
       ira = this.pmem[this.pc++];
-      a = this.getIRAM(ira);
-      this.putIRAM(this.a | a, ira);
+      a = this.getDirect(ira);
+      this.putDirect(this.a | a, ira);
       break;
 
     case 0x43:                // ORL dir,#imm
       ira = this.pmem[this.pc++];
-      this.putIRAM(this.a | this.getIRAM(ira), ira);
+      this.putDirect(this.a | this.getDirect(ira), ira);
       break;
 
     case 0x44:                // ORL A,#imm
@@ -1355,7 +1355,7 @@ ${_.range(0, 8)
 
     case 0x45:                // ORL A,dir
       ira = this.pmem[this.pc++];
-      this.a = this.a | this.getIRAM(ira);
+      this.a = this.a | this.getDirect(ira);
       break;
 
     case 0x46:                // ORL A,@R0
@@ -1392,8 +1392,8 @@ ${_.range(0, 8)
       ////////// POP
     case 0xD0:                // POP dir
       ira = this.pmem[this.pc++];
-      a = this.getIRAM(this.sp);
-      this.putIRAM(a, ira);
+      a = this.getDirect(this.sp);
+      this.iram[ira] = a;
       this.sp = (this.sp - 1) & 0xFF;
       break;
 
@@ -1401,17 +1401,17 @@ ${_.range(0, 8)
       ////////// PUSH
     case 0xC0:                // PUSH dir
       ira = this.pmem[this.pc++];
-      a = this.getIRAM(ira);
+      a = this.getDirect(ira);
       this.sp = (this.sp + 1) & 0xFF;
-      this.putIRAM(a, this.sp);
+      this.iram[this.sp] = a;
       break;
 
 
       ////////// RET
     case 0x22:                // RET
-      a = this.getIRAM(this.sp);
+      a = this.iram[this.sp];
       this.sp = (this.sp - 1) & 0xFF;
-      b = this.getIRAM(this.sp);
+      b = this.iram[this.sp];
       this.sp = (this.sp - 1) & 0xFF;
       this.pc = (a << 8) | b;
       break;
@@ -1419,9 +1419,9 @@ ${_.range(0, 8)
 
       ////////// IRET
     case 0x32:                // IRET
-      a = this.getIRAM(this.sp);
+      a = this.iram[this.sp];
       this.sp = (this.sp - 1) & 0xFF;
-      b = this.getIRAM(this.sp);
+      b = this.iram[this.sp];
       this.sp = (this.sp - 1) & 0xFF;
       this.pc = (a << 8) | b;
       this.ipl = this.ipl - 1;
@@ -1486,7 +1486,7 @@ ${_.range(0, 8)
 
     case 0x95:                // SUBB A,dir
       ira = this.pmem[this.pc++];
-      this.doSUBB(op, this.getIRAM(ira));
+      this.doSUBB(op, this.getDirect(ira));
       break;
 
     case 0x96:                // SUBB A,@R0
@@ -1557,13 +1557,13 @@ ${_.range(0, 8)
       ////////// XRL
     case 0x62:                // XRL dir,A
       ira = this.pmem[this.pc++];
-      a = this.getIRAM(ira);
-      this.putIRAM(this.a ^ a, ira);
+      a = this.getDirect(ira);
+      this.putDirect(this.a ^ a, ira);
       break;
 
     case 0x63:                // XRL dir,#imm
       ira = this.pmem[this.pc++];
-      this.putIRAM(this.a ^ this.getIRAM(ira), ira);
+      this.putDirect(this.a ^ this.getDirect(ira), ira);
       break;
 
     case 0x64:                // XRL A,#imm
@@ -1573,7 +1573,7 @@ ${_.range(0, 8)
 
     case 0x65:                // XRL A,dir
       ira = this.pmem[this.pc++];
-      this.a = this.a ^ this.getIRAM(ira);
+      this.a = this.a ^ this.getDirect(ira);
       break;
 
     case 0x66:                // XRL A,@R0
@@ -1842,7 +1842,7 @@ function doSFR(words, physical) {
     x = getAddress(words);
   }
 
-  w = cpu.getIRAM(x);
+  w = cpu.getDirect(x);
 
   let addr = displayableAddress(x);
   console.log(`${addr}: ${toHex4(w)}`);
