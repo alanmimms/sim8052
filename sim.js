@@ -489,44 +489,24 @@ const cpu = {
 
   getBit(bn) {
     const bm = 1 << (bn & 0x07);
-
-    if (bn < 0x30) {
-      const ba = 0x20 + (bn >> 3);
-      const v = this.iram[ba];
-      return (v & bm) ? 1 : 0;
-    }  else {
-      const v = this.getDirect(bn & 0xF8);
-      return (v & bm) ? 1 : 0;
-    }
+    const ra = bn < 0x30 ? 0x20 + (bn >> 3) : bn & 0xF8;
+    const v = this.getDirect(ra);
+    return (v & bm) ? 1 : 0;
   },
 
 
   putBit(bn, b) {
     const bm = 1 << (bn & 0x07);
+    const ra = bn < 0x30 ? 0x20 + (bn >> 3) : bn & 0xF8;
+    let v = this.getDirect(ra);
 
-    if (bn < 0x30) {
-      const ba = 0x20 + (bn >> 3);
-      let v = this.iram[ba];
-
-      if (b) {
-        v = v | bm;
-      } else {
-        v = v & ~bm;
-      }
-
-      this.iram[ba] = v;
+    if (b) {
+      v = v | bm;
     } else {
-      const ra = bn & 0xF8;
-      let v = this.getDirect(ra);
-
-      if (b) {
-        v = v | bm;
-      } else {
-        v = v & ~bm;
-      }
-
-      this.putDirect(ra, v);
+      v = v & ~bm;
     }
+
+    this.putDirect(ra, v);
   },
 
 
@@ -904,7 +884,7 @@ ${_.range(0, 8)
     case 0x06:                // INC @R0
     case 0x07:                // INC @R1
       ira = this.getR(op & 1);
-      this.iram[this.iram[ira] + 1] = ira;
+      this.ira[ira] = this.iram[ira] + 1;
       break;
 
     case 0x08:                // INC R0
@@ -1026,7 +1006,7 @@ ${_.range(0, 8)
     case 0xA6:                // MOV @R0,dir
     case 0xA7:                // MOV @R1,dir
       ira = this.pmem[this.pc++];
-      a = this.iram[ira];
+      a = this.getDirect(ira);
       r = op & 1;
       ira = this.getR(r);
       this.iram[ira] = a;
@@ -1390,8 +1370,8 @@ ${_.range(0, 8)
     case 0xC6:                // XCH A,@R0
     case 0xC7:                // XCH A,@R1
       ira = this.getR(op & 1);
-      a = this.iram[this.ira];
-      this.iram[this.ira] = this.a;
+      a = this.iram[ira];
+      this.iram[ira] = this.a;
       this.a = a;
       break;
 
