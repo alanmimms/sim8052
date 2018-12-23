@@ -1,5 +1,8 @@
 'use strict';
 
+// For `put` style functions, convention is put(address, value).
+// For `get` convention is get(address).
+
 const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
@@ -47,34 +50,34 @@ const opTable = [
   /* 21 */ {n: 2, name: "AJMP", operands: "1:addr11"},
   /* 22 */ {n: 1, name: "RET", operands: ""},
   /* 23 */ {n: 1, name: "RL", operands: "A"},
-  /* 24 */ {n: 2, name: "ADD", operands: "A, 1:immed"},
-  /* 25 */ {n: 2, name: "ADD", operands: "A, 1:direct"},
-  /* 26 */ {n: 1, name: "ADD", operands: "A, @R0"},
-  /* 27 */ {n: 1, name: "ADD", operands: "A, @R1"},
-  /* 28 */ {n: 1, name: "ADD", operands: "A, R0"},
-  /* 29 */ {n: 1, name: "ADD", operands: "A, R1"},
-  /* 2A */ {n: 1, name: "ADD", operands: "A, R2"},
-  /* 2B */ {n: 1, name: "ADD", operands: "A, R3"},
-  /* 2C */ {n: 1, name: "ADD", operands: "A, R4"},
-  /* 2D */ {n: 1, name: "ADD", operands: "A, R5"},
-  /* 2E */ {n: 1, name: "ADD", operands: "A, R6"},
-  /* 2F */ {n: 1, name: "ADD", operands: "A, R7"},
+  /* 24 */ {n: 2, name: "ADD", operands: "A,1:immed"},
+  /* 25 */ {n: 2, name: "ADD", operands: "A,1:direct"},
+  /* 26 */ {n: 1, name: "ADD", operands: "A,@R0"},
+  /* 27 */ {n: 1, name: "ADD", operands: "A,@R1"},
+  /* 28 */ {n: 1, name: "ADD", operands: "A,R0"},
+  /* 29 */ {n: 1, name: "ADD", operands: "A,R1"},
+  /* 2A */ {n: 1, name: "ADD", operands: "A,R2"},
+  /* 2B */ {n: 1, name: "ADD", operands: "A,R3"},
+  /* 2C */ {n: 1, name: "ADD", operands: "A,R4"},
+  /* 2D */ {n: 1, name: "ADD", operands: "A,R5"},
+  /* 2E */ {n: 1, name: "ADD", operands: "A,R6"},
+  /* 2F */ {n: 1, name: "ADD", operands: "A,R7"},
   /* 30 */ {n: 3, name: "JNB", operands: "1:bit,2:rela"},
   /* 31 */ {n: 2, name: "ACALL", operands: "1:addr11"},
   /* 32 */ {n: 1, name: "RETI", operands: ""},
   /* 33 */ {n: 1, name: "RLC", operands: "A"},
-  /* 34 */ {n: 2, name: "ADDC", operands: "A, 1:immed"},
-  /* 35 */ {n: 2, name: "ADDC", operands: "A, 1:direct"},
-  /* 36 */ {n: 1, name: "ADDC", operands: "A, @R0"},
-  /* 37 */ {n: 1, name: "ADDC", operands: "A, @R1"},
-  /* 38 */ {n: 1, name: "ADDC", operands: "A, R0"},
-  /* 39 */ {n: 1, name: "ADDC", operands: "A, R1"},
-  /* 3A */ {n: 1, name: "ADDC", operands: "A, R2"},
-  /* 3B */ {n: 1, name: "ADDC", operands: "A, R3"},
-  /* 3C */ {n: 1, name: "ADDC", operands: "A, R4"},
-  /* 3D */ {n: 1, name: "ADDC", operands: "A, R5"},
-  /* 3E */ {n: 1, name: "ADDC", operands: "A, R6"},
-  /* 3F */ {n: 1, name: "ADDC", operands: "A, R7"},
+  /* 34 */ {n: 2, name: "ADDC", operands: "A,1:immed"},
+  /* 35 */ {n: 2, name: "ADDC", operands: "A,1:direct"},
+  /* 36 */ {n: 1, name: "ADDC", operands: "A,@R0"},
+  /* 37 */ {n: 1, name: "ADDC", operands: "A,@R1"},
+  /* 38 */ {n: 1, name: "ADDC", operands: "A,R0"},
+  /* 39 */ {n: 1, name: "ADDC", operands: "A,R1"},
+  /* 3A */ {n: 1, name: "ADDC", operands: "A,R2"},
+  /* 3B */ {n: 1, name: "ADDC", operands: "A,R3"},
+  /* 3C */ {n: 1, name: "ADDC", operands: "A,R4"},
+  /* 3D */ {n: 1, name: "ADDC", operands: "A,R5"},
+  /* 3E */ {n: 1, name: "ADDC", operands: "A,R6"},
+  /* 3F */ {n: 1, name: "ADDC", operands: "A,R7"},
   /* 40 */ {n: 2, name: "JC", operands: "1:rela"},
   /* 41 */ {n: 2, name: "AJMP", operands: "1:addr11"},
   /* 42 */ {n: 2, name: "ORL", operands: "1:direct,A"},
@@ -270,42 +273,58 @@ const opTable = [
 ];
 
 
-const sfr = {
-  a: 0xE0,
-  b: 0xF0,
-  psw: 0xD0,
-  sp: 0x81,
-  dpl: 0x82,
-  dph: 0x83,
-  p0: 0x80,
-  p1: 0x90,
-  p2: 0xA0,
-  p3: 0xB0,
-  ip: 0xB8,
-  ie: 0xA8,
-  tmod: 0x89,
-  tcon: 0x88,
-  t2con: 0xC8,
-  t2mod: 0xC9,
-  th0: 0x8C,
-  tl0: 0x8A,
-  th1: 0x8D,
-  tl1: 0x8B,
-  th2: 0xCD,
-  tl2: 0xCC,
-  rcap2h: 0xCB,
-  rcap2l: 0xCA,
-  scon: 0x98,
-  sbuf: 0x99,
-  pcon: 0x87,
- };
+const SFRs = [
+  {name: "ACC", addr: 0xE0, get(ra) {return cpu.a}, put(ra, v) {cpu.a = v}},
+  {name: "B", addr: 0xF0},
+  {name: "SP", addr: 0x81},
+  {name: "P0", addr: 0x80},
+  {name: "P1", addr: 0x90},
+  {name: "P2", addr: 0xA0},
+  {name: "P3", addr: 0xB0, get: getP3, put: putP3},
+  {name: "IP", addr: 0xB8},
+  {name: "IE", addr: 0xA8},
+  {name: "TMOD", addr: 0x89},
+  {name: "TCON", addr: 0x88},
+  {name: "T2CON", addr: 0xC8},
+  {name: "T2MOD", addr: 0xC9},
+  {name: "TH0", addr: 0x8C},
+  {name: "TL0", addr: 0x8A},
+  {name: "TH1", addr: 0x8D},
+  {name: "TL1", addr: 0x8B},
+  {name: "TH2", addr: 0xCD},
+  {name: "TL2", addr: 0xCC},
+  {name: "RCAP2H", addr: 0xCB},
+  {name: "RCAP2L", addr: 0xCA},
+  {name: "PCON", addr: 0x87},
+  {name: "PSW", addr: 0xD0, get: getPSW, put: putPSW},
+  {name: "DPL", addr: 0x82, get: getDPL, put: putDPL},
+  {name: "DPH", addr: 0x83, get: getDPH, put: putDPH},
+  {name: "SCON", addr: 0x98, get: getSCON, put: putSCON},
+  {name: "SBUF", addr: 0x99, get: getSBUF, put: putSBUF},
+];
 
-const addrToSFR = Object.keys(sfr)
-        .reduce((acc, name) => {
-          acc[+sfr[name]] = name.toUpperCase();
-          return acc;
-        }, 
-                new Array(256));
+
+// Apply defaults for the case when get/put methods aren't defined.
+SFRs.forEach(sfr => {
+  const fieldName = sfr.name.toLowerCase();
+  if (!sfr.get) sfr.get = (ra) => cpu[fieldName];
+  if (!sfr.put) sfr.put = (ra, v) => cpu[fieldName] = v;
+});
+
+const nameToSFR = SFRs.reduce((obj, entry) => obj[entry.name] = obj, {});
+
+// Build table of SFRs indexed by address.
+const addrToSFR = new Array(0x100);
+SFRs.forEach(sfr => addrToSFR[+sfr.addr] = sfr);
+
+// Fill entries for which a named SFR isn't defined.
+_.range(0x80, 0x100)
+  .filter(addr => !addrToSFR[addr])
+  .forEach(addr => {
+    const name = toHex2(addr);
+    addrToSFR[addr] = {name, addr, get: getSFR, put: putSFR};
+  });
+
 
 const pconBits = makeBits('smod . . . gf1 gf0 pd idl');
 const sconBits = makeBits('sm0 sm1 sm2 ren tb8 rb8 ti ri');
@@ -358,7 +377,7 @@ const cpu = {
   t1: 0,
 
   iram: Buffer.alloc(0x100, 0x00, 'binary'),
-  sfrSpace: Buffer.alloc(0x80, 0x00, 'binary'),
+  sfrSpace: Buffer.alloc(0x100, 0x00, 'binary'),
   pmem: Buffer.alloc(PMEMSize, 0x00, 'binary'),
   xram: Buffer.alloc(XRAMSize, 0x00, 'binary'),
 
@@ -382,7 +401,7 @@ const cpu = {
 
 
   updatePSW() {
-    this.p = parity[this.a];
+    this.p = 1 ^ parity[this.a];
     this.psw = 
       this.p | this.ud << 1 |
       this.ov << 2 | this.rs0 << 3 |
@@ -446,7 +465,7 @@ const cpu = {
   },
 
 
-  putR(v, r) {
+  putR(r, v) {
     const ra = ((this.rs0 << 3) | (this.rs1 << 4)) + r;
     this.iram[ra] = v & 0xFF;
   },
@@ -457,111 +476,19 @@ const cpu = {
 
 
   getDirect(ra) {
-    if (ra < 0x80) return this.iram[ra];
-
-    // SFR
-    switch (ra) {
-    case sfr.a:
-    case sfr.b:
-    case sfr.sp:
-    case sfr.p0:
-    case sfr.p1:
-    case sfr.p2:
-    case sfr.p3:
-    case sfr.ip:
-    case sfr.ie:
-    case sfr.tmod:
-    case sfr.tcon:
-    case sfr.t2con:
-    case sfr.t2mod:
-    case sfr.th0:
-    case sfr.tl0:
-    case sfr.th1:
-    case sfr.tl1:
-    case sfr.th2:
-    case sfr.tl2:
-    case sfr.rcap2h:
-    case sfr.rcap2l:
-    case sfr.scon:
-    case sfr.pcon:
-      return this.sfrSpace[ra - 0x80];
-
-    case sfr.psw:
-      this.updatePSW();
-      return this.psw;
-
-    case sfr.dpl:
-      return this.dptr & 0xFF;
-
-    case sfr.dph:
-      return this.dptr >>> 8;
-
-    case sfr.sbuf:
-
-      if (this.sbufQueue.length) {
-        return this.sbufQueue.shift();
-      } else {
-        
-      }
-      
-      break;
-
-    default:
-      return 0xFF;
-    }
+    if (ra < 0x80)
+      return this.iram[ra];
+    else
+      return addrToSFR[ra].get(ra);
   },
 
 
-  putDirect(v, ra) {
-    if (ra < 0x80) this.iram[ra] = v & 0xFF;
+  putDirect(ra, v) {
 
-    // SFR
-    switch (ra) {
-    case sfr.a:
-    case sfr.b:
-    case sfr.sp:
-    case sfr.p0:
-    case sfr.p1:
-    case sfr.p2:
-    case sfr.p3:
-    case sfr.ip:
-    case sfr.ie:
-    case sfr.tmod:
-    case sfr.tcon:
-    case sfr.t2con:
-    case sfr.t2mod:
-    case sfr.th0:
-    case sfr.tl0:
-    case sfr.th1:
-    case sfr.tl1:
-    case sfr.th2:
-    case sfr.tl2:
-    case sfr.rcap2h:
-    case sfr.rcap2l:
-    case sfr.scon:
-    case sfr.pcon:
-      this.sfrSpace[ra - 0x80] = v;
-      break;
-
-    case sfr.psw:
-      this.psw = v;
-      break;
-
-    case sfr.dpl:
-      this.dptr = this.dptr & 0xFF00 | v;
-      break;
-
-    case sfr.dph:
-      this.dptr = this.dptr & 0xFF | (v << 8);
-      break;
-
-    case sfr.sbuf:
-      process.stdout.write(String.fromCharCode(v));
-      break;
-
-    default:
-      break;
-    }
+    if (ra < 0x80) 
+      this.iram[ra] = v & 0xFF;
+    else
+      addrToSFR[ra].put(ra, v & 0xFF);
   },
 
 
@@ -636,7 +563,7 @@ const cpu = {
   },
 
 
-  putBit(b, bn) {
+  putBit(bn, b) {
     const bm = 1 << (bn & 0x07);
 
     if (bn < 0x30) {
@@ -660,7 +587,7 @@ const cpu = {
         v = v & ~bm;
       }
 
-      this.putDirect(v, ba);
+      this.putDirect(ba, v);
     }
   },
 
@@ -668,12 +595,10 @@ const cpu = {
   bitName(bn) {
     bn = +bn;
 
-    if (bn < 0x30) {
+    if (bn < 0x80) {
       return toHex2(bn);
     } else {
-      const ba = bn & 0xF8;
-      const bitSFR = addrToSFR[ba];
-      return bitSFR ? `${bitSFR}.${bn&0x07}` : toHex2(bn);
+      return `${addrToSFR[bn & 0xF8].name}.${bn & 0x07}`;
     }
   },
 
@@ -681,19 +606,22 @@ const cpu = {
   disassemble(pc) {
     const op = this.pmem[pc];
     const ope = opTable[op];
-    const insnBytes = this.pmem.slice(pc, pc + ope.n);
-    const disassembly = insnBytes.toString('hex')
+    const nextPC = pc + ope.n;
+    const bytes = this.pmem.slice(pc, nextPC);
+    const disassembly = bytes.toString('hex')
+            .toUpperCase()
             .match(/.{2}/g)
             .join(' ');
     
     const handlers = {
-      bit: x => this.bitName(insnBytes[+x]),
-      immed: x => toHex2(insnBytes[+x]),
-      addr16: x => toHex4(insnBytes[+x] << 8 | insnBytes[+x + 1]),
-      addr11: x => toHex4((this.pc & 0xF800) | ((op & 0xE0) << 3) | insnBytes[x]),
+      bit: x => this.bitName(bytes[+x]),
+      immed: x => '#' + toHex2(bytes[+x]),
+      addr16: x => toHex4(bytes[+x] << 8 | bytes[+x + 1]),
+      addr11: x => toHex4((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[x]),
       verbatum: x => x,
-      direct: x => addrToSFR[insnBytes[+x]] || toHex2(insnBytes[+x]),
-      rela: x => toHex4(this.pc + this.toSigned(insnBytes[+x])),
+      direct: x => addrToSFR[bytes[+x]] ? 
+        addrToSFR[bytes[+x]].name : toHex2(bytes[+x]),
+      rela: x => toHex4(nextPC + this.toSigned(bytes[+x])),
     };
 
     const operands = ope.operands.split(/,/)
@@ -711,10 +639,9 @@ ${toHex4(this.pc)}: ${disassembly}  ${ope.name} ${operands}`;
 
 
   dumpState() {
-    console.log(`
-${this.disassemble(this.pc-1)}
-a=${toHex2(this.a)}  b=${toHex2(this.b)}  \
-sp=${toHex2(this.sp)}  psw=${toHex2(this.getPSW())}  dptr=${toHex4(this.dptr)}
+    console.log(`\
+ a=${toHex2(this.a)}   b=${toHex2(this.b)}  \
+sp=${toHex2(this.sp)} psw=${toHex2(this.getPSW())}  dptr=${toHex4(this.dptr)}
 ${_.range(0, 8)
   .map((v, rn) => `r${rn}=${toHex2(this.getR(rn))}`)
   .join('  ')
@@ -821,12 +748,12 @@ ${_.range(0, 8)
     case 0x52:                // ANL dir,A
       ira = this.pmem[this.pc++];
       a = this.getDirect(ira);
-      this.putDirect(this.a & a, ira);
+      this.putDirect(ira, this.a & a);
       break;
 
     case 0x53:                // ANL dir,#imm
       ira = this.pmem[this.pc++];
-      this.putDirect(this.a & this.getDirect(ira), ira);
+      this.putDirect(ira, this.a & this.getDirect(ira));
       break;
 
     case 0x54:                // ANL A,#imm
@@ -920,7 +847,7 @@ ${_.range(0, 8)
       ////////// CLR
     case 0xC2:                // CLR bit
       bit = this.xram[this.pc++];
-      this.putBit(0, bit);
+      this.putBit(bit, 0);
       break;
       
     case 0xC3:                // CLR C
@@ -935,7 +862,7 @@ ${_.range(0, 8)
       ////////// CPL
     case 0xB2:                // CPL bit
       bit = this.xram[this.pc++];
-      this.putBit(1 ^ this.getBit(bit), bit);
+      this.putBit(bit, 1 ^ this.getBit(bit));
       break;
       
     case 0xB3:                // CPL C
@@ -964,7 +891,7 @@ ${_.range(0, 8)
 
     case 0x15:                // DEC dir
       ira = this.pmem[this.pc++];
-      this.putDirect(this.getDirect(ira) - 1, ira);
+      this.putDirect(ira, this.getDirect(ira) - 1);
       break;
 
     case 0x16:                // DEC @R0
@@ -982,7 +909,7 @@ ${_.range(0, 8)
     case 0x1E:                // DEC Rn
     case 0x1F:                // DEC Rn
       r = op & 0x07;
-      this.putR(this.getR(r) - 1, r);
+      this.putR(r, this.getR(r) - 1);
       break;
 
 
@@ -1006,7 +933,7 @@ ${_.range(0, 8)
       a = this.getDirect(ira) - 1;
       rela = this.toSigned(this.pmem[this.pc++]);
       if (a !== 0) this.pc += rela;
-      this.putDirect(a, ira);
+      this.putDirect(ira, a);
       break;
 
     case 0xD8:                // DJNZ R0,rela
@@ -1021,7 +948,7 @@ ${_.range(0, 8)
       a = this.getR(r) - 1;
       rela = this.toSigned(this.pmem[this.pc++]);
       if (a !== 0) this.pc += rela;
-      this.putR(a, r);
+      this.putR(r, a);
       break;
 
 
@@ -1032,13 +959,13 @@ ${_.range(0, 8)
 
     case 0x05:                // INC dir
       ira = this.pmem[this.pc++];
-      this.putDirect(this.getDirect(ira) + 1, ira);
+      this.putDirect(ira, this.getDirect(ira) + 1);
       break;
 
     case 0x06:                // INC @R0
     case 0x07:                // INC @R1
       ira = this.getR(op & 1);
-      this.putIRAM(this.iram[ira] + 1, ira);
+      this.iram[this.iram[ira] + 1] = ira;
       break;
 
     case 0x08:                // INC R0
@@ -1050,7 +977,7 @@ ${_.range(0, 8)
     case 0x0E:                // INC R6
     case 0x0F:                // INC R7
       r = op & 0x07;
-      this.putR(this.getR(r) + 1, r);
+      this.putR(r, this.getR(r) + 1);
       break;
 
     case 0xA3:                // INC DPTR
@@ -1075,7 +1002,7 @@ ${_.range(0, 8)
 
       if (!b) {
         this.pc += rela;
-        this.putBit(0, bit);
+        this.putBit(bit, 0);
       }
 
       break;
@@ -1214,7 +1141,7 @@ ${_.range(0, 8)
     case 0x7F:                // MOV R7,#imm
       r = op & 0x07;
       a = this.pmem[this.pc++];
-      this.putR(a, r);
+      this.putR(r, a);
       break;
 
     case 0xF8:                // MOV R0,A
@@ -1226,7 +1153,7 @@ ${_.range(0, 8)
     case 0xFE:                // MOV R6,A
     case 0xFF:                // MOV R7,A
       r = op & 0x07;
-      this.putR(this.a, r);
+      this.putR(r, this.a);
       break;
 
     case 0xA8:                // MOV R0,dir
@@ -1239,18 +1166,18 @@ ${_.range(0, 8)
     case 0xAF:                // MOV R7,dir
       r = op & 0x07;
       ira = this.pmem[this.pc++];
-      this.putR(this.getDirect(ira), r);
+      this.putR(r, this.getDirect(ira));
       break;
 
     case 0x92:                // MOV bit,C
       bit = this.pmem[this.pc++];
-      this.putBit(this.c, bit);
+      this.putBit(bit, this.c);
       break;
 
     case 0x75:                // MOV dir,#imm
       ira = this.pmem[this.pc++];
       imm = this.pmem[this.pc++];
-      this.putDirect(imm, ira);
+      this.putDirect(ira, imm);
       break;
 
     case 0x86:                // MOV dir,@R0
@@ -1258,7 +1185,7 @@ ${_.range(0, 8)
       ira = this.getR(r);
       a = this.iram[ira];
       ira = this.pmem[this.pc++];
-      this.putDirect(a, ira);
+      this.putDirect(ira, a);
       break;
 
     case 0x88:                // MOV dir,R0
@@ -1272,19 +1199,19 @@ ${_.range(0, 8)
       r = op & 0x07;
       a = this.getR(r);
       ira = this.pmem[this.pc++];
-      this.putDirect(a, ira);
+      this.putDirect(ira, a);
       break;
 
     case 0xF5:                // MOV dir,A
       ira = this.pmem[this.pc++];
-      this.putDirect(this.a, ira);
+      this.putDirect(ira, this.a);
       break;
 
     case 0x85:                // MOV dir,dir
       ira = this.pmem[this.pc++];
       a = this.getDirect(ira);
       ira = this.pmem[this.pc++];
-      this.putDirect(a, ira);
+      this.putDirect(ira, a);
       break;
 
 
@@ -1340,12 +1267,12 @@ ${_.range(0, 8)
     case 0x42:                // ORL dir,A
       ira = this.pmem[this.pc++];
       a = this.getDirect(ira);
-      this.putDirect(this.a | a, ira);
+      this.putDirect(ira, this.a | a);
       break;
 
     case 0x43:                // ORL dir,#imm
       ira = this.pmem[this.pc++];
-      this.putDirect(this.a | this.getDirect(ira), ira);
+      this.putDirect(ira, this.a | this.getDirect(ira));
       break;
 
     case 0x44:                // ORL A,#imm
@@ -1393,7 +1320,7 @@ ${_.range(0, 8)
     case 0xD0:                // POP dir
       ira = this.pmem[this.pc++];
       a = this.getDirect(this.sp);
-      this.iram[ira] = a;
+      this.putDirect(ira, a);
       this.sp = (this.sp - 1) & 0xFF;
       break;
 
@@ -1463,7 +1390,7 @@ ${_.range(0, 8)
       ////////// SETB
     case 0xD2:                // SETB bit
       bit = this.xram[this.pc++];
-      this.putBit(1, bit);
+      this.putBit(bit, 1);
       break;
       
     case 0xD3:                // SETB C
@@ -1539,7 +1466,7 @@ ${_.range(0, 8)
     case 0xCF:                // XCH R7
       r = op & 0x07;
       a = this.getR(r);
-      this.putR(this.a, r);
+      this.putR(r, this.a);
       this.a = a;
       break;
 
@@ -1558,12 +1485,12 @@ ${_.range(0, 8)
     case 0x62:                // XRL dir,A
       ira = this.pmem[this.pc++];
       a = this.getDirect(ira);
-      this.putDirect(this.a ^ a, ira);
+      this.putDirect(ira, this.a ^ a);
       break;
 
     case 0x63:                // XRL dir,#imm
       ira = this.pmem[this.pc++];
-      this.putDirect(this.a ^ this.getDirect(ira), ira);
+      this.putDirect(ira, this.a ^ this.getDirect(ira));
       break;
 
     case 0x64:                // XRL A,#imm
@@ -1606,11 +1533,21 @@ Unimplmented opcode=0x${toHex2(op)} at 0x${toHex4(this.pc-1)}`);
 
 
 function toHex2(v) {
-  return (v | 0x100000).toString(16).slice(-2) + '';
+  return (v | 0x100000).toString(16).toUpperCase().slice(-2) + '';
 }
 
 function toHex4(v) {
   return `${toHex2(v >>> 8)}${toHex2(v & 0xFF)}`;
+}
+
+
+function getSFR(a) {
+  return cpu.sfrSpace[a];
+}
+
+
+function putSFR(a, v) {
+  cpu.sfrSpace[a] = v;
 }
 
 
@@ -1669,6 +1606,72 @@ try {
 }
 
 
+function getPSW(ra) {
+  cpu.updatePSW();
+  return cpu.psw;
+}
+
+
+function putPSW(ra, v) {
+  cpu.psw = v;
+}
+
+
+function getDPL(ra) {
+  return cpu.dptr & 0xFF;
+}
+
+
+function putDPL(ra, v) {
+  cpu.dptr = (cpu.dptr & ~0xFF) | v;
+}
+
+
+function getDPH(ra) {
+  return cpu.dptr >>> 8;
+}
+
+
+function putDPH(ra, v) {
+  cpu.dptr = (v << 8) | (cpu.dptr & 0xFF);
+}
+
+
+function getSBUF(ra) {
+
+  if (cpu.sbufQueue.length) {
+    return cpu.sbufQueue.shift();
+  } else {
+    return 0x00;
+  }
+}
+
+
+function putSBUF(ra, v) {
+  process.stdout.write(String.fromCharCode(v));
+}
+
+
+function getSCON(ra) {
+  return cpu.scon;
+}
+
+
+function putSCON(ra, v) {
+  cpu.scon = v;
+}
+
+
+function getP3(ra) {
+  cpu.p3 = cpu.p3 ^ 1;          // Fake RxD toggling
+  return cpu.p3;
+}
+
+
+function putP3(ra, v) {
+  cpu.p3 = v;
+}
+
 
 var lastX = 0;
 var lastL = 0;
@@ -1709,8 +1712,13 @@ const commands = [
   },
 
   {name: 'mem',
-   description: 'Display memory at specified address.',
+   description: 'Display external memory at specified address.',
    doFn: doMem,
+  },
+
+  {name: 'code',
+   description: 'Display code memory at specified address.',
+   doFn: doCode,
   },
 
   {name: 'sfr',
@@ -1814,9 +1822,8 @@ function displayableAddress(x) {
 }
 
 
-function doMem(words, physical) {
+function doMem(words) {
   let x;
-  let w;
 
   if (words.length < 2) {
     x = ++lastX;
@@ -1824,15 +1831,28 @@ function doMem(words, physical) {
     x = getAddress(words);
   }
 
-  w = cpu.fetchWord(x);
-
-  let addr = displayableAddress(x);
-  console.log(`${addr}: ${toHex4(w)}`);
+  const addr = displayableAddress(x);
+  console.log(`${addr}: ${toHex2(cpu.xram[x])}`);
   lastX = x;
 }
 
 
-function doSFR(words, physical) {
+function doCode(words) {
+  let x;
+
+  if (words.length < 2) {
+    x = ++lastX;
+  } else {
+    x = getAddress(words);
+  }
+
+  const addr = displayableAddress(x);
+  console.log(`${addr}: ${toHex2(cpu.pmem[x])}`);
+  lastX = x;
+}
+
+
+function doSFR(words) {
   let x;
   let w;
 
@@ -1850,7 +1870,7 @@ function doSFR(words, physical) {
 }
 
 
-function doIRAM(words, physical) {
+function doIRAM(words) {
   let x;
   let w;
 
