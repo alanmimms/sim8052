@@ -158,7 +158,7 @@ const opTable = [
   /* 8D */ {n: 2, name: "MOV", operands: "1:direct,R5"},
   /* 8E */ {n: 2, name: "MOV", operands: "1:direct,R6"},
   /* 8F */ {n: 2, name: "MOV", operands: "1:direct,R7"},
-  /* 90 */ {n: 3, name: "MOV", operands: "DPTR,1:addr16"},
+  /* 90 */ {n: 3, name: "MOV", operands: "DPTR,1:immed16"},
   /* 91 */ {n: 2, name: "ACALL", operands: "1:addr11"},
   /* 92 */ {n: 2, name: "MOV", operands: "1:bit,C"},
   /* 93 */ {n: 1, name: "MOVC", operands: "A,@A+DPTR"},
@@ -281,11 +281,11 @@ const SFRs = [
   {name: "P1", addr: 0x90},
   {name: "P2", addr: 0xA0},
   {name: "P3", addr: 0xB0, get: getP3, put: putP3},
-  {name: "IP", addr: 0xB8},
-  {name: "IE", addr: 0xA8},
-  {name: "TMOD", addr: 0x89},
-  {name: "TCON", addr: 0x88},
-  {name: "T2CON", addr: 0xC8},
+  {name: "IP", addr: 0xB8, bits: makeBits('. . pt2 ps pt1 px1 pt0 px0')},
+  {name: "IE", addr: 0xA8, bits: makeBits('ea . et2 es et1 ex1 et0 ex0')},
+  {name: "TMOD", addr: 0x89, bits: makeBits('gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0')},
+  {name: "TCON", addr: 0x88, bits: makeBits('tf1 tr1 tf0 tr0 ie1 it1 ie0 it0')},
+  {name: "T2CON", addr: 0xC8, bits: makeBits('tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2')},
   {name: "T2MOD", addr: 0xC9},
   {name: "TH0", addr: 0x8C},
   {name: "TL0", addr: 0x8A},
@@ -295,11 +295,12 @@ const SFRs = [
   {name: "TL2", addr: 0xCC},
   {name: "RCAP2H", addr: 0xCB},
   {name: "RCAP2L", addr: 0xCA},
-  {name: "PCON", addr: 0x87},
+  {name: "PCON", addr: 0x87, bits: makeBits('smod . . . gf1 gf0 pd idl')},
   {name: "PSW", addr: 0xD0, get: getPSW, put: putPSW},
   {name: "DPL", addr: 0x82, get: getDPL, put: putDPL},
   {name: "DPH", addr: 0x83, get: getDPH, put: putDPH},
-  {name: "SCON", addr: 0x98, get: getSCON, put: putSCON},
+  {name: "SCON", addr: 0x98, get: getSCON, put: putSCON, 
+   bits: makeBits('sm0 sm1 sm2 ren tb8 rb8 ti ri')},
   {name: "SBUF", addr: 0x99, get: getSBUF, put: putSBUF},
 ];
 
@@ -311,7 +312,8 @@ SFRs.forEach(sfr => {
   if (!sfr.put) sfr.put = (ra, v) => cpu[fieldName] = v;
 });
 
-const nameToSFR = SFRs.reduce((obj, entry) => obj[entry.name] = obj, {});
+// Make it easy to reference SFR info by name like SFR.scon.bits.
+const SFR = SFRs.reduce((obj, entry) => obj[entry.name] = obj, {});
 
 // Build table of SFRs indexed by address.
 const addrToSFR = new Array(0x100);
@@ -325,13 +327,6 @@ _.range(0x80, 0x100)
     addrToSFR[addr] = {name, addr, get: getSFR, put: putSFR};
   });
 
-
-const pconBits = makeBits('smod . . . gf1 gf0 pd idl');
-const sconBits = makeBits('sm0 sm1 sm2 ren tb8 rb8 ti ri');
-const tconBits = makeBits('tf1 tr1 tf0 tr0 ie1 it1 ie0 it0');
-const tmodBits = makeBits('gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0');
-const ieBits = makeBits('ea . et2 es et1 ex1 et0 ex0');
-const ipBits = makeBits('. . pt2 ps pt1 px1 pt0 px0');
 
 const parity = [
   0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
@@ -616,6 +611,7 @@ const cpu = {
     const handlers = {
       bit: x => this.bitName(bytes[+x]),
       immed: x => '#' + toHex2(bytes[+x]),
+      immed16: x => '#' + toHex4(bytes[+x] << 8 | bytes[+x + 1]),
       addr16: x => toHex4(bytes[+x] << 8 | bytes[+x + 1]),
       addr11: x => toHex4((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[x]),
       verbatum: x => x,
@@ -1125,7 +1121,7 @@ ${_.range(0, 8)
       this.c = this.getBit(bit);
       break;
 
-    case 0x90:                // MOV DPTR,#imm16
+    case 0x90:                // MOV DPTR,#immed16
       a = this.pmem[this.pc++];
       b = this.pmem[this.pc++];
       this.dptr = a | (b << 8);
@@ -1649,6 +1645,11 @@ function getSBUF(ra) {
 
 function putSBUF(ra, v) {
   process.stdout.write(String.fromCharCode(v));
+
+  // Transmitting a character immediately signals TI
+  cpu.scon = cpu.scon | SFR.scon.bits.tiMask;
+
+  // TODO: Make this do an interrupt
 }
 
 
@@ -2125,22 +2126,38 @@ function startCLI() {
 }
 
 
+function sbufRx(c) {
+
+  // Ignore characters if receiver is not enabled
+  if ((cpu.scon & SFR.scon.bits.renMask) === 0) return;
+
+  cpu.sbufQueue.push(c);
+
+  // Character arrival indicated via SCON.RI
+  cpu.scon = cpu.scon | SFR.scon.bits.riMask;
+
+  // TODO: Make this do RI interrupt
+}
+
+
 function sbufKeypressHandler(ch, key) {
 
   if (ch != null) {
     let c = ch.charCodeAt(0);
 
     // Stop with C-\ keypress
-    if (c === 0x1c) cpu.running = false;
-
-    cpu.sbufQueue.push(c);
+    if (c === 0x1c) {
+      cpu.running = false;
+    } else {
+      sbufRx(c);
+    }
   } else if (key.sequence) {
 
     // Tail-recursively send key inputs for each character in the sequence.
     function spoolOutKeySequence(seq) {
       let c = seq.charCodeAt(0);
 
-      cpu.sbufQueue.push(c);
+      sbufRx(c);
 
       if (seq.length > 1) {
 	seq = seq.slice(1);
