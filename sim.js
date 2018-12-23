@@ -312,8 +312,8 @@ SFRs.forEach(sfr => {
   if (!sfr.put) sfr.put = (ra, v) => cpu[fieldName] = v;
 });
 
-// Make it easy to reference SFR info by name like SFR.scon.bits.
-const SFR = SFRs.reduce((obj, entry) => obj[entry.name] = obj, {});
+// Make it easy to reference SFR info by name like SFR.SCON.bits.
+const SFR = SFRs.reduce((obj, entry) => (obj[entry.name] = entry, obj), {});
 
 // Build table of SFRs indexed by address.
 const addrToSFR = new Array(0x100);
@@ -492,68 +492,11 @@ const cpu = {
 
     if (bn < 0x30) {
       const ba = 0x20 + (bn >> 3);
-      return (this.iram[ba] & bm) ? 1 : 0;
-    } 
-
-    const sfrNum = bn & 0xF8;
-    const bbn = bn & 0x07;
-
-    switch (sfrNum) {
-    case 0x98:                  // SCON0
-
-      switch (bbn) {
-      case 0:
-        return this.sbufQueue.length > 0 ? 1 : 0;
-
-      case 1:
-        this.tiState = this.tiState ^ 1;
-        return this.tiState;
-
-      default:
-        return 0;
-      }
-      
-    case 0xb0:                  // RXD
-      return 0;
-      
-    case 0xE0:                  // A
-      return (this.a >> bbn) & 1;
-
-    case 0xF0:                  // B
-      return (this.b >> bbn) & 1;
-
-    case 0xD0:                  // PSW
-      this.updatePSW();
-      return (this.psw >> bbn) & 1;
-
-    case 0x81:                  // SP
-    case 0x82:                  // DPL
-    case 0x83:                  // DPH
-    case 0x80:                  // P0
-    case 0x90:                  // P1
-    case 0xA0:                  // P2
-    case 0xB0:                  // P3
-    case 0xB8:                  // IP
-    case 0xA8:                  // IE
-    case 0x89:                  // TMOD
-    case 0x88:                  // TCON
-    case 0xC8:                  // T2CON
-    case 0xC9:                  // T2MOD
-    case 0x8C:                  // TH0
-    case 0x8D:                  // TL0
-    case 0x8B:                  // TH1
-    case 0x8B:                  // TL1
-    case 0xCD:                  // TH2
-    case 0xCC:                  // TL2
-    case 0xCB:                  // RCAP2H
-    case 0xCA:                  // TCAP2L
-    case 0x98:                  // SCON
-    case 0x87:                  // PCON
-      break;
-
-    default:
-      const ba = bn & 0xF8;
-      return (this.iram[ba] & bm) ? 1 : 0;
+      const v = this.iram[ba];
+      return (v & bm) ? 1 : 0;
+    }  else {
+      const v = this.getDirect(bn & 0xF8);
+      return (v & bm) ? 1 : 0;
     }
   },
 
@@ -573,8 +516,8 @@ const cpu = {
 
       this.iram[ba] = v;
     } else {
-      const ba = bn & 0xF8;
-      let v = this.getDirect(ba);
+      const ra = bn & 0xF8;
+      let v = this.getDirect(ra);
 
       if (b) {
         v = v | bm;
@@ -582,7 +525,7 @@ const cpu = {
         v = v & ~bm;
       }
 
-      this.putDirect(ba, v);
+      this.putDirect(ra, v);
     }
   },
 
@@ -996,7 +939,7 @@ ${_.range(0, 8)
       b = this.getBit(bit);
       rela = this.toSigned(this.pmem[this.pc++]);
 
-      if (!b) {
+      if (b) {
         this.pc += rela;
         this.putBit(bit, 0);
       }
@@ -1647,7 +1590,7 @@ function putSBUF(ra, v) {
   process.stdout.write(String.fromCharCode(v));
 
   // Transmitting a character immediately signals TI
-  cpu.scon = cpu.scon | SFR.scon.bits.tiMask;
+  cpu.scon = cpu.scon | SFR.SCON.bits.tiMask;
 
   // TODO: Make this do an interrupt
 }
@@ -1664,8 +1607,9 @@ function putSCON(ra, v) {
 
 
 function getP3(ra) {
+  const a = cpu.p3;
   cpu.p3 = cpu.p3 ^ 1;          // Fake RxD toggling
-  return cpu.p3;
+  return a;
 }
 
 
@@ -2129,12 +2073,12 @@ function startCLI() {
 function sbufRx(c) {
 
   // Ignore characters if receiver is not enabled
-  if ((cpu.scon & SFR.scon.bits.renMask) === 0) return;
+  if ((cpu.scon & SFR.SCON.bits.renMask) === 0) return;
 
   cpu.sbufQueue.push(c);
 
   // Character arrival indicated via SCON.RI
-  cpu.scon = cpu.scon | SFR.scon.bits.riMask;
+  cpu.scon = cpu.scon | SFR.SCON.bits.riMask;
 
   // TODO: Make this do RI interrupt
 }
