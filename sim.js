@@ -320,7 +320,7 @@ const addrToSFR = new Array(0x100);
 SFRs.forEach(sfr => addrToSFR[+sfr.addr] = sfr);
 
 // Fill entries for which a named SFR isn't defined.
-_.range(0x80, 0x100)
+_.range(0x00, 0x100)
   .filter(addr => !addrToSFR[addr])
   .forEach(addr => {
     const name = toHex2(addr);
@@ -329,14 +329,14 @@ _.range(0x80, 0x100)
 
 
 const parity = [
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
   1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
   0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
   0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
   1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
+  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
+  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
+  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
+  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
 ];
 
 
@@ -392,11 +392,14 @@ const cpu = {
   instructionsExecuted: 0,
   executionTime: 0,
 
-  debugFlags: [],
+  debugFlags: `debugSCON debugDirect`.split(/\s+/),
+
+  debugSCON: false,
+  debugDirect: false,
 
 
   updatePSW() {
-    this.p = 1 ^ parity[this.a];
+    this.p = parity[this.a];
     this.psw = 
       this.p | this.ud << 1 |
       this.ov << 2 | this.rs0 << 3 |
@@ -466,10 +469,6 @@ const cpu = {
   },
 
 
-  // Return SCON TI bit as if it were toggling.
-  tiState: 0,
-
-
   getDirect(ra) {
     if (ra < 0x80)
       return this.iram[ra];
@@ -484,6 +483,8 @@ const cpu = {
       this.iram[ra] = v & 0xFF;
     else
       addrToSFR[ra].put(ra, v & 0xFF);
+
+    if (cpu.debugDirect) console.log(`${addrToSFR[ra].name} is now ${toHex2(v)}`);
   },
 
 
@@ -497,7 +498,7 @@ const cpu = {
 
   putBit(bn, b) {
     const bm = 1 << (bn & 0x07);
-    const ra = bn < 0x30 ? 0x20 + (bn >> 3) : bn & 0xF8;
+    const ra = bn < 0x80 ? 0x20 + (bn >> 3) : bn & 0xF8;
     let v = this.getDirect(ra);
 
     if (b) {
@@ -570,20 +571,9 @@ ${_.range(0, 8)
 
   run1(pc) {
     this.pc = pc;
-
-    let rela;
-    let ira;
-    let imm;
-    let bit;
-    let b2;
-    let a;
-    let b;
-    let c;
-    let r;
-
     const op = this.pmem[this.pc++];
-
     ++this.instructionsExecuted;
+    let rela, ira, imm, bit, a, b, c, r;
 
     switch (op) {
 
@@ -601,9 +591,9 @@ ${_.range(0, 8)
     case 0xB1:                // ACALL page5
     case 0xD1:                // ACALL page6
     case 0xF1:                // ACALL page7
-      b2 = this.pmem[this.pc++];
+      b = this.pmem[this.pc++];
       this.push2(this.pc);
-      this.pc = (this.pc & 0xF800) | ((op & 0xE0) << 3) | b2;
+      this.pc = (this.pc & 0xF800) | ((op & 0xE0) << 3) | b;
       break;
 
 
@@ -658,8 +648,8 @@ ${_.range(0, 8)
     case 0xA1:                // AJMP page5
     case 0xC1:                // AJMP page6
     case 0xE1:                // AJMP page7
-      b2 = this.pmem[this.pc++];
-      this.pc = (this.pc & 0xF800) | ((op & 0xE0) << 3) | b2;
+      b = this.pmem[this.pc++];
+      this.pc = (this.pc & 0xF800) | ((op & 0xE0) << 3) | b;
       break;
 
 
@@ -765,7 +755,7 @@ ${_.range(0, 8)
 
       ////////// CLR
     case 0xC2:                // CLR bit
-      bit = this.xram[this.pc++];
+      bit = this.pmem[this.pc++];
       this.putBit(bit, 0);
       break;
       
@@ -780,7 +770,7 @@ ${_.range(0, 8)
 
       ////////// CPL
     case 0xB2:                // CPL bit
-      bit = this.xram[this.pc++];
+      bit = this.pmem[this.pc++];
       this.putBit(bit, 1 ^ this.getBit(bit));
       break;
       
@@ -907,19 +897,17 @@ ${_.range(0, 8)
       ////////// JB
     case 0x20:                // JB bit,rela
       bit = this.pmem[this.pc++];
-      b = this.getBit(bit);
       rela = this.toSigned(this.pmem[this.pc++]);
-      if (b) this.pc += rela;
+      if (this.getBit(bit)) this.pc += rela;
       break;
 
 
       ////////// JBC
     case 0x10:                // JBC bit,rela
       bit = this.pmem[this.pc++];
-      b = this.getBit(bit);
       rela = this.toSigned(this.pmem[this.pc++]);
 
-      if (b) {
+      if (this.getBit(bit)) {
         this.pc += rela;
         this.putBit(bit, 0);
       }
@@ -943,9 +931,8 @@ ${_.range(0, 8)
       ////////// JNB
     case 0x30:                // JNB bit,rela
       bit = this.pmem[this.pc++];
-      b = this.getBit(bit);
       rela = this.toSigned(this.pmem[this.pc++]);
-      if (!b) this.pc += rela;
+      if (!this.getBit(bit)) this.pc += rela;
       break;
 
 
@@ -1308,7 +1295,7 @@ ${_.range(0, 8)
 
       ////////// SETB
     case 0xD2:                // SETB bit
-      bit = this.xram[this.pc++];
+      bit = this.pmem[this.pc++];
       this.putBit(bit, 1);
       break;
       
@@ -1474,11 +1461,10 @@ function putSFR(a, v) {
 // xMask values for each bit. The string is a space separated list of
 // fields left to right where the leftmost is bit #7 and rightmost is
 // bit #0 and '.' is used for a reserved bit.
-function makeBits(s) {
+function makeBits(bitDescriptiorString) {
   const o = {};
-  const names = s.split(/\s+/);
 
-  names
+  bitDescriptiorString.split(/\s+/)
     .reverse()
     .map((name, index) => {
 
@@ -1496,10 +1482,10 @@ try {
   test_makeBits;
 
   const s1 = 'a7 b6 c5 d4 e3 f2 g1 h0';
-  console.log(`makeBits("${s1}")=`, makeBits(s1));
+  console.log(`makeBits("${s1}") =`, makeBits(s1));
 
   const s2 = 'a7 b6 . d4 . f2 . h0';
-  console.log(`makeBits("${s2}")=`, makeBits(s2));
+  console.log(`makeBits("${s2}") =`, makeBits(s2));
 } catch(e) {
 }
 
@@ -1510,7 +1496,7 @@ try {
   let s = '';
 
   for (let k = 0; k <= 0xFF; ++k) {
-    let p = 0;
+    let p = 1;
 
     for (let bn = 7; bn >= 0; --bn) {
       p = p ^ ((k >>> bn) & 1);
@@ -1571,6 +1557,7 @@ function putSBUF(ra, v) {
 
   // Transmitting a character immediately signals TI
   cpu.scon = cpu.scon | SFR.SCON.bits.tiMask;
+  if (cpu.debugSCON) console.log(`putSBUF SCON now=${toHex2(cpu.scon)}`);
 
   // TODO: Make this do an interrupt
 }
@@ -1583,6 +1570,7 @@ function getSCON(ra) {
 
 function putSCON(ra, v) {
   cpu.scon = v;
+  if (cpu.debugSCON) console.log(`putSCON SCON now=${toHex2(cpu.scon)}`);
 }
 
 
@@ -1834,16 +1822,16 @@ function doList(words) {
 function doDebug(words) {
 
   if (words.length === 1) {
-    const maxWidth = cpu.debugFlags.map(f => f.name)
+    const maxWidth = cpu.debugFlags
       .reduce((prev, cur) => cur.length > prev ? cur.length : prev, 0);
     console.log("\nCurrent debug flags and their values:\n");
     cpu.debugFlags.forEach(f => {
-      console.log(`  ${_.padStart(f.name, maxWidth)}: ${f.get()}`);
+      console.log(`  ${_.padStart(f, maxWidth)}: ${cpu[f]}`);
     });
     console.log("");
   } else {
     const flc = words[1].toLowerCase();
-    let f = cpu.debugFlags.find(f => f.name.toLowerCase() === flc);
+    let f = cpu.debugFlags.find(f => f.toLowerCase() === flc);
 
     if (!f) {
       console.log(`Unknown debug flag '${flc}'.`);
@@ -1851,12 +1839,12 @@ function doDebug(words) {
     } else {
 
       if (words.length < 3)
-	f.set(!f.get());	// Toggle if not specified
+	cpu[f] = !cpu[f];	// Toggle if not specified
       else
-	f.set(!!words[2]);
+        cpu[f] = !!words[2];
     }
 
-    console.log(`${f.name} is now ${f.get()}.`);
+    console.log(`${f} is now ${cpu[f]}.`);
   }
 }
 
@@ -1891,9 +1879,9 @@ function doStep(words) {
 
 
 function doOver(words) {
-  stopReasons[cpu.pc + 1] = '1';
-  stopReasons[cpu.pc + 2] = '2';
-  stopReasons[cpu.pc + 3] = '3';
+  stopReasons[cpu.pc + 1] = 'skipped 1';
+  stopReasons[cpu.pc + 2] = 'skipped 2';
+  stopReasons[cpu.pc + 3] = 'skipped 3';
   startOfLastStep = cpu.instructionsExecuted;
   run(cpu.pc);
 }
@@ -2059,6 +2047,7 @@ function sbufRx(c) {
 
   // Character arrival indicated via SCON.RI
   cpu.scon = cpu.scon | SFR.SCON.bits.riMask;
+  if (cpu.debugSCON) console.log(`sbufRx SCON now=${toHex2(cpu.scon)}`);
 
   // TODO: Make this do RI interrupt
 }
