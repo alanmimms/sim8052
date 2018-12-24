@@ -273,14 +273,15 @@ const opTable = [
 ];
 
 
+// TODO: Normalize sfrSpace, get/put, and cpu.xxx register relationship
 const SFRs = [
-  {name: "ACC", addr: 0xE0, get(ra) {return cpu.a}, put(ra, v) {cpu.a = v}},
-  {name: "B", addr: 0xF0},
-  {name: "SP", addr: 0x81},
-  {name: "P0", addr: 0x80},
-  {name: "P1", addr: 0x90},
-  {name: "P2", addr: 0xA0},
-  {name: "P3", addr: 0xB0, get: getP3, put: putP3},
+  {name: "ACC", addr: 0xE0, get(ra) {return cpu.a }, put(ra, v) {cpu.a  = v}},
+  {name: "B",  addr: 0xF0,  get(ra) {return cpu.b }, put(ra, v) {cpu.b  = v}},
+  {name: "SP", addr: 0x81,  get(ra) {return cpu.sp}, put(ra, v) {cpu.sp = v}},
+  {name: "P0", addr: 0x80,  get(ra) {return cpu.p0}, put(ra, v) {cpu.p0 = v}},
+  {name: "P1", addr: 0x90,  get(ra) {return cpu.p1}, put(ra, v) {cpu.p1 = v}},
+  {name: "P2", addr: 0xA0,  get(ra) {return cpu.p2}, put(ra, v) {cpu.p2 = v}},
+  {name: "P3", addr: 0xB0,  get: getP3, put: putP3},
   {name: "IP", addr: 0xB8, bits: makeBits('. . pt2 ps pt1 px1 pt0 px0')},
   {name: "IE", addr: 0xA8, bits: makeBits('ea . et2 es et1 ex1 et0 ex0')},
   {name: "TMOD", addr: 0x89, bits: makeBits('gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0')},
@@ -364,12 +365,6 @@ const cpu = {
 
   pcon: 0,
   scon: 0,
-  tcon: 0,
-  tmod: 0,
-  ie: 0,
-  ip: 0,
-  t0: 0,
-  t1: 0,
 
   iram: Buffer.alloc(0x100, 0x00, 'binary'),
   sfrSpace: Buffer.alloc(0x100, 0x00, 'binary'),
@@ -398,6 +393,11 @@ const cpu = {
   debugDirect: false,
 
 
+  fetch() {
+    return this.pmem[this.pc++];
+  },
+
+
   updatePSW() {
     this.p = parity[this.a];
     this.psw = 
@@ -419,9 +419,17 @@ const cpu = {
     this.iram[++this.sp] = v;
   },
 
+
   push2(v) {
     this.push1(v & 0xFF);
     this.push1(v >>> 8);
+  },
+
+
+  pop() {
+    const a = this.getDirect(this.sp);
+    this.sp = (this.sp - 1) & 0xFF;
+    return a;
   },
 
 
@@ -554,7 +562,7 @@ const cpu = {
             .join(',');
 
     return `\
-${toHex4(this.pc)}: ${disassembly}  ${ope.name} ${operands}`;
+${toHex4(pc)}: ${disassembly}  ${ope.name} ${operands}`;
   },
 
 
@@ -571,7 +579,7 @@ ${_.range(0, 8)
 
   run1(pc) {
     this.pc = pc;
-    const op = this.pmem[this.pc++];
+    const op = this.fetch();
     ++this.instructionsExecuted;
     let rela, ira, imm, bit, a, b, c, r;
 
@@ -591,7 +599,7 @@ ${_.range(0, 8)
     case 0xB1:                // ACALL page5
     case 0xD1:                // ACALL page6
     case 0xF1:                // ACALL page7
-      b = this.pmem[this.pc++];
+      b = this.fetch();
       this.push2(this.pc);
       this.pc = (this.pc & 0xF800) | ((op & 0xE0) << 3) | b;
       break;
@@ -600,13 +608,13 @@ ${_.range(0, 8)
       ////////// ADD/ADDC
     case 0x24:                // ADD A,#imm
     case 0x34:                // ADDC A,#imm
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       this.doADD(op, imm);
       break;
 
     case 0x25:                // ADD A,dir
     case 0x35:                // ADDC A,dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.doADD(op, this.getDirect(ira));
       break;
 
@@ -648,30 +656,30 @@ ${_.range(0, 8)
     case 0xA1:                // AJMP page5
     case 0xC1:                // AJMP page6
     case 0xE1:                // AJMP page7
-      b = this.pmem[this.pc++];
+      b = this.fetch();
       this.pc = (this.pc & 0xF800) | ((op & 0xE0) << 3) | b;
       break;
 
 
       ////////// ANL
     case 0x52:                // ANL dir,A
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       a = this.getDirect(ira);
       this.putDirect(ira, this.a & a);
       break;
 
     case 0x53:                // ANL dir,#imm
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, this.a & this.getDirect(ira));
       break;
 
     case 0x54:                // ANL A,#imm
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       this.a = this.a & imm;
       break;
 
     case 0x55:                // ANL A,dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.a = this.a & this.getDirect(ira);
       break;
 
@@ -694,13 +702,13 @@ ${_.range(0, 8)
       break;
 
     case 0x82:                // ANL C,bit
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       b = this.getBit(bit);
       this.c = this.c & b;
       break;
 
     case 0xB0:                // ANL C,/bit
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       b = this.getBit(bit);
       this.c = this.c & (1 ^ b);
       break;
@@ -709,18 +717,18 @@ ${_.range(0, 8)
       ////////// CJNE
     case 0xB4:                // CJNE A,#imm,rela
       a = this.a;
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       b = imm;
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
       this.c = a < b ? 1 : 0;
       break;
 
     case 0xB5:                // CJNE A,dir,rela
       a = this.a;
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       b = this.getDirect(ira);
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
       this.c = a < b ? 1 : 0;
       break;
@@ -729,9 +737,9 @@ ${_.range(0, 8)
     case 0xB7:                // CJNE @R1,#imm,rela
       r = op & 1;
       a = this.iram[this.getR(r)];
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       b = imm;
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
       this.c = a < b ? 1 : 0;
       break;
@@ -746,16 +754,16 @@ ${_.range(0, 8)
     case 0xBF:                // CJNE R7,#imm,rela
       r = op & 0x07;
       a = this.getR(r);
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       b = imm;
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
       this.c = a < b ? 1 : 0;
       break;
 
       ////////// CLR
     case 0xC2:                // CLR bit
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       this.putBit(bit, 0);
       break;
       
@@ -770,7 +778,7 @@ ${_.range(0, 8)
 
       ////////// CPL
     case 0xB2:                // CPL bit
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       this.putBit(bit, 1 ^ this.getBit(bit));
       break;
       
@@ -799,7 +807,7 @@ ${_.range(0, 8)
       break;
 
     case 0x15:                // DEC dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, this.getDirect(ira) - 1);
       break;
 
@@ -838,9 +846,9 @@ ${_.range(0, 8)
 
       ////////// DJNZ
     case 0xD5:                // DJNZ dir,rela
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       a = this.getDirect(ira) - 1;
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (a !== 0) this.pc += rela;
       this.putDirect(ira, a);
       break;
@@ -855,7 +863,7 @@ ${_.range(0, 8)
     case 0xDF:                // DJNZ R7,rela
       r = op & 0x07;
       a = this.getR(r) - 1;
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (a !== 0) this.pc += rela;
       this.putR(r, a);
       break;
@@ -867,7 +875,7 @@ ${_.range(0, 8)
       break;
 
     case 0x05:                // INC dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, this.getDirect(ira) + 1);
       break;
 
@@ -896,16 +904,16 @@ ${_.range(0, 8)
 
       ////////// JB
     case 0x20:                // JB bit,rela
-      bit = this.pmem[this.pc++];
-      rela = this.toSigned(this.pmem[this.pc++]);
+      bit = this.fetch();
+      rela = this.toSigned(this.fetch());
       if (this.getBit(bit)) this.pc += rela;
       break;
 
 
       ////////// JBC
     case 0x10:                // JBC bit,rela
-      bit = this.pmem[this.pc++];
-      rela = this.toSigned(this.pmem[this.pc++]);
+      bit = this.fetch();
+      rela = this.toSigned(this.fetch());
 
       if (this.getBit(bit)) {
         this.pc += rela;
@@ -917,7 +925,7 @@ ${_.range(0, 8)
 
       ////////// JC
     case 0x40:                // JC rela
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (this.c) this.pc += rela;
       break;
 
@@ -930,37 +938,37 @@ ${_.range(0, 8)
 
       ////////// JNB
     case 0x30:                // JNB bit,rela
-      bit = this.pmem[this.pc++];
-      rela = this.toSigned(this.pmem[this.pc++]);
+      bit = this.fetch();
+      rela = this.toSigned(this.fetch());
       if (!this.getBit(bit)) this.pc += rela;
       break;
 
 
       ////////// JNC
     case 0x50:                // JNC rela
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (!this.c) this.pc += rela;
       break;
 
 
       ////////// JNZ
     case 0x70:                // JNZ rela
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (this.a !== 0) this.pc += rela;
       break;
 
 
       ////////// JZ
     case 0x60:                // JZ rela
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       if (this.a === 0) this.pc += rela;
       break;
 
 
       ////////// LCALL
     case 0x12:                // LCALL addr16
-      a = this.pmem[this.pc++];
-      b = this.pmem[this.pc++];
+      a = this.fetch();
+      b = this.fetch();
       this.push2(this.pc);
       this.pc = (a << 8) | b;
       break;
@@ -968,8 +976,8 @@ ${_.range(0, 8)
 
       ////////// LJMP
     case 0x02:                // LJMP addr16
-      a = this.pmem[this.pc++];
-      b = this.pmem[this.pc++];
+      a = this.fetch();
+      b = this.fetch();
       this.pc = (a << 8) | b;
       break;
 
@@ -977,7 +985,7 @@ ${_.range(0, 8)
       ////////// MOV
     case 0x76:                // MOV @R0,#imm
     case 0x77:                // MOV @R1,#imm
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       r = op & 1;
       ira = this.getR(r);
       this.iram[ira] = imm;
@@ -992,7 +1000,7 @@ ${_.range(0, 8)
 
     case 0xA6:                // MOV @R0,dir
     case 0xA7:                // MOV @R1,dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       a = this.getDirect(ira);
       r = op & 1;
       ira = this.getR(r);
@@ -1000,7 +1008,7 @@ ${_.range(0, 8)
       break;
 
     case 0x74:                // MOV A,#imm
-      this.a = this.pmem[this.pc++];
+      this.a = this.fetch();
       break;
 
     case 0xE6:                // MOV A,@R0
@@ -1022,18 +1030,18 @@ ${_.range(0, 8)
       break;
 
     case 0xE5:                // MOV A,dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.a = this.getDirect(ira);
       break;
 
     case 0xA2:                // MOV C,bit
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       this.c = this.getBit(bit);
       break;
 
     case 0x90:                // MOV DPTR,#immed16
-      a = this.pmem[this.pc++];
-      b = this.pmem[this.pc++];
+      a = this.fetch();
+      b = this.fetch();
       this.dptr = a | (b << 8);
       break;
 
@@ -1046,7 +1054,7 @@ ${_.range(0, 8)
     case 0x7E:                // MOV R6,#imm
     case 0x7F:                // MOV R7,#imm
       r = op & 0x07;
-      a = this.pmem[this.pc++];
+      a = this.fetch();
       this.putR(r, a);
       break;
 
@@ -1071,18 +1079,18 @@ ${_.range(0, 8)
     case 0xAE:                // MOV R6,dir
     case 0xAF:                // MOV R7,dir
       r = op & 0x07;
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putR(r, this.getDirect(ira));
       break;
 
     case 0x92:                // MOV bit,C
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       this.putBit(bit, this.c);
       break;
 
     case 0x75:                // MOV dir,#imm
-      ira = this.pmem[this.pc++];
-      imm = this.pmem[this.pc++];
+      ira = this.fetch();
+      imm = this.fetch();
       this.putDirect(ira, imm);
       break;
 
@@ -1090,7 +1098,7 @@ ${_.range(0, 8)
     case 0x87:                // MOV dir,@R1
       ira = this.getR(r);
       a = this.iram[ira];
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, a);
       break;
 
@@ -1104,19 +1112,19 @@ ${_.range(0, 8)
     case 0x8F:                // MOV dir,R7
       r = op & 0x07;
       a = this.getR(r);
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, a);
       break;
 
     case 0xF5:                // MOV dir,A
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, this.a);
       break;
 
     case 0x85:                // MOV dir,dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       a = this.getDirect(ira);
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, a);
       break;
 
@@ -1171,23 +1179,23 @@ ${_.range(0, 8)
 
       ////////// ORL
     case 0x42:                // ORL dir,A
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       a = this.getDirect(ira);
       this.putDirect(ira, this.a | a);
       break;
 
     case 0x43:                // ORL dir,#imm
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, this.a | this.getDirect(ira));
       break;
 
     case 0x44:                // ORL A,#imm
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       this.a = this.a | imm;
       break;
 
     case 0x45:                // ORL A,dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.a = this.a | this.getDirect(ira);
       break;
 
@@ -1210,13 +1218,13 @@ ${_.range(0, 8)
       break;
 
     case 0x72:                // ORL C,bit
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       b = this.getBit(bit);
       this.c = this.c | b;
       break;
 
     case 0xA0:                // ORL C,/bit
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       b = 1 ^ this.getBit(bit);
       this.c = this.c | b;
       break;
@@ -1224,38 +1232,32 @@ ${_.range(0, 8)
 
       ////////// POP
     case 0xD0:                // POP dir
-      ira = this.pmem[this.pc++];
-      a = this.getDirect(this.sp);
+      ira = this.fetch();
+      a = this.pop();
       this.putDirect(ira, a);
-      this.sp = (this.sp - 1) & 0xFF;
       break;
 
 
       ////////// PUSH
     case 0xC0:                // PUSH dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       a = this.getDirect(ira);
-      this.sp = (this.sp + 1) & 0xFF;
-      this.iram[this.sp] = a;
+      this.push1(a);
       break;
 
 
       ////////// RET
     case 0x22:                // RET
-      a = this.iram[this.sp];
-      this.sp = (this.sp - 1) & 0xFF;
-      b = this.iram[this.sp];
-      this.sp = (this.sp - 1) & 0xFF;
+      a = this.pop();
+      b = this.pop();
       this.pc = (a << 8) | b;
       break;
 
 
       ////////// IRET
     case 0x32:                // IRET
-      a = this.iram[this.sp];
-      this.sp = (this.sp - 1) & 0xFF;
-      b = this.iram[this.sp];
-      this.sp = (this.sp - 1) & 0xFF;
+      a = this.pop();
+      b = this.pop();
       this.pc = (a << 8) | b;
       this.ipl = this.ipl - 1;
       if (this.ipl < -1) this.ipl = -1;
@@ -1295,7 +1297,7 @@ ${_.range(0, 8)
 
       ////////// SETB
     case 0xD2:                // SETB bit
-      bit = this.pmem[this.pc++];
+      bit = this.fetch();
       this.putBit(bit, 1);
       break;
       
@@ -1306,19 +1308,19 @@ ${_.range(0, 8)
 
       ////////// SJMP
     case 0x80:                // SJMP rela
-      rela = this.toSigned(this.pmem[this.pc++]);
+      rela = this.toSigned(this.fetch());
       this.pc = this.pc + rela;
       break;
 
 
       ////////// SUB/SUBB
     case 0x94:                // SUBB A,#imm
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       this.doSUBB(op, imm);
       break;
 
     case 0x95:                // SUBB A,dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.doSUBB(op, this.getDirect(ira));
       break;
 
@@ -1389,23 +1391,23 @@ ${_.range(0, 8)
 
       ////////// XRL
     case 0x62:                // XRL dir,A
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       a = this.getDirect(ira);
       this.putDirect(ira, this.a ^ a);
       break;
 
     case 0x63:                // XRL dir,#imm
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.putDirect(ira, this.a ^ this.getDirect(ira));
       break;
 
     case 0x64:                // XRL A,#imm
-      imm = this.pmem[this.pc++];
+      imm = this.fetch();
       this.a = this.a ^ imm;
       break;
 
     case 0x65:                // XRL A,dir
-      ira = this.pmem[this.pc++];
+      ira = this.fetch();
       this.a = this.a ^ this.getDirect(ira);
       break;
 
@@ -1803,18 +1805,16 @@ function doIRAM(words) {
 
 function doList(words) {
   let x;
-  let w;
 
   if (words.length < 2) {
-    x = ++lastX;
+    const op = cpu.pmem[lastX];
+    const ope = opTable[op];
+    x = lastX + ope.n;
   } else {
     x = getAddress(words);
   }
 
-  w = cpu.pmem[x];
-
-  let addr = displayableAddress(x);
-  console.log(`${cpu.disassemble(addr)}`);
+  console.log(`${cpu.disassemble(x)}`);
   lastX = x;
 }
 
@@ -1970,11 +1970,7 @@ function doHelp(words) {
 
 
 function getAddress(words) {
-
-  if (words.length < 2) {
-    console.log(`PC=${toHex4(cpu.pc)}`);
-    return cpu.pc;
-  }
+  if (words.length < 2) return cpu.pc;
 
   switch (words[1]) {
   case 'pc':
