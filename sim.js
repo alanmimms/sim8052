@@ -6,7 +6,6 @@
 const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
-const keypress = require('keypress');
 const readline = require('readline');
 
 const insnsPerTick = 100;
@@ -1589,7 +1588,6 @@ function putP3(ra, v) {
 
 
 var lastX = 0;
-var lastL = 0;
 var lastLine = "";
 
 const historyMax = 1000;
@@ -1724,14 +1722,6 @@ function handleLine(line) {
 }
 
 
-function flagsToString() {
-  return ((cpu.curFlags & cpu.user) ? cpu.userFlagNames : cpu.kernelFlagNames)
-    .split(',')
-    .filter(n => cpu.curFlags & cpu[n])
-    .join(',');
-}
-
-
 function displayableAddress(x) {
   return toHex4(x);
 }
@@ -1780,7 +1770,7 @@ function doSFR(words) {
   w = cpu.getDirect(x);
 
   let addr = displayableAddress(x);
-  console.log(`${addr}: ${toHex4(w)}`);
+  console.log(`${addr}: ${toHex2(w)}`);
   lastX = x;
 }
 
@@ -1798,7 +1788,7 @@ function doIRAM(words) {
   w = cpu.iram[x];
 
   let addr = displayableAddress(x);
-  console.log(`${addr}: ${toHex4(w)}`);
+  console.log(`${addr}: ${toHex2(w)}`);
   lastX = x;
 }
 
@@ -1879,9 +1869,7 @@ function doStep(words) {
 
 
 function doOver(words) {
-  stopReasons[cpu.pc + 1] = 'skipped 1';
-  stopReasons[cpu.pc + 2] = 'skipped 2';
-  stopReasons[cpu.pc + 3] = 'skipped 3';
+  _.range(1, 8).forEach(offs => stopReasons[cpu.pc + offs] = `skipped ${offs}`);
   startOfLastStep = cpu.instructionsExecuted;
   run(cpu.pc);
 }
@@ -2007,8 +1995,8 @@ function startCLI() {
     output: process.stdout,
     terminal: true,
     historySize: 1000,
-
-    completer: function tabCompleter(line) {
+    removeHistoryDuplicates: true,
+    completer: line => {
       const completions = commands.map(c => c.name);
       const hits = completions.filter(c => c.indexOf(line) === 0);
       return [hits.length ? hits : completions, line];
@@ -2027,10 +2015,7 @@ function startCLI() {
     startCLI();
   });
 
-  if (cpu.notesFile) fs.fsyncSync(cpu.notesFile);
-
   rl.question(`${curInstruction()} > `, handleLine);
-  lastL = cpu.pc;
 }
 
 
