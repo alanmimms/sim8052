@@ -1590,11 +1590,6 @@ function putP3(ra, v) {
 var lastX = 0;
 var lastLine = "";
 
-const historyMax = 1000;
-let historyEnabled = false;
-let pcHistoryX = -1;	// Always points to most recently filled entry
-let pcHistory = [];
-
 let startOfLastStep = 0;
 let stopReasons = {};
 
@@ -1661,12 +1656,6 @@ const commands = [
    doFn: doOver,
   },
 
-  {name: 'history',
-   description: `Display PCs 25 (or specified count) backward in time up to ${historyMax}.
-Use 'history on' or 'history off' to enable or disable history mechanism.`,
-   doFn: doHistory,
-  },
-
   {name: 'quit',
    description: 'Exit the emulator.',
    doFn: doQuit,
@@ -1722,7 +1711,7 @@ function handleLine(line) {
 }
 
 
-function displayableAddress(x) {
+function displayableAddress(x, space) {
   return toHex4(x);
 }
 
@@ -1736,7 +1725,7 @@ function doMem(words) {
     x = getAddress(words);
   }
 
-  const addr = displayableAddress(x);
+  const addr = displayableAddress(x, 'x');
   console.log(`${addr}: ${toHex2(cpu.xram[x])}`);
   lastX = x;
 }
@@ -1751,7 +1740,7 @@ function doCode(words) {
     x = getAddress(words);
   }
 
-  const addr = displayableAddress(x);
+  const addr = displayableAddress(x, 'c');
   console.log(`${addr}: ${toHex2(cpu.pmem[x])}`);
   lastX = x;
 }
@@ -1769,7 +1758,7 @@ function doSFR(words) {
 
   w = cpu.getDirect(x);
 
-  let addr = displayableAddress(x);
+  let addr = displayableAddress(x, 'd');
   console.log(`${addr}: ${toHex2(w)}`);
   lastX = x;
 }
@@ -1787,7 +1776,7 @@ function doIRAM(words) {
 
   w = cpu.iram[x];
 
-  let addr = displayableAddress(x);
+  let addr = displayableAddress(x, 'd');
   console.log(`${addr}: ${toHex2(w)}`);
   lastX = x;
 }
@@ -1872,53 +1861,6 @@ function doOver(words) {
   _.range(1, 8).forEach(offs => stopReasons[cpu.pc + offs] = `skipped ${offs}`);
   startOfLastStep = cpu.instructionsExecuted;
   run(cpu.pc);
-}
-
-
-function doHistory(words) {
-
-  if (words.length === 2) {
-
-    if (words[1].toLowerCase() === 'on') {
-      historyEnabled = true;
-      pcHistoryX = -1;
-      console.log("History mechanism now ON");
-      return;
-    } else if (words[1].toLowerCase() === 'off') {
-      historyEnabled = false;
-      console.log("History mechanism now OFF");
-      return;
-    }
-  }
-
-  /*
-  let nSteps = (words.length < 2) ? 25 : parseInt(words[1], 10);
-  if (nSteps > historyMax) nSteps = historyMax;
-
-  // Loop index counts words starting with oldest we're going to
-  // display. From that and pcHistoryX we compute the index to
-  // display each time.
-  for (let h = 0; h < nSteps; ++h) {
-    let i = pcHistoryX - nSteps + h + 1;
-    if (i < 0) i += historyMax;
-
-    const ent = pcHistory[i];
-    if (!ent) continue;
-    const iw = cpu.fetchWord(ent.pcBefore);
-    const sym = displayableAddress(ent.pcBefore);
-    let insn = `${sym}/ ${disassemble(iw)} `;
-    if (insn.length & 1) insn += ' ';
-    const insnString = _.padEnd(insn, 50, '. ');
-    const acString = _.padEnd(_.padStart(ent.ac.to8(), 2) +
-			      '/ ' +
-			      cpu.halves(ent.acw),
-			      22);
-    const eaString = _.padStart(ent.ea.to8(), 10)
-	    + '/ '
-	    + cpu.halves(ent.e);
-    console.log(insnString + acString + eaString);
-  }
-  */
 }
 
 
@@ -2089,15 +2031,6 @@ function run(pc, maxCount) {
 	let beforePC = cpu.pc;
         let insnVals = cpu.run1(cpu.pc);
 
-	if (historyEnabled) {
-	  if (pcHistoryX >= historyMax - 1) pcHistoryX = -1;
-
-	  pcHistory[++pcHistoryX] = {
-            pcBefore: beforePC,
-	    pcAfter: cpu.pc,
-          };
-	}
-
         if (maxCount && cpu.instructionsExecuted - startCount >= maxCount)
 	  cpu.running = false;
       }
@@ -2128,7 +2061,9 @@ function run(pc, maxCount) {
 
 
 const hexName = './sim.hex';
+const symName = hexName.split(/\./).slice(0, -1).join('.') + '.sym';
 const hex = fs.readFileSync(hexName, {encoding: 'utf-8'});
+const sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'});
 
 const MemoryMap = require('nrf-intel-hex');
 const memMap = MemoryMap.fromHex(hex);
@@ -2140,7 +2075,47 @@ for (let [base, block] of memMap) {
 }
 
 
+const syms = {d: {}, c: {}, b: {}, x: {}};
+
+
+if (sym) {
+  sym.split(/\n/)
+    .forEach(line => {
+      const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
+      const addrSpace = line.slice(13, 14).toLowerCase();
+      const type = line.slice(15, 22).trim();
+      let addr = '0x' + line.slice(23, 30).trim();
+      let bit = undefined;
+
+      switch (type) {
+      case 'NUMB':
+        addr = +('0x' + addr);
+        break;
+
+      case 'ADDR':
+
+        if (addrSpace === 'B') {
+          [addr, bit] = addr.split(/\./);
+        }
+
+        addr = +addr.replace('H', '');
+        break;
+
+      case 'REG':
+        break;
+
+      default:
+        addr = null;
+        break;
+      }
+      
+      syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
+    });
+}
+
+
 console.log('[Control-\\ will interrupt execution and return to prompt]');
+
 if (process.stdin.setRawMode)
   startCLI();
 else
