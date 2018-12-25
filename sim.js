@@ -543,12 +543,11 @@ const cpu = {
       bit: x => this.bitName(bytes[+x]),
       immed: x => '#' + toHex2(bytes[+x]),
       immed16: x => '#' + toHex4(bytes[+x] << 8 | bytes[+x + 1]),
-      addr16: x => toHex4(bytes[+x] << 8 | bytes[+x + 1]),
-      addr11: x => toHex4((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[x]),
+      addr16: x => displayableAddress(bytes[+x] << 8 | bytes[+x + 1], 'c'),
+      addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[x], 'c'),
       verbatum: x => x,
-      direct: x => addrToSFR[bytes[+x]] ? 
-        addrToSFR[bytes[+x]].name : toHex2(bytes[+x]),
-      rela: x => toHex4(nextPC + this.toSigned(bytes[+x])),
+      direct: x => displayableAddress(bytes[+x], 'd'),
+      rela: x => displayableAddress(nextPC + this.toSigned(bytes[+x]), 'c'),
     };
 
     const operands = ope.operands.split(/,/)
@@ -561,7 +560,7 @@ const cpu = {
             .join(',');
 
     return `\
-${toHex4(pc)}: ${disassembly}  ${ope.name} ${operands}`;
+${displayableAddress(pc, 'c')}: ${disassembly}  ${ope.name} ${operands}`;
   },
 
 
@@ -1711,8 +1710,26 @@ function handleLine(line) {
 }
 
 
+const OFFSET_THRESHOLD = 0x80;
+
 function displayableAddress(x, space) {
-  return toHex4(x);
+  let closestOffset = Number.POSITIVE_INFINITY;
+  let closestSym = null;
+
+  Object.values(syms[space]).forEach(sym => {
+    const offset = x - sym.addr;
+
+    if (offset >= 0 && closestOffset > offset) {
+      closestSym = sym;
+      closestOffset = offset;
+    }
+  });
+
+  if (closestSym && closestOffset < OFFSET_THRESHOLD) {
+    return closestSym.name + (closestOffset ? "+" + toHex4(closestOffset) : "");
+  } else {
+    return toHex4(x);
+  }
 }
 
 
