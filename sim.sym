@@ -1,0 +1,386 @@
+ACC . . . .  D ADDR    00E0H   A       
+ADD_16. . .  C ADDR    0341H   A       
+ADR_ER. . .  C ADDR    01E7H   A       
+AES_ER. . .  C ADDR    0109H   A       
+AES . . . .  D ADDR    002BH   A       
+AESLEN. . .    NUMB    0024H   A       
+AESP. . . .  D ADDR    002AH   A       
+ALPHAB. . .  C ADDR    0552H   A       
+APN_ER. . .  C ADDR    0334H   A       
+APND_1. . .  C ADDR    030EH   A       
+APND_2. . .  C ADDR    0332H   A       
+APND_4. . .  C ADDR    030CH   A       
+APPEND. . .  C ADDR    02F1H   A       
+AR_EXP. . .  C ADDR    0AF0H   A       
+ASCTBL. . .  C ADDR    00DBH   A       
+B . . . . .  D ADDR    00F0H   A       
+BAUDID. . .  C ADDR    0046H   A       
+BEL . . . .    NUMB    0007H   A       
+BIG_PROBLEM  C ADDR    0468H   A       
+C_IN_1. . .  C ADDR    0097H   A       
+C_IN_2. . .  C ADDR    008BH   A       
+C_IN. . . .  C ADDR    007CH   A       
+C_OUT . . .  C ADDR    009AH   A       
+C_SAVE. . .  D ADDR    0053H   A       
+CHAR_FLG. .  B ADDR    0029H.1 A       
+CHAR. . . .    REG     R4              
+CMD_NG. . .  C ADDR    085CH   A       
+CMPR_1. . .  C ADDR    0492H   A       
+CMPR_2. . .  C ADDR    0498H   A       
+CMPR_4. . .  C ADDR    048AH   A       
+CMPR. . . .  C ADDR    0473H   A       
+CNTR_2. . .  C ADDR    00BFH   A       
+CNTRET. . .  C ADDR    00C4H   A       
+CNTRL . . .  C ADDR    00B7H   A       
+COND. . . .  C ADDR    07F1H   A       
+CONT_1. . .  C ADDR    0870H   A       
+CONT. . . .  C ADDR    086AH   A       
+COUT_1. . .  C ADDR    00B6H   A       
+COUT_2. . .  C ADDR    00AEH   A       
+COUT_3. . .  C ADDR    00B2H   A       
+CR. . . . .    NUMB    000DH   A       
+CREA_1. . .  C ADDR    02F0H   A       
+CREATE. . .  C ADDR    02E4H   A       
+CURS_H. . .  D ADDR    0052H   A       
+CURS_L. . .  D ADDR    0051H   A       
+D_BLNK. . .  C ADDR    0501H   A       
+DEST_H. . .    REG     R3              
+DEST_L. . .    REG     R1              
+DIV_1 . . .  C ADDR    0441H   A       
+DIV_2 . . .  C ADDR    0446H   A       
+DIV_LP. . .  C ADDR    0414H   A       
+DIV_NG. . .  C ADDR    0449H   A       
+DIV_RP. . .  C ADDR    042BH   A       
+DONE_1. . .  C ADDR    05E5H   A       
+DONE_2. . .  C ADDR    05E9H   A       
+DONE. . . .  C ADDR    05DDH   A       
+DPH . . . .  D ADDR    0083H   A       
+DPL . . . .  D ADDR    0082H   A       
+DUPL. . . .  C ADDR    014AH   A       
+E0. . . . .  C ADDR    0AE3H   A       
+E1. . . . .  C ADDR    0AF3H   A       
+E2. . . . .  C ADDR    0B01H   A       
+E3. . . . .  C ADDR    0B0FH   A       
+E4. . . . .  C ADDR    0B1EH   A       
+E5. . . . .  C ADDR    0B2EH   A       
+ERRENT. . .  C ADDR    0862H   A       
+ERROUT. . .  C ADDR    00FDH   A       
+EXP_ER. . .  C ADDR    0100H   A       
+EXP_OV. . .  C ADDR    033EH   A       
+EXPR. . . .  C ADDR    0AE0H   A       
+EXTINI. . .  C ADDR    072FH   A       
+EXTMOD. . .  B ADDR    0028H.2 A       
+EXTRAM. . .    NUMB    2034H   A       
+EXTROM. . .    NUMB    1080H   A       
+EXTVAR. . .  B ADDR    0028H.0 A       
+F0. . . . .  B ADDR    00D0H.5 A       
+FACT_1. . .  C ADDR    0B7CH   A       
+FACT. . . .  C ADDR    0B6FH   A       
+FET_0 . . .  C ADDR    0289H   A       
+FET_1 . . .  C ADDR    0296H   A       
+FETBDN. . .  C ADDR    02DFH   A       
+FETCBY. . .  C ADDR    02D9H   A       
+FETCH . . .  C ADDR    0287H   A       
+FETDBY. . .  C ADDR    02C0H   A       
+FETDIR. . .  C ADDR    01F7H   A       
+FETERR. . .  C ADDR    02BEH   A       
+FETEXT. . .  C ADDR    02B3H   A       
+FETJTB. . .  C ADDR    029BH   A       
+FETRBI. . .  C ADDR    02C6H   A       
+FETSFR. . .  C ADDR    01FDH   A       
+FETVAR. . .  C ADDR    02A0H   A       
+FETXBY. . .  C ADDR    02D2H   A       
+FIN . . . .  C ADDR    0846H   A       
+FLAGS . . .  D ADDR    0029H   A       
+FND_1 . . .  C ADDR    074FH   A       
+FNDDON. . .  C ADDR    0767H   A       
+FNDLBL. . .  C ADDR    0749H   A       
+FOR_ER. . .  C ADDR    0A21H   A       
+FORDON. . .  C ADDR    0A12H   A       
+GET_BUF . .  C ADDR    04CAH   A       
+GET_C . . .  C ADDR    04C5H   A       
+GETL_0. . .  C ADDR    0622H   A       
+GETL_1. . .  C ADDR    0627H   A       
+GETL_2. . .  C ADDR    0663H   A       
+GETL_3. . .  C ADDR    065BH   A       
+GETL_4. . .  C ADDR    0653H   A       
+GETL_5. . .  C ADDR    063EH   A       
+GETL_6. . .  C ADDR    0633H   A       
+GETL_7. . .  C ADDR    0647H   A       
+GETLN . . .  C ADDR    061CH   A       
+GETROM. . .  C ADDR    04D1H   A       
+H_FLG . . .  B ADDR    0029H.5 A       
+HEXMOD. . .  B ADDR    0028H.4 A       
+IABS. . . .  C ADDR    038BH   A       
+IADD. . . .  C ADDR    0349H   A       
+IAND. . . .  C ADDR    035BH   A       
+ICPL. . . .  C ADDR    0388H   A       
+IDIV_0. . .  C ADDR    03F0H   A       
+IDIV. . . .  C ADDR    03EEH   A       
+IFDN_1. . .  C ADDR    05F3H   A       
+IFDN_2. . .  C ADDR    05F7H   A       
+IFDONE. . .  C ADDR    05EDH   A       
+IINC_1. . .  C ADDR    03A2H   A       
+IINC. . . .  C ADDR    0399H   A       
+IMOD. . . .  C ADDR    03EAH   A       
+IMUL_1. . .  C ADDR    03AFH   A       
+IMUL_2. . .  C ADDR    03B9H   A       
+IMUL_3. . .  C ADDR    03C3H   A       
+IMUL. . . .  C ADDR    03DBH   A       
+INDEX . . .  C ADDR    0598H   A       
+INDTBL. . .  C ADDR    01AAH   A       
+INIT_1. . .  C ADDR    0728H   A       
+INIT_2. . .  C ADDR    0733H   A       
+INIT_3. . .  C ADDR    0738H   A       
+INIT. . . .  C ADDR    0739H   A       
+INNUM . . .  C ADDR    06E0H   A       
+INSL_1. . .  C ADDR    07C9H   A       
+INSR_1. . .  C ADDR    07DAH   A       
+INSR_2. . .  C ADDR    07DDH   A       
+INSR_4. . .  C ADDR    07EEH   A       
+INSR_L. . .  C ADDR    07BDH   A       
+INSRT . . .  C ADDR    07D1H   A       
+INTROM. . .  C ADDR    0C1DH   A       
+INUM_0. . .  C ADDR    06E6H   A       
+INUM_1. . .  C ADDR    06FFH   A       
+INUM_2. . .  C ADDR    0706H   A       
+INUM_3. . .  C ADDR    06EFH   A       
+INUM_4. . .  C ADDR    06F4H   A       
+INUM_5. . .  C ADDR    06FBH   A       
+INUM_6. . .  C ADDR    070CH   A       
+IOR . . . .  C ADDR    0365H   A       
+ISUB. . . .  C ADDR    034FH   A       
+IXOR. . . .  C ADDR    036FH   A       
+KILL_2. . .  C ADDR    076FH   A       
+KILL_3. . .  C ADDR    077AH   A       
+KILL_9. . .  C ADDR    0783H   A       
+KILL_L. . .  C ADDR    0769H   A       
+L_CURS. . .  D ADDR    004FH   A       
+L_INIT. . .  C ADDR    0608H   A       
+LABL_H. . .  D ADDR    0055H   A       
+LABL_L. . .  D ADDR    0054H   A       
+LF. . . . .    NUMB    000AH   A       
+LINI_1. . .  C ADDR    060DH   A       
+LIT_1 . . .  C ADDR    016DH   A       
+LIT . . . .  C ADDR    015EH   A       
+LNDONE. . .  C ADDR    05E3H   A       
+LOAD_PNTR .  C ADDR    04BEH   A       
+LOOP_0. . .  C ADDR    081CH   A       
+LOOP_1. . .  C ADDR    0840H   A       
+LOOP_2. . .  C ADDR    083DH   A       
+LOOP. . . .  C ADDR    080FH   A       
+LP_CNT. . .    REG     R5              
+LST_1 . . .  C ADDR    06D5H   A       
+LST . . . .  C ADDR    06D1H   A       
+LSTL_1. . .  C ADDR    06D0H   A       
+LSTL_2. . .  C ADDR    06C9H   A       
+LSTLIN. . .  C ADDR    06BAH   A       
+LSTRET. . .  C ADDR    06DDH   A       
+MLCALL. . .  C ADDR    084BH   A       
+MOD_FLG . .  B ADDR    0029H.4 A       
+MODE. . . .  D ADDR    0028H   A       
+MSK_PC. . .  C ADDR    0214H   A       
+MSKTBL. . .  C ADDR    0217H   A       
+MUL_16. . .  C ADDR    03A3H   A       
+NEG_0 . . .  C ADDR    037CH   A       
+NEG_IF_NEG.  C ADDR    0395H   A       
+NEG . . . .  C ADDR    0379H   A       
+NIBO_1. . .  C ADDR    00D7H   A       
+NIBO_2. . .  C ADDR    00D3H   A       
+NIBO_3. . .  C ADDR    00DAH   A       
+NIBOUT. . .  C ADDR    00CCH   A       
+NL_NXT. . .  C ADDR    060FH   A       
+NLINE . . .  C ADDR    0098H   A       
+NO_PROBLEM.  C ADDR    046CH   A       
+NO_SFR. . .    NUMB    000EH   A       
+NO_VAR. . .    NUMB    000CH   A       
+NOTSYM. . .  C ADDR    059DH   A       
+NOTVAR. . .  C ADDR    055FH   A       
+NXT_1 . . .  C ADDR    0619H   A       
+NXT . . . .  C ADDR    0611H   A       
+OPEN_1. . .  C ADDR    07A4H   A       
+OPEN_2. . .  C ADDR    07B1H   A       
+OPEN_3. . .  C ADDR    0788H   A       
+OPEN_4. . .  C ADDR    0796H   A       
+OPEN_5. . .  C ADDR    078FH   A       
+OPEN_6. . .  C ADDR    07B6H   A       
+OPEN_L. . .  C ADDR    0784H   A       
+OV_TST. . .  C ADDR    0337H   A       
+OV. . . . .  B ADDR    00D0H.2 A       
+P1. . . . .  D ADDR    0090H   A       
+P2. . . . .  D ADDR    00A0H   A       
+PNTR_H. . .    REG     R2              
+PNTR_L. . .    REG     R0              
+POP_ACC . .  C ADDR    0131H   A       
+POP_TOS . .  C ADDR    011FH   A       
+PRN_1 . . .  C ADDR    0685H   A       
+PRN . . . .  C ADDR    066FH   A       
+PRNH_1. . .  C ADDR    06AAH   A       
+PRNHEX. . .  C ADDR    069CH   A       
+PRNRET. . .  C ADDR    06B9H   A       
+PRNTOS. . .  C ADDR    0675H   A       
+PSW . . . .  D ADDR    00D0H   A       
+PUSH_C. . .  C ADDR    049AH   A       
+PUSH_TOS. .  C ADDR    0137H   A       
+PUT_BUF . .  C ADDR    04F0H   A       
+PUTROM. . .  C ADDR    04F7H   A       
+RAM_INIT. .  C ADDR    0714H   A       
+RAMLIM. . .    NUMB    3000H   A       
+RDCHDN. . .  C ADDR    04EDH   A       
+READ_CHAR .  C ADDR    04E2H   A       
+READ_LABEL.  C ADDR    05FBH   A       
+REL_1 . . .  C ADDR    0BDDH   A       
+REL_2 . . .  C ADDR    0BE9H   A       
+REL_3 . . .  C ADDR    0BF5H   A       
+REL_4 . . .  C ADDR    0C00H   A       
+REL_5 . . .  C ADDR    0C0CH   A       
+REL_6 . . .  C ADDR    0C17H   A       
+RELOP . . .  C ADDR    0BD2H   A       
+REREAD. . .  C ADDR    04EEH   A       
+REWIND. . .  C ADDR    04A0H   A       
+REWROM. . .  C ADDR    04AAH   A       
+RI. . . . .  B ADDR    0098H.0 A       
+RND . . . .  C ADDR    044BH   A       
+ROMMOD. . .  B ADDR    0028H.1 A       
+RSTR. . . .  C ADDR    0806H   A       
+RUNMOD. . .  B ADDR    0028H.3 A       
+RUNROM. . .  C ADDR    0075H   A       
+RWXROM. . .  C ADDR    04B2H   A       
+RXD . . . .  B ADDR    00B0H.0 A       
+S_INIT. . .  C ADDR    0026H   A       
+S0. . . . .  C ADDR    089BH   A       
+S1. . . . .  C ADDR    08D4H   A       
+S10 . . . .  C ADDR    0973H   A       
+S10B. . . .  C ADDR    0983H   A       
+S10C. . . .  C ADDR    098BH   A       
+S10D. . . .  C ADDR    0996H   A       
+S11 . . . .  C ADDR    0999H   A       
+S12 . . . .  C ADDR    099FH   A       
+S13 . . . .  C ADDR    09AFH   A       
+S13A. . . .  C ADDR    09C6H   A       
+S13B. . . .  C ADDR    09F2H   A       
+S13C. . . .  C ADDR    0A23H   A       
+S14 . . . .  C ADDR    0A30H   A       
+S14B. . . .  C ADDR    0A49H   A       
+S15 . . . .  C ADDR    0A4EH   A       
+S16 . . . .  C ADDR    0A5BH   A       
+S16A. . . .  C ADDR    0A68H   A       
+S17 . . . .  C ADDR    0A78H   A       
+S17A. . . .  C ADDR    0A8AH   A       
+S17B. . . .  C ADDR    0A9AH   A       
+S17C. . . .  C ADDR    0AADH   A       
+S18 . . . .  C ADDR    0ABDH   A       
+S19 . . . .  C ADDR    0AD1H   A       
+S2. . . . .  C ADDR    08E6H   A       
+S20 . . . .  C ADDR    0ADEH   A       
+S3. . . . .  C ADDR    08FCH   A       
+S3A . . . .  C ADDR    090BH   A       
+S3B . . . .  C ADDR    0913H   A       
+S3C . . . .  C ADDR    091EH   A       
+S5. . . . .  C ADDR    092EH   A       
+S5A . . . .  C ADDR    0939H   A       
+S6. . . . .  C ADDR    0941H   A       
+S6A . . . .  C ADDR    0947H   A       
+S6B . . . .  C ADDR    0944H   A       
+S8. . . . .  C ADDR    094AH   A       
+S8A . . . .  C ADDR    095DH   A       
+S8B . . . .  C ADDR    0964H   A       
+S9. . . . .  C ADDR    0969H   A       
+SAV . . . .  C ADDR    07FFH   A       
+SAVE_PNTR .  C ADDR    04B7H   A       
+SBUF. . . .  D ADDR    0099H   A       
+SCON. . . .  D ADDR    0098H   A       
+SE3 . . . .  C ADDR    08AEH   A       
+SE3A. . . .  C ADDR    08BFH   A       
+SE4 . . . .  C ADDR    08C8H   A       
+SEED_H. . .  D ADDR    000EH   A       
+SEED_L. . .  D ADDR    000DH   A       
+SEQ_FETCH .  C ADDR    0283H   A       
+SEQ_FLG . .  B ADDR    0029H.3 A       
+SEQ_STORE .  C ADDR    021FH   A       
+SETRBI. . .  C ADDR    0276H   A       
+SFID_1. . .  C ADDR    01D9H   A       
+SFID_2. . .  C ADDR    01E2H   A       
+SFR_ID. . .  C ADDR    01D4H   A       
+SFRTBL. . .  C ADDR    0172H   A       
+SGN_FLG . .  B ADDR    0029H.2 A       
+SKPLIN. . .  C ADDR    050BH   A       
+SKPTXT. . .  C ADDR    050FH   A       
+SP_BASE . .  D ADDR    0055H   A       
+SP_INI. . .  C ADDR    0033H   A       
+SP. . . . .  D ADDR    0081H   A       
+SPC . . . .  C ADDR    00C5H   A       
+SPLIT_DBA .  C ADDR    0203H   A       
+SPLSFR. . .  C ADDR    020DH   A       
+START . . .  C ADDR    085FH   A       
+STK_ER. . .  C ADDR    0147H   A       
+STMT. . . .  C ADDR    0883H   A       
+STOR_0. . .  C ADDR    0225H   A       
+STOR_1. . .  C ADDR    0238H   A       
+STORE . . .  C ADDR    0223H   A       
+STRCBY. . .  C ADDR    027BH   A       
+STRDBY. . .  C ADDR    0260H   A       
+STRDIR. . .  C ADDR    01E9H   A       
+STREXT. . .  C ADDR    0254H   A       
+STRJTB. . .  C ADDR    023DH   A       
+STRLEN. . .  D ADDR    000FH   A       
+STRO_1. . .  C ADDR    00EFH   A       
+STRO_2. . .  C ADDR    00F9H   A       
+STROUT. . .  C ADDR    00EBH   A       
+STRRBI. . .  C ADDR    0266H   A       
+STRSFR. . .  C ADDR    01F1H   A       
+STRTBL. . .  C ADDR    0180H   A       
+STRVAR. . .  C ADDR    0242H   A       
+STRXBY. . .  C ADDR    027BH   A       
+SYN_ER. . .  C ADDR    0114H   A       
+SYN_NG. . .  C ADDR    0BD0H   A       
+T_BAD . . .  C ADDR    0538H   A       
+T_GOOD. . .  C ADDR    0534H   A       
+TABCNT. . .  D ADDR    0050H   A       
+TABSIZ. . .    NUMB    0008H   A       
+TERM_0. . .  C ADDR    0B32H   A       
+TERM_1. . .  C ADDR    0B40H   A       
+TERM_2. . .  C ADDR    0B4EH   A       
+TERM_3. . .  C ADDR    0B5EH   A       
+TERM_4. . .  C ADDR    0B6EH   A       
+TERM. . . .  C ADDR    0B2FH   A       
+TH1 . . . .  D ADDR    008DH   A       
+TI. . . . .  B ADDR    0098H.1 A       
+TMOD. . . .  D ADDR    0089H   A       
+TMP0. . . .  D ADDR    0008H   A       
+TMP1. . . .  D ADDR    0009H   A       
+TMP2. . . .  D ADDR    000AH   A       
+TMP3. . . .  D ADDR    000BH   A       
+TMP4. . . .  D ADDR    000CH   A       
+TOKEN . . .  C ADDR    0888H   A       
+TOS_H . . .    REG     R7              
+TOS_L . . .    REG     R6              
+TR1 . . . .  B ADDR    0088H.6 A       
+TST_1 . . .  C ADDR    051DH   A       
+TST_2 . . .  C ADDR    052EH   A       
+TST . . . .  C ADDR    0515H   A       
+TSTCBY. . .  C ADDR    058CH   A       
+TSTN_1. . .  C ADDR    05B3H   A       
+TSTN. . . .  C ADDR    05AAH   A       
+TSTRBI. . .  C ADDR    0571H   A       
+TSTS_1. . .  C ADDR    05CFH   A       
+TSTS_2. . .  C ADDR    05D6H   A       
+TSTS. . . .  C ADDR    05BFH   A       
+TSTV_1. . .  C ADDR    059FH   A       
+TSTV. . . .  C ADDR    0545H   A       
+TSTXBY. . .  C ADDR    057EH   A       
+US_VAR. . .  D ADDR    0010H   A       
+VAR_0 . . .  C ADDR    0B94H   A       
+VAR_1 . . .  C ADDR    0B9AH   A       
+VAR_1A. . .  C ADDR    0BB2H   A       
+VAR_2 . . .  C ADDR    0BC1H   A       
+VAR . . . .  C ADDR    0B8BH   A       
+VERS. . . .    NUMB    0022H   A       
+WRCH_1. . .  C ADDR    0500H   A       
+WRITE_CHAR.  C ADDR    04F9H   A       
+XEC . . . .  C ADDR    0880H   A       
+XFER. . . .  C ADDR    07F6H   A       
+XFERNG. . .  C ADDR    07FDH   A       
+XINIT . . .  C ADDR    0741H   A       
+XRAD_1. . .  C ADDR    0318H   A       
+ZERSUP. . .  B ADDR    0029H.0 A       
