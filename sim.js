@@ -2075,14 +2075,14 @@ for (let [base, block] of memMap) {
 }
 
 
-const syms = {d: {}, c: {}, b: {}, x: {}};
+const syms = {d: {}, c: {}, b: {}, n: {}, x: {}};
 
 
 if (sym) {
   sym.split(/\n/)
     .forEach(line => {
       const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
-      const addrSpace = line.slice(13, 14).toLowerCase();
+      const addrSpace = line.slice(13, 14).trim().toLowerCase() || 'n';
       const type = line.slice(15, 22).trim();
       let addr = '0x' + line.slice(23, 30).trim();
       let bit = undefined;
