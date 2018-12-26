@@ -426,7 +426,7 @@ const cpu = {
 
 
   pop() {
-    const a = this.getDirect(this.sp);
+    const a = this.iram[this.sp];
     this.sp = (this.sp - 1) & 0xFF;
     return a;
   },
