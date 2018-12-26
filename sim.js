@@ -420,14 +420,14 @@ const cpu = {
 
 
   push2(v) {
-    this.push1(v & 0xFF);
-    this.push1(v >>> 8);
+    this.iram[this.sp = (this.sp + 1) & 0xFF] = v & 0xFF;
+    this.iram[this.sp = (this.sp + 1) & 0xFF] = v >>> 8;
   },
 
 
   pop() {
-    const a = this.iram[this.sp];
-    this.sp = (this.sp - 1) & 0xFF;
+    const a = this.iram[this.sp--];
+    this.sp &= 0xFF;
     return a;
   },
 
