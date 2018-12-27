@@ -9,326 +9,321 @@ const _ = require('lodash');
 const readline = require('readline');
 
 const insnsPerTick = 100;
+
 const PMEMSize = 65536;
 const XRAMSize = 65536;
 
+// These constants simplify accesses to SFRs.
+const ACC = 0xE0;
+const B = 0xF0;
+const SP = 0x81;
+const P0 = 0x80;
+const P1 = 0x90;
+const P2 = 0xA0;
+const P3 = 0xB0;
+const IP = 0xB8;
+const IE = 0xA8;
+const TMOD = 0x89;
+const TCON = 0x88;
+const T2CON = 0xC8;
+const T2MOD = 0xC9;
+const TH0 = 0x8C;
+const TL0 = 0x8A;
+const TH1 = 0x8D;
+const TL1 = 0x8B;
+const TH2 = 0xCD;
+const TL2 = 0xCC;
+const RCAP2H = 0xCB;
+const RCAP2L = 0xCA;
+const PCON = 0x87;
+const PSW = 0xD0;
+const DPL = 0x82;
+const DPH = 0x83;
+const SCON = 0x98;
+const SBUF = 0x99;
+
+
+// Define opcodes. The `operands` string is a sequence of zero or more
+// comma-separated elements of the form <digit> ":" <addr-mode> are
+// replaced with the disassembly of the specified addressing mode at
+// offset <digit> in the instruction. All elements not of this form
+// are copied verbatim, as is the comma. See `disassemble()` and its
+// `handlers` for details.
 const opTable = [
-  /* 00 */ {n: 1, name: "NOP", operands: ""},
-  /* 01 */ {n: 2, name: "AJMP", operands: "1:addr11"},
-  /* 02 */ {n: 3, name: "LJMP", operands: "1:addr16"},
-  /* 03 */ {n: 1, name: "RR", operands: "A"},
-  /* 04 */ {n: 1, name: "INC", operands: "A"},
-  /* 05 */ {n: 2, name: "INC", operands: "1:direct"},
-  /* 06 */ {n: 1, name: "INC", operands: "@R0"},
-  /* 07 */ {n: 1, name: "INC", operands: "@R1"},
-  /* 08 */ {n: 1, name: "INC", operands: "R0"},
-  /* 09 */ {n: 1, name: "INC", operands: "R1"},
-  /* 0A */ {n: 1, name: "INC", operands: "R2"},
-  /* 0B */ {n: 1, name: "INC", operands: "R3"},
-  /* 0C */ {n: 1, name: "INC", operands: "R4"},
-  /* 0D */ {n: 1, name: "INC", operands: "R5"},
-  /* 0E */ {n: 1, name: "INC", operands: "R6"},
-  /* 0F */ {n: 1, name: "INC", operands: "R7"},
-  /* 10 */ {n: 3, name: "JBC", operands: "1:bit,2:rela"},
+  /* 00 */ {n: 1, name: "NOP",   operands: ""},
+  /* 01 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
+  /* 02 */ {n: 3, name: "LJMP",  operands: "1:addr16"},
+  /* 03 */ {n: 1, name: "RR",    operands: "A"},
+  /* 04 */ {n: 1, name: "INC",   operands: "A"},
+  /* 05 */ {n: 2, name: "INC",   operands: "1:direct"},
+  /* 06 */ {n: 1, name: "INC",   operands: "@R0"},
+  /* 07 */ {n: 1, name: "INC",   operands: "@R1"},
+  /* 08 */ {n: 1, name: "INC",   operands: "R0"},
+  /* 09 */ {n: 1, name: "INC",   operands: "R1"},
+  /* 0A */ {n: 1, name: "INC",   operands: "R2"},
+  /* 0B */ {n: 1, name: "INC",   operands: "R3"},
+  /* 0C */ {n: 1, name: "INC",   operands: "R4"},
+  /* 0D */ {n: 1, name: "INC",   operands: "R5"},
+  /* 0E */ {n: 1, name: "INC",   operands: "R6"},
+  /* 0F */ {n: 1, name: "INC",   operands: "R7"},
+  /* 10 */ {n: 3, name: "JBC",   operands: "1:bit,2:rela"},
   /* 11 */ {n: 2, name: "ACALL", operands: "1:addr11"},
   /* 12 */ {n: 3, name: "LCALL", operands: "1:addr16"},
-  /* 13 */ {n: 1, name: "RRC", operands: "A"},
-  /* 14 */ {n: 1, name: "DEC", operands: "A"},
-  /* 15 */ {n: 2, name: "DEC", operands: "1:direct"},
-  /* 16 */ {n: 1, name: "DEC", operands: "@R0"},
-  /* 17 */ {n: 1, name: "DEC", operands: "@R1"},
-  /* 18 */ {n: 1, name: "DEC", operands: "R0"},
-  /* 19 */ {n: 1, name: "DEC", operands: "R1"},
-  /* 1A */ {n: 1, name: "DEC", operands: "R2"},
-  /* 1B */ {n: 1, name: "DEC", operands: "R3"},
-  /* 1C */ {n: 1, name: "DEC", operands: "R4"},
-  /* 1D */ {n: 1, name: "DEC", operands: "R5"},
-  /* 1E */ {n: 1, name: "DEC", operands: "R6"},
-  /* 1F */ {n: 1, name: "DEC", operands: "R7"},
-  /* 20 */ {n: 3, name: "JB", operands: "1:bit,2:rela"},
-  /* 21 */ {n: 2, name: "AJMP", operands: "1:addr11"},
-  /* 22 */ {n: 1, name: "RET", operands: ""},
-  /* 23 */ {n: 1, name: "RL", operands: "A"},
-  /* 24 */ {n: 2, name: "ADD", operands: "A,1:immed"},
-  /* 25 */ {n: 2, name: "ADD", operands: "A,1:direct"},
-  /* 26 */ {n: 1, name: "ADD", operands: "A,@R0"},
-  /* 27 */ {n: 1, name: "ADD", operands: "A,@R1"},
-  /* 28 */ {n: 1, name: "ADD", operands: "A,R0"},
-  /* 29 */ {n: 1, name: "ADD", operands: "A,R1"},
-  /* 2A */ {n: 1, name: "ADD", operands: "A,R2"},
-  /* 2B */ {n: 1, name: "ADD", operands: "A,R3"},
-  /* 2C */ {n: 1, name: "ADD", operands: "A,R4"},
-  /* 2D */ {n: 1, name: "ADD", operands: "A,R5"},
-  /* 2E */ {n: 1, name: "ADD", operands: "A,R6"},
-  /* 2F */ {n: 1, name: "ADD", operands: "A,R7"},
-  /* 30 */ {n: 3, name: "JNB", operands: "1:bit,2:rela"},
+  /* 13 */ {n: 1, name: "RRC",   operands: "A"},
+  /* 14 */ {n: 1, name: "DEC",   operands: "A"},
+  /* 15 */ {n: 2, name: "DEC",   operands: "1:direct"},
+  /* 16 */ {n: 1, name: "DEC",   operands: "@R0"},
+  /* 17 */ {n: 1, name: "DEC",   operands: "@R1"},
+  /* 18 */ {n: 1, name: "DEC",   operands: "R0"},
+  /* 19 */ {n: 1, name: "DEC",   operands: "R1"},
+  /* 1A */ {n: 1, name: "DEC",   operands: "R2"},
+  /* 1B */ {n: 1, name: "DEC",   operands: "R3"},
+  /* 1C */ {n: 1, name: "DEC",   operands: "R4"},
+  /* 1D */ {n: 1, name: "DEC",   operands: "R5"},
+  /* 1E */ {n: 1, name: "DEC",   operands: "R6"},
+  /* 1F */ {n: 1, name: "DEC",   operands: "R7"},
+  /* 20 */ {n: 3, name: "JB",    operands: "1:bit,2:rela"},
+  /* 21 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
+  /* 22 */ {n: 1, name: "RET",   operands: ""},
+  /* 23 */ {n: 1, name: "RL",    operands: "A"},
+  /* 24 */ {n: 2, name: "ADD",   operands: "A,1:immed"},
+  /* 25 */ {n: 2, name: "ADD",   operands: "A,1:direct"},
+  /* 26 */ {n: 1, name: "ADD",   operands: "A,@R0"},
+  /* 27 */ {n: 1, name: "ADD",   operands: "A,@R1"},
+  /* 28 */ {n: 1, name: "ADD",   operands: "A,R0"},
+  /* 29 */ {n: 1, name: "ADD",   operands: "A,R1"},
+  /* 2A */ {n: 1, name: "ADD",   operands: "A,R2"},
+  /* 2B */ {n: 1, name: "ADD",   operands: "A,R3"},
+  /* 2C */ {n: 1, name: "ADD",   operands: "A,R4"},
+  /* 2D */ {n: 1, name: "ADD",   operands: "A,R5"},
+  /* 2E */ {n: 1, name: "ADD",   operands: "A,R6"},
+  /* 2F */ {n: 1, name: "ADD",   operands: "A,R7"},
+  /* 30 */ {n: 3, name: "JNB",   operands: "1:bit,2:rela"},
   /* 31 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 32 */ {n: 1, name: "RETI", operands: ""},
-  /* 33 */ {n: 1, name: "RLC", operands: "A"},
-  /* 34 */ {n: 2, name: "ADDC", operands: "A,1:immed"},
-  /* 35 */ {n: 2, name: "ADDC", operands: "A,1:direct"},
-  /* 36 */ {n: 1, name: "ADDC", operands: "A,@R0"},
-  /* 37 */ {n: 1, name: "ADDC", operands: "A,@R1"},
-  /* 38 */ {n: 1, name: "ADDC", operands: "A,R0"},
-  /* 39 */ {n: 1, name: "ADDC", operands: "A,R1"},
-  /* 3A */ {n: 1, name: "ADDC", operands: "A,R2"},
-  /* 3B */ {n: 1, name: "ADDC", operands: "A,R3"},
-  /* 3C */ {n: 1, name: "ADDC", operands: "A,R4"},
-  /* 3D */ {n: 1, name: "ADDC", operands: "A,R5"},
-  /* 3E */ {n: 1, name: "ADDC", operands: "A,R6"},
-  /* 3F */ {n: 1, name: "ADDC", operands: "A,R7"},
-  /* 40 */ {n: 2, name: "JC", operands: "1:rela"},
-  /* 41 */ {n: 2, name: "AJMP", operands: "1:addr11"},
-  /* 42 */ {n: 2, name: "ORL", operands: "1:direct,A"},
-  /* 43 */ {n: 3, name: "ORL", operands: "1:direct,2:immed"},
-  /* 44 */ {n: 2, name: "ORL", operands: "A,1:immed"},
-  /* 45 */ {n: 2, name: "ORL", operands: "A,1:direct"},
-  /* 46 */ {n: 1, name: "ORL", operands: "A,@R0"},
-  /* 47 */ {n: 1, name: "ORL", operands: "A,@R1"},
-  /* 48 */ {n: 1, name: "ORL", operands: "A,R0"},
-  /* 49 */ {n: 1, name: "ORL", operands: "A,R1"},
-  /* 4A */ {n: 1, name: "ORL", operands: "A,R2"},
-  /* 4B */ {n: 1, name: "ORL", operands: "A,R3"},
-  /* 4C */ {n: 1, name: "ORL", operands: "A,R4"},
-  /* 4D */ {n: 1, name: "ORL", operands: "A,R5"},
-  /* 4E */ {n: 1, name: "ORL", operands: "A,R6"},
-  /* 4F */ {n: 1, name: "ORL", operands: "A,R7"},
-  /* 50 */ {n: 2, name: "JNC", operands: "1:rela"},
+  /* 32 */ {n: 1, name: "RETI",  operands: ""},
+  /* 33 */ {n: 1, name: "RLC",   operands: "A"},
+  /* 34 */ {n: 2, name: "ADDC",  operands: "A,1:immed"},
+  /* 35 */ {n: 2, name: "ADDC",  operands: "A,1:direct"},
+  /* 36 */ {n: 1, name: "ADDC",  operands: "A,@R0"},
+  /* 37 */ {n: 1, name: "ADDC",  operands: "A,@R1"},
+  /* 38 */ {n: 1, name: "ADDC",  operands: "A,R0"},
+  /* 39 */ {n: 1, name: "ADDC",  operands: "A,R1"},
+  /* 3A */ {n: 1, name: "ADDC",  operands: "A,R2"},
+  /* 3B */ {n: 1, name: "ADDC",  operands: "A,R3"},
+  /* 3C */ {n: 1, name: "ADDC",  operands: "A,R4"},
+  /* 3D */ {n: 1, name: "ADDC",  operands: "A,R5"},
+  /* 3E */ {n: 1, name: "ADDC",  operands: "A,R6"},
+  /* 3F */ {n: 1, name: "ADDC",  operands: "A,R7"},
+  /* 40 */ {n: 2, name: "JC",    operands: "1:rela"},
+  /* 41 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
+  /* 42 */ {n: 2, name: "ORL",   operands: "1:direct,A"},
+  /* 43 */ {n: 3, name: "ORL",   operands: "1:direct,2:immed"},
+  /* 44 */ {n: 2, name: "ORL",   operands: "A,1:immed"},
+  /* 45 */ {n: 2, name: "ORL",   operands: "A,1:direct"},
+  /* 46 */ {n: 1, name: "ORL",   operands: "A,@R0"},
+  /* 47 */ {n: 1, name: "ORL",   operands: "A,@R1"},
+  /* 48 */ {n: 1, name: "ORL",   operands: "A,R0"},
+  /* 49 */ {n: 1, name: "ORL",   operands: "A,R1"},
+  /* 4A */ {n: 1, name: "ORL",   operands: "A,R2"},
+  /* 4B */ {n: 1, name: "ORL",   operands: "A,R3"},
+  /* 4C */ {n: 1, name: "ORL",   operands: "A,R4"},
+  /* 4D */ {n: 1, name: "ORL",   operands: "A,R5"},
+  /* 4E */ {n: 1, name: "ORL",   operands: "A,R6"},
+  /* 4F */ {n: 1, name: "ORL",   operands: "A,R7"},
+  /* 50 */ {n: 2, name: "JNC",   operands: "1:rela"},
   /* 51 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 52 */ {n: 2, name: "ANL", operands: "1:direct,A"},
-  /* 53 */ {n: 3, name: "ANL", operands: "1:direct,2:immed"},
-  /* 54 */ {n: 2, name: "ANL", operands: "A,1:immed"},
-  /* 55 */ {n: 2, name: "ANL", operands: "A,1:direct"},
-  /* 56 */ {n: 1, name: "ANL", operands: "A,@R0"},
-  /* 57 */ {n: 1, name: "ANL", operands: "A,@R1"},
-  /* 58 */ {n: 1, name: "ANL", operands: "A,R0"},
-  /* 59 */ {n: 1, name: "ANL", operands: "A,R1"},
-  /* 5A */ {n: 1, name: "ANL", operands: "A,R2"},
-  /* 5B */ {n: 1, name: "ANL", operands: "A,R3"},
-  /* 5C */ {n: 1, name: "ANL", operands: "A,R4"},
-  /* 5D */ {n: 1, name: "ANL", operands: "A,R5"},
-  /* 5E */ {n: 1, name: "ANL", operands: "A,R6"},
-  /* 5F */ {n: 1, name: "ANL", operands: "A,R7"},
-  /* 60 */ {n: 2, name: "JZ", operands: "1:rela"},
-  /* 61 */ {n: 2, name: "AJMP", operands: "1:addr11"},
-  /* 62 */ {n: 2, name: "XRL", operands: "1:direct,A"},
-  /* 63 */ {n: 3, name: "XRL", operands: "1:direct,2:immed"},
-  /* 64 */ {n: 2, name: "XRL", operands: "A,1:immed"},
-  /* 65 */ {n: 2, name: "XRL", operands: "A,1:direct"},
-  /* 66 */ {n: 1, name: "XRL", operands: "A,@R0"},
-  /* 67 */ {n: 1, name: "XRL", operands: "A,@R1"},
-  /* 68 */ {n: 1, name: "XRL", operands: "A,R0"},
-  /* 69 */ {n: 1, name: "XRL", operands: "A,R1"},
-  /* 6A */ {n: 1, name: "XRL", operands: "A,R2"},
-  /* 6B */ {n: 1, name: "XRL", operands: "A,R3"},
-  /* 6C */ {n: 1, name: "XRL", operands: "A,R4"},
-  /* 6D */ {n: 1, name: "XRL", operands: "A,R5"},
-  /* 6E */ {n: 1, name: "XRL", operands: "A,R6"},
-  /* 6F */ {n: 1, name: "XRL", operands: "A,R7"},
-  /* 70 */ {n: 2, name: "JNZ", operands: "1:rela"},
+  /* 52 */ {n: 2, name: "ANL",   operands: "1:direct,A"},
+  /* 53 */ {n: 3, name: "ANL",   operands: "1:direct,2:immed"},
+  /* 54 */ {n: 2, name: "ANL",   operands: "A,1:immed"},
+  /* 55 */ {n: 2, name: "ANL",   operands: "A,1:direct"},
+  /* 56 */ {n: 1, name: "ANL",   operands: "A,@R0"},
+  /* 57 */ {n: 1, name: "ANL",   operands: "A,@R1"},
+  /* 58 */ {n: 1, name: "ANL",   operands: "A,R0"},
+  /* 59 */ {n: 1, name: "ANL",   operands: "A,R1"},
+  /* 5A */ {n: 1, name: "ANL",   operands: "A,R2"},
+  /* 5B */ {n: 1, name: "ANL",   operands: "A,R3"},
+  /* 5C */ {n: 1, name: "ANL",   operands: "A,R4"},
+  /* 5D */ {n: 1, name: "ANL",   operands: "A,R5"},
+  /* 5E */ {n: 1, name: "ANL",   operands: "A,R6"},
+  /* 5F */ {n: 1, name: "ANL",   operands: "A,R7"},
+  /* 60 */ {n: 2, name: "JZ",    operands: "1:rela"},
+  /* 61 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
+  /* 62 */ {n: 2, name: "XRL",   operands: "1:direct,A"},
+  /* 63 */ {n: 3, name: "XRL",   operands: "1:direct,2:immed"},
+  /* 64 */ {n: 2, name: "XRL",   operands: "A,1:immed"},
+  /* 65 */ {n: 2, name: "XRL",   operands: "A,1:direct"},
+  /* 66 */ {n: 1, name: "XRL",   operands: "A,@R0"},
+  /* 67 */ {n: 1, name: "XRL",   operands: "A,@R1"},
+  /* 68 */ {n: 1, name: "XRL",   operands: "A,R0"},
+  /* 69 */ {n: 1, name: "XRL",   operands: "A,R1"},
+  /* 6A */ {n: 1, name: "XRL",   operands: "A,R2"},
+  /* 6B */ {n: 1, name: "XRL",   operands: "A,R3"},
+  /* 6C */ {n: 1, name: "XRL",   operands: "A,R4"},
+  /* 6D */ {n: 1, name: "XRL",   operands: "A,R5"},
+  /* 6E */ {n: 1, name: "XRL",   operands: "A,R6"},
+  /* 6F */ {n: 1, name: "XRL",   operands: "A,R7"},
+  /* 70 */ {n: 2, name: "JNZ",   operands: "1:rela"},
   /* 71 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 72 */ {n: 2, name: "ORL", operands: "C,1:bit"},
-  /* 73 */ {n: 1, name: "JMP", operands: "@A+DPTR"},
-  /* 74 */ {n: 2, name: "MOV", operands: "A,1:immed"},
-  /* 75 */ {n: 3, name: "MOV", operands: "1:direct,2:immed"},
-  /* 76 */ {n: 2, name: "MOV", operands: "@R0,1:immed"},
-  /* 77 */ {n: 2, name: "MOV", operands: "@R1,1:immed"},
-  /* 78 */ {n: 2, name: "MOV", operands: "R0,1:immed"},
-  /* 79 */ {n: 2, name: "MOV", operands: "R1,1:immed"},
-  /* 7A */ {n: 2, name: "MOV", operands: "R2,1:immed"},
-  /* 7B */ {n: 2, name: "MOV", operands: "R3,1:immed"},
-  /* 7C */ {n: 2, name: "MOV", operands: "R4,1:immed"},
-  /* 7D */ {n: 2, name: "MOV", operands: "R5,1:immed"},
-  /* 7E */ {n: 2, name: "MOV", operands: "R6,1:immed"},
-  /* 7F */ {n: 2, name: "MOV", operands: "R7,1:immed	 	"},
-  /* 80 */ {n: 2, name: "SJMP", operands: "1:rela"},
-  /* 81 */ {n: 2, name: "AJMP", operands: "1:addr11"},
-  /* 82 */ {n: 2, name: "ANL", operands: "C,1:bit"},
-  /* 83 */ {n: 1, name: "MOVC", operands: "A,@A+PC"},
-  /* 84 */ {n: 1, name: "DIV", operands: "AB"},
-  /* 85 */ {n: 3, name: "MOV", operands: "2:direct,1:direct"},
-  /* 86 */ {n: 2, name: "MOV", operands: "1:direct,@R0"},
-  /* 87 */ {n: 2, name: "MOV", operands: "1:direct,@R1"},
-  /* 88 */ {n: 2, name: "MOV", operands: "1:direct,R0"},
-  /* 89 */ {n: 2, name: "MOV", operands: "1:direct,R1"},
-  /* 8A */ {n: 2, name: "MOV", operands: "1:direct,R2"},
-  /* 8B */ {n: 2, name: "MOV", operands: "1:direct,R3"},
-  /* 8C */ {n: 2, name: "MOV", operands: "1:direct,R4"},
-  /* 8D */ {n: 2, name: "MOV", operands: "1:direct,R5"},
-  /* 8E */ {n: 2, name: "MOV", operands: "1:direct,R6"},
-  /* 8F */ {n: 2, name: "MOV", operands: "1:direct,R7"},
-  /* 90 */ {n: 3, name: "MOV", operands: "DPTR,1:immed16"},
+  /* 72 */ {n: 2, name: "ORL",   operands: "C,1:bit"},
+  /* 73 */ {n: 1, name: "JMP",   operands: "@A+DPTR"},
+  /* 74 */ {n: 2, name: "MOV",   operands: "A,1:immed"},
+  /* 75 */ {n: 3, name: "MOV",   operands: "1:direct,2:immed"},
+  /* 76 */ {n: 2, name: "MOV",   operands: "@R0,1:immed"},
+  /* 77 */ {n: 2, name: "MOV",   operands: "@R1,1:immed"},
+  /* 78 */ {n: 2, name: "MOV",   operands: "R0,1:immed"},
+  /* 79 */ {n: 2, name: "MOV",   operands: "R1,1:immed"},
+  /* 7A */ {n: 2, name: "MOV",   operands: "R2,1:immed"},
+  /* 7B */ {n: 2, name: "MOV",   operands: "R3,1:immed"},
+  /* 7C */ {n: 2, name: "MOV",   operands: "R4,1:immed"},
+  /* 7D */ {n: 2, name: "MOV",   operands: "R5,1:immed"},
+  /* 7E */ {n: 2, name: "MOV",   operands: "R6,1:immed"},
+  /* 7F */ {n: 2, name: "MOV",   operands: "R7,1:immed"},
+  /* 80 */ {n: 2, name: "SJMP",  operands: "1:rela"},
+  /* 81 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
+  /* 82 */ {n: 2, name: "ANL",   operands: "C,1:bit"},
+  /* 83 */ {n: 1, name: "MOVC",  operands: "A,@A+PC"},
+  /* 84 */ {n: 1, name: "DIV",   operands: "AB"},
+  /* 85 */ {n: 3, name: "MOV",   operands: "2:direct,1:direct"},
+  /* 86 */ {n: 2, name: "MOV",   operands: "1:direct,@R0"},
+  /* 87 */ {n: 2, name: "MOV",   operands: "1:direct,@R1"},
+  /* 88 */ {n: 2, name: "MOV",   operands: "1:direct,R0"},
+  /* 89 */ {n: 2, name: "MOV",   operands: "1:direct,R1"},
+  /* 8A */ {n: 2, name: "MOV",   operands: "1:direct,R2"},
+  /* 8B */ {n: 2, name: "MOV",   operands: "1:direct,R3"},
+  /* 8C */ {n: 2, name: "MOV",   operands: "1:direct,R4"},
+  /* 8D */ {n: 2, name: "MOV",   operands: "1:direct,R5"},
+  /* 8E */ {n: 2, name: "MOV",   operands: "1:direct,R6"},
+  /* 8F */ {n: 2, name: "MOV",   operands: "1:direct,R7"},
+  /* 90 */ {n: 3, name: "MOV",   operands: "DPTR,1:immed16"},
   /* 91 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 92 */ {n: 2, name: "MOV", operands: "1:bit,C"},
-  /* 93 */ {n: 1, name: "MOVC", operands: "A,@A+DPTR"},
-  /* 94 */ {n: 2, name: "SUBB", operands: "A,1:immed"},
-  /* 95 */ {n: 2, name: "SUBB", operands: "A,1:direct"},
-  /* 96 */ {n: 1, name: "SUBB", operands: "A,@R0"},
-  /* 97 */ {n: 1, name: "SUBB", operands: "A,@R1"},
-  /* 98 */ {n: 1, name: "SUBB", operands: "A,R0"},
-  /* 99 */ {n: 1, name: "SUBB", operands: "A,R1"},
-  /* 9A */ {n: 1, name: "SUBB", operands: "A,R2"},
-  /* 9B */ {n: 1, name: "SUBB", operands: "A,R3"},
-  /* 9C */ {n: 1, name: "SUBB", operands: "A,R4"},
-  /* 9D */ {n: 1, name: "SUBB", operands: "A,R5"},
-  /* 9E */ {n: 1, name: "SUBB", operands: "A,R6"},
-  /* 9F */ {n: 1, name: "SUBB", operands: "A,R7"},
-  /* A0 */ {n: 2, name: "ORL", operands: "C,1:cBit"},
-  /* A1 */ {n: 2, name: "AJMP", operands: "1:addr11"},
-  /* A2 */ {n: 2, name: "MOV", operands: "C,1:bit"},
-  /* A3 */ {n: 1, name: "INC", operands: "DPTR"},
-  /* A4 */ {n: 1, name: "MUL", operands: "AB"},
-  /* A5 */ {n: 1, name: "reserved", operands: ""},
-  /* A6 */ {n: 2, name: "MOV", operands: "@R0,1:direct"},
-  /* A7 */ {n: 2, name: "MOV", operands: "@R1,1:direct"},
-  /* A8 */ {n: 2, name: "MOV", operands: "R0,1:direct"},
-  /* A9 */ {n: 2, name: "MOV", operands: "R1,1:direct"},
-  /* AA */ {n: 2, name: "MOV", operands: "R2,1:direct"},
-  /* AB */ {n: 2, name: "MOV", operands: "R3,1:direct"},
-  /* AC */ {n: 2, name: "MOV", operands: "R4,1:direct"},
-  /* AD */ {n: 2, name: "MOV", operands: "R5,1:direct"},
-  /* AE */ {n: 2, name: "MOV", operands: "R6,1:direct"},
-  /* AF */ {n: 2, name: "MOV", operands: "R7,1:direct"},
-  /* B0 */ {n: 2, name: "ANL", operands: "C,1:cBit"},
+  /* 92 */ {n: 2, name: "MOV",   operands: "1:bit,C"},
+  /* 93 */ {n: 1, name: "MOVC",  operands: "A,@A+DPTR"},
+  /* 94 */ {n: 2, name: "SUBB",  operands: "A,1:immed"},
+  /* 95 */ {n: 2, name: "SUBB",  operands: "A,1:direct"},
+  /* 96 */ {n: 1, name: "SUBB",  operands: "A,@R0"},
+  /* 97 */ {n: 1, name: "SUBB",  operands: "A,@R1"},
+  /* 98 */ {n: 1, name: "SUBB",  operands: "A,R0"},
+  /* 99 */ {n: 1, name: "SUBB",  operands: "A,R1"},
+  /* 9A */ {n: 1, name: "SUBB",  operands: "A,R2"},
+  /* 9B */ {n: 1, name: "SUBB",  operands: "A,R3"},
+  /* 9C */ {n: 1, name: "SUBB",  operands: "A,R4"},
+  /* 9D */ {n: 1, name: "SUBB",  operands: "A,R5"},
+  /* 9E */ {n: 1, name: "SUBB",  operands: "A,R6"},
+  /* 9F */ {n: 1, name: "SUBB",  operands: "A,R7"},
+  /* A0 */ {n: 2, name: "ORL",   operands: "C,1:cBit"},
+  /* A1 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
+  /* A2 */ {n: 2, name: "MOV",   operands: "C,1:bit"},
+  /* A3 */ {n: 1, name: "INC",   operands: "DPTR"},
+  /* A4 */ {n: 1, name: "MUL",   operands: "AB"},
+  /* A5 */ {n: 1, name: "???",   operands: ""},
+  /* A6 */ {n: 2, name: "MOV",   operands: "@R0,1:direct"},
+  /* A7 */ {n: 2, name: "MOV",   operands: "@R1,1:direct"},
+  /* A8 */ {n: 2, name: "MOV",   operands: "R0,1:direct"},
+  /* A9 */ {n: 2, name: "MOV",   operands: "R1,1:direct"},
+  /* AA */ {n: 2, name: "MOV",   operands: "R2,1:direct"},
+  /* AB */ {n: 2, name: "MOV",   operands: "R3,1:direct"},
+  /* AC */ {n: 2, name: "MOV",   operands: "R4,1:direct"},
+  /* AD */ {n: 2, name: "MOV",   operands: "R5,1:direct"},
+  /* AE */ {n: 2, name: "MOV",   operands: "R6,1:direct"},
+  /* AF */ {n: 2, name: "MOV",   operands: "R7,1:direct"},
+  /* B0 */ {n: 2, name: "ANL",   operands: "C,1:cBit"},
   /* B1 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* B2 */ {n: 2, name: "CPL", operands: "1:bit"},
-  /* B3 */ {n: 1, name: "CPL", operands: "C"},
-  /* B4 */ {n: 3, name: "CJNE", operands: "A,1:immed,2:rela"},
-  /* B5 */ {n: 3, name: "CJNE", operands: "A,1:direct,2:rela"},
-  /* B6 */ {n: 3, name: "CJNE", operands: "@R0,1:immed,2:rela"},
-  /* B7 */ {n: 3, name: "CJNE", operands: "@R1,1:immed,2:rela"},
-  /* B8 */ {n: 3, name: "CJNE", operands: "R0,1:immed,2:rela"},
-  /* B9 */ {n: 3, name: "CJNE", operands: "R1,1:immed,2:rela"},
-  /* BA */ {n: 3, name: "CJNE", operands: "R2,1:immed,2:rela"},
-  /* BB */ {n: 3, name: "CJNE", operands: "R3,1:immed,2:rela"},
-  /* BC */ {n: 3, name: "CJNE", operands: "R4,1:immed,2:rela"},
-  /* BD */ {n: 3, name: "CJNE", operands: "R5,1:immed,2:rela"},
-  /* BE */ {n: 3, name: "CJNE", operands: "R6,1:immed,2:rela"},
-  /* BF */ {n: 3, name: "CJNE", operands: "R7,1:immed,2:rela"},
-  /* C0 */ {n: 2, name: "PUSH", operands: "1:direct"},
-  /* C1 */ {n: 2, name: "AJMP", operands: "1:addr11"},
-  /* C2 */ {n: 2, name: "CLR", operands: "1:bit"},
-  /* C3 */ {n: 1, name: "CLR", operands: "C"},
-  /* C4 */ {n: 1, name: "SWAP", operands: "A"},
-  /* C5 */ {n: 2, name: "XCH", operands: "A,1:direct"},
-  /* C6 */ {n: 1, name: "XCH", operands: "A,@R0"},
-  /* C7 */ {n: 1, name: "XCH", operands: "A,@R1"},
-  /* C8 */ {n: 1, name: "XCH", operands: "A,R0"},
-  /* C9 */ {n: 1, name: "XCH", operands: "A,R1"},
-  /* CA */ {n: 1, name: "XCH", operands: "A,R2"},
-  /* CB */ {n: 1, name: "XCH", operands: "A,R3"},
-  /* CC */ {n: 1, name: "XCH", operands: "A,R4"},
-  /* CD */ {n: 1, name: "XCH", operands: "A,R5"},
-  /* CE */ {n: 1, name: "XCH", operands: "A,R6"},
-  /* CF */ {n: 1, name: "XCH", operands: "A,R7"},
-  /* D0 */ {n: 2, name: "POP", operands: "1:direct"},
+  /* B2 */ {n: 2, name: "CPL",   operands: "1:bit"},
+  /* B3 */ {n: 1, name: "CPL",   operands: "C"},
+  /* B4 */ {n: 3, name: "CJNE",  operands: "A,1:immed,2:rela"},
+  /* B5 */ {n: 3, name: "CJNE",  operands: "A,1:direct,2:rela"},
+  /* B6 */ {n: 3, name: "CJNE",  operands: "@R0,1:immed,2:rela"},
+  /* B7 */ {n: 3, name: "CJNE",  operands: "@R1,1:immed,2:rela"},
+  /* B8 */ {n: 3, name: "CJNE",  operands: "R0,1:immed,2:rela"},
+  /* B9 */ {n: 3, name: "CJNE",  operands: "R1,1:immed,2:rela"},
+  /* BA */ {n: 3, name: "CJNE",  operands: "R2,1:immed,2:rela"},
+  /* BB */ {n: 3, name: "CJNE",  operands: "R3,1:immed,2:rela"},
+  /* BC */ {n: 3, name: "CJNE",  operands: "R4,1:immed,2:rela"},
+  /* BD */ {n: 3, name: "CJNE",  operands: "R5,1:immed,2:rela"},
+  /* BE */ {n: 3, name: "CJNE",  operands: "R6,1:immed,2:rela"},
+  /* BF */ {n: 3, name: "CJNE",  operands: "R7,1:immed,2:rela"},
+  /* C0 */ {n: 2, name: "PUSH",  operands: "1:direct"},
+  /* C1 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
+  /* C2 */ {n: 2, name: "CLR",   operands: "1:bit"},
+  /* C3 */ {n: 1, name: "CLR",   operands: "C"},
+  /* C4 */ {n: 1, name: "SWAP",  operands: "A"},
+  /* C5 */ {n: 2, name: "XCH",   operands: "A,1:direct"},
+  /* C6 */ {n: 1, name: "XCH",   operands: "A,@R0"},
+  /* C7 */ {n: 1, name: "XCH",   operands: "A,@R1"},
+  /* C8 */ {n: 1, name: "XCH",   operands: "A,R0"},
+  /* C9 */ {n: 1, name: "XCH",   operands: "A,R1"},
+  /* CA */ {n: 1, name: "XCH",   operands: "A,R2"},
+  /* CB */ {n: 1, name: "XCH",   operands: "A,R3"},
+  /* CC */ {n: 1, name: "XCH",   operands: "A,R4"},
+  /* CD */ {n: 1, name: "XCH",   operands: "A,R5"},
+  /* CE */ {n: 1, name: "XCH",   operands: "A,R6"},
+  /* CF */ {n: 1, name: "XCH",   operands: "A,R7"},
+  /* D0 */ {n: 2, name: "POP",   operands: "1:direct"},
   /* D1 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* D2 */ {n: 2, name: "SETB", operands: "1:bit"},
-  /* D3 */ {n: 1, name: "SETB", operands: "C"},
-  /* D4 */ {n: 1, name: "DA", operands: "A"},
-  /* D5 */ {n: 3, name: "DJNZ", operands: "1:direct,2:rela"},
-  /* D6 */ {n: 1, name: "XCHD", operands: "A,@R0"},
-  /* D7 */ {n: 1, name: "XCHD", operands: "A,@R1"},
-  /* D8 */ {n: 2, name: "DJNZ", operands: "R0,1:rela"},
-  /* D9 */ {n: 2, name: "DJNZ", operands: "R1,1:rela"},
-  /* DA */ {n: 2, name: "DJNZ", operands: "R2,1:rela"},
-  /* DB */ {n: 2, name: "DJNZ", operands: "R3,1:rela"},
-  /* DC */ {n: 2, name: "DJNZ", operands: "R4,1:rela"},
-  /* DD */ {n: 2, name: "DJNZ", operands: "R5,1:rela"},
-  /* DE */ {n: 2, name: "DJNZ", operands: "R6,1:rela"},
-  /* DF */ {n: 2, name: "DJNZ", operands: "R7,1:rela"},
-  /* E0 */ {n: 1, name: "MOVX", operands: "A,@DPTR"},
-  /* E1 */ {n: 2, name: "AJMP", operands: "1:addr11"},
-  /* E2 */ {n: 1, name: "MOVX", operands: "A,@R0"},
-  /* E3 */ {n: 1, name: "MOVX", operands: "A,@R1"},
-  /* E4 */ {n: 1, name: "CLR", operands: "A"},
-  /* E5 */ {n: 2, name: "MOV", operands: "A,1:direct"},
-  /* E6 */ {n: 1, name: "MOV", operands: "A,@R0"},
-  /* E7 */ {n: 1, name: "MOV", operands: "A,@R1"},
-  /* E8 */ {n: 1, name: "MOV", operands: "A,R0"},
-  /* E9 */ {n: 1, name: "MOV", operands: "A,R1"},
-  /* EA */ {n: 1, name: "MOV", operands: "A,R2"},
-  /* EB */ {n: 1, name: "MOV", operands: "A,R3"},
-  /* EC */ {n: 1, name: "MOV", operands: "A,R4"},
-  /* ED */ {n: 1, name: "MOV", operands: "A,R5"},
-  /* EE */ {n: 1, name: "MOV", operands: "A,R6"},
-  /* EF */ {n: 1, name: "MOV", operands: "A,R7"},
-  /* F0 */ {n: 1, name: "MOVX", operands: "@DPTR,A"},
+  /* D2 */ {n: 2, name: "SETB",  operands: "1:bit"},
+  /* D3 */ {n: 1, name: "SETB",  operands: "C"},
+  /* D4 */ {n: 1, name: "DA",    operands: "A"},
+  /* D5 */ {n: 3, name: "DJNZ",  operands: "1:direct,2:rela"},
+  /* D6 */ {n: 1, name: "XCHD",  operands: "A,@R0"},
+  /* D7 */ {n: 1, name: "XCHD",  operands: "A,@R1"},
+  /* D8 */ {n: 2, name: "DJNZ",  operands: "R0,1:rela"},
+  /* D9 */ {n: 2, name: "DJNZ",  operands: "R1,1:rela"},
+  /* DA */ {n: 2, name: "DJNZ",  operands: "R2,1:rela"},
+  /* DB */ {n: 2, name: "DJNZ",  operands: "R3,1:rela"},
+  /* DC */ {n: 2, name: "DJNZ",  operands: "R4,1:rela"},
+  /* DD */ {n: 2, name: "DJNZ",  operands: "R5,1:rela"},
+  /* DE */ {n: 2, name: "DJNZ",  operands: "R6,1:rela"},
+  /* DF */ {n: 2, name: "DJNZ",  operands: "R7,1:rela"},
+  /* E0 */ {n: 1, name: "MOVX",  operands: "A,@DPTR"},
+  /* E1 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
+  /* E2 */ {n: 1, name: "MOVX",  operands: "A,@R0"},
+  /* E3 */ {n: 1, name: "MOVX",  operands: "A,@R1"},
+  /* E4 */ {n: 1, name: "CLR",   operands: "A"},
+  /* E5 */ {n: 2, name: "MOV",   operands: "A,1:direct"},
+  /* E6 */ {n: 1, name: "MOV",   operands: "A,@R0"},
+  /* E7 */ {n: 1, name: "MOV",   operands: "A,@R1"},
+  /* E8 */ {n: 1, name: "MOV",   operands: "A,R0"},
+  /* E9 */ {n: 1, name: "MOV",   operands: "A,R1"},
+  /* EA */ {n: 1, name: "MOV",   operands: "A,R2"},
+  /* EB */ {n: 1, name: "MOV",   operands: "A,R3"},
+  /* EC */ {n: 1, name: "MOV",   operands: "A,R4"},
+  /* ED */ {n: 1, name: "MOV",   operands: "A,R5"},
+  /* EE */ {n: 1, name: "MOV",   operands: "A,R6"},
+  /* EF */ {n: 1, name: "MOV",   operands: "A,R7"},
+  /* F0 */ {n: 1, name: "MOVX",  operands: "@DPTR,A"},
   /* F1 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* F2 */ {n: 1, name: "MOVX", operands: "@R0,A"},
-  /* F3 */ {n: 1, name: "MOVX", operands: "@R1,A"},
-  /* F4 */ {n: 1, name: "CPL", operands: "A"},
-  /* F5 */ {n: 2, name: "MOV", operands: "1:direct,A"},
-  /* F6 */ {n: 1, name: "MOV", operands: "@R0,A"},
-  /* F7 */ {n: 1, name: "MOV", operands: "@R1,A"},
-  /* F8 */ {n: 1, name: "MOV", operands: "R0,A"},
-  /* F9 */ {n: 1, name: "MOV", operands: "R1,A"},
-  /* FA */ {n: 1, name: "MOV", operands: "R2,A"},
-  /* FB */ {n: 1, name: "MOV", operands: "R3,A"},
-  /* FC */ {n: 1, name: "MOV", operands: "R4,A"},
-  /* FD */ {n: 1, name: "MOV", operands: "R5,A"},
-  /* FE */ {n: 1, name: "MOV", operands: "R6,A"},
-  /* FF */ {n: 1, name: "MOV", operands: "R7,A"},
+  /* F2 */ {n: 1, name: "MOVX",  operands: "@R0,A"},
+  /* F3 */ {n: 1, name: "MOVX",  operands: "@R1,A"},
+  /* F4 */ {n: 1, name: "CPL",   operands: "A"},
+  /* F5 */ {n: 2, name: "MOV",   operands: "1:direct,A"},
+  /* F6 */ {n: 1, name: "MOV",   operands: "@R0,A"},
+  /* F7 */ {n: 1, name: "MOV",   operands: "@R1,A"},
+  /* F8 */ {n: 1, name: "MOV",   operands: "R0,A"},
+  /* F9 */ {n: 1, name: "MOV",   operands: "R1,A"},
+  /* FA */ {n: 1, name: "MOV",   operands: "R2,A"},
+  /* FB */ {n: 1, name: "MOV",   operands: "R3,A"},
+  /* FC */ {n: 1, name: "MOV",   operands: "R4,A"},
+  /* FD */ {n: 1, name: "MOV",   operands: "R5,A"},
+  /* FE */ {n: 1, name: "MOV",   operands: "R6,A"},
+  /* FF */ {n: 1, name: "MOV",   operands: "R7,A"},
 ];
 
 
-// TODO: Normalize sfrSpace, get/put, and cpu.xxx register relationship
-const SFRs = [
-  {name: "ACC", addr: 0xE0, get(ra) {return cpu.a }, put(ra, v) {cpu.a  = v}},
-  {name: "B",  addr: 0xF0,  get(ra) {return cpu.b }, put(ra, v) {cpu.b  = v}},
-  {name: "SP", addr: 0x81,  get(ra) {return cpu.sp}, put(ra, v) {cpu.sp = v}},
-  {name: "P0", addr: 0x80,  get(ra) {return cpu.p0}, put(ra, v) {cpu.p0 = v}},
-  {name: "P1", addr: 0x90,  get(ra) {return cpu.p1}, put(ra, v) {cpu.p1 = v}},
-  {name: "P2", addr: 0xA0,  get(ra) {return cpu.p2}, put(ra, v) {cpu.p2 = v}},
-  {name: "P3", addr: 0xB0,  get: getP3, put: putP3},
-  {name: "IP", addr: 0xB8, bits: makeBits('. . pt2 ps pt1 px1 pt0 px0')},
-  {name: "IE", addr: 0xA8, bits: makeBits('ea . et2 es et1 ex1 et0 ex0')},
-  {name: "TMOD", addr: 0x89, bits: makeBits('gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0')},
-  {name: "TCON", addr: 0x88, bits: makeBits('tf1 tr1 tf0 tr0 ie1 it1 ie0 it0')},
-  {name: "T2CON", addr: 0xC8, bits: makeBits('tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2')},
-  {name: "T2MOD", addr: 0xC9},
-  {name: "TH0", addr: 0x8C},
-  {name: "TL0", addr: 0x8A},
-  {name: "TH1", addr: 0x8D},
-  {name: "TL1", addr: 0x8B},
-  {name: "TH2", addr: 0xCD},
-  {name: "TL2", addr: 0xCC},
-  {name: "RCAP2H", addr: 0xCB},
-  {name: "RCAP2L", addr: 0xCA},
-  {name: "PCON", addr: 0x87, bits: makeBits('smod . . . gf1 gf0 pd idl')},
-  {name: "PSW", addr: 0xD0, get: getPSW, put: putPSW},
-  {name: "DPL", addr: 0x82, get: getDPL, put: putDPL},
-  {name: "DPH", addr: 0x83, get: getDPH, put: putDPH},
-  {name: "SCON", addr: 0x98, get: getSCON, put: putSCON, 
-   bits: makeBits('sm0 sm1 sm2 ren tb8 rb8 ti ri')},
-  {name: "SBUF", addr: 0x99, get: getSBUF, put: putSBUF},
-];
+const pswBits = makeBits('cy ac f0 rs1 rs0 ov ud p');
+const pconBits = makeBits('smod . . . gf1 gf0 pd idl');
+const sconBits = makeBits('sm0 sm1 sm2 ren tb8 rb8 ti ri');
+const ipBits = makeBits('. . pt2 ps pt1 px1 pt0 px0');
+const ieBits = makeBits('ea . et2 es et1 ex1 et0 ex0');
+const tmodBits = makeBits('gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0');
+const tconBits = makeBits('tf1 tr1 tf0 tr0 ie1 it1 ie0 it0');
+const t2conBits = makeBits('tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2');
 
 
-// Apply defaults for the case when get/put methods aren't defined.
-SFRs.forEach(sfr => {
-  const fieldName = sfr.name.toLowerCase();
-  if (!sfr.get) sfr.get = (ra) => cpu[fieldName];
-  if (!sfr.put) sfr.put = (ra, v) => cpu[fieldName] = v;
-});
-
-// Make it easy to reference SFR info by name like SFR.SCON.bits.
-const SFR = SFRs.reduce((obj, entry) => (obj[entry.name] = entry, obj), {});
-
-// Build table of SFRs indexed by address.
-const addrToSFR = new Array(0x100);
-SFRs.forEach(sfr => addrToSFR[+sfr.addr] = sfr);
-
-// Fill entries for which a named SFR isn't defined.
-_.range(0x00, 0x100)
-  .filter(addr => !addrToSFR[addr])
-  .forEach(addr => {
-    const name = toHex2(addr);
-    addrToSFR[addr] = {name, addr, get: getSFR, put: putSFR};
-  });
+const mathMask = pswBits.ovMask | pswBits.acMask | pswBits.cyMask;
+const rsMask = pswBits.rs0Mask | pswBits.rs1Mask;
 
 
-const parity = [
+const parityTable = [
   0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
   1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
   1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
@@ -342,32 +337,17 @@ const parity = [
 
 const cpu = {
   pc: 0,
-  sp: 0x07,
-  dptr: 0,
-  a: 0,
-  b: 0,
 
-  psw: 0,
-  p: 0,
-  ud: 0,
-  ov: 0,
-  rs0: 0,
-  rs1: 0,
-  f0: 0,
-  ac: 0,
-  c: 0,
-
-  p0: 0xFF,
-  p1: 0xFF,
-  p2: 0xFF,
-  p3: 0xFF,
-
-  pcon: 0,
-  scon: 0,
-
+  // Internal RAM
   iram: Buffer.alloc(0x100, 0x00, 'binary'),
-  sfrSpace: Buffer.alloc(0x100, 0x00, 'binary'),
+
+  // SFRs. Even though this is 256 bytes, only 0x80..0xFF are used.
+  SFR: Buffer.alloc(0x100, 0x00, 'binary'),
+
+  // Code (program) memory.
   pmem: Buffer.alloc(PMEMSize, 0x00, 'binary'),
+
+  // External (data) memory.
   xram: Buffer.alloc(XRAMSize, 0x00, 'binary'),
 
   // Interrupt priority level.
@@ -397,65 +377,74 @@ const cpu = {
   },
 
 
-  updatePSW() {
-    this.p = parity[this.a];
-    this.psw = 
-      this.p | this.ud << 1 |
-      this.ov << 2 | this.rs0 << 3 |
-      this.rs1 << 4 | this.f0 << 5 |
-      this.ac << 6 | this.c << 7;
-    return this.psw;
+  getCY() {
+    return +!!(this.SFR[PSW] & pswBits.cyMask);
   },
 
 
-  getPSW() {
-    this.updatePSW();
-    return this.psw;
+  putCY(v) {
+    if (v)
+      this.SFR[PSW] |= pswBits.cyMask;
+    else
+      this.SFR[PSW] &= ~pswBits.cyMask;
+  },
+
+
+  getDPTR() {
+    return (this.SFR[DPH] << 8) | this.SFR[DPL];
+  },
+
+
+  putDPTR(v) {
+    this.SFR[DPL] = v;
+    this.SFR[DPH] = v >>> 8;
   },
 
 
   push1(v) {
-    this.iram[++this.sp] = v;
+    this.iram[++this.SFR[SP]] = v;
   },
 
 
   push2(v) {
-    this.iram[this.sp = (this.sp + 1) & 0xFF] = v & 0xFF;
-    this.iram[this.sp = (this.sp + 1) & 0xFF] = v >>> 8;
+    this.iram[++this.SFR[SP]] = v;
+    this.iram[++this.SFR[SP]] = v >>> 8;
   },
 
 
   pop() {
-    const a = this.iram[this.sp--];
-    this.sp &= 0xFF;
+    const a = this.iram[this.SFR[SP]--];
     return a;
   },
 
 
   doADD(op, b) {
-    const c = op & 0x10 ? this.c : 0;
-    const a = this.a + b + c;
+    const c = op & 0x10 ? this.getCY() : 0;
+    const a = this.SFR[ACC] + b + c;
     // There is no overflow if
     // * Both operands are positive and sum is positive or
     // * Both operands are negative and sum is negative.
-    const aSign = !!(this.a & 0x80);
+    const aSign = !!(this.SFR[ACC] & 0x80);
     const bSign = !!((b + c) & 0x80);
     const sSign = !!(a & 0x80);
-    this.ov = !(aSign == bSign && aSign == sSign);
-    this.ac = ((a & 0x0F) + ((b + c) & 0x0F)) > 0x0F;
-    this.c = a > 0xFF ? 1 : 0;
-    this.a = a & 0xFF;
+
+    const ovValue = +!(aSign == bSign && aSign == sSign) << pswBits.ovShift;
+    const acValue = +(((a & 0x0F) + ((b + c) & 0x0F)) > 0x0F) << pswBits.acShift;
+    const cyValue = +!!(a > 0xFF) << pswBits.cyShift;
+    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) | ovValue | acValue | cyValue;
+
+    this.SFR[ACC] = a;
   },
 
 
   doSUBB(op, b) {
-    const toSub = b + this.c;
-
-    this.ac = (toSub & 0x0F) > (this.a & 0x0F) ? 1 : 0;
-    this.c = toSub > this.a ? 1 : 0;
-    this.a = (this.a - toSub) & 0xFF;
-    a = this.toSigned(this.a) - this.toSigned(toSub);
-    this.ov = a < -128 || a > 127 ? 1 : 0;
+    const toSub = b + this.getCY();
+    const acValue = +!!((toSub & 0x0F) > (this.SFR[ACC] & 0x0F)) << pswBits.acShift;
+    const cyValue = +!!(toSub > this.SFR[ACC]) << pswBits.cyShift;
+    this.SFR[ACC] = this.SFR[ACC] - toSub;
+    a = this.toSigned(this.SFR[ACC]) - this.toSigned(toSub);
+    const ovValue = +!!(a < -128 || a > 127) << pswBits.ovShift;
+    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) | ovValue | acValue | cyValue;
   },
 
 
@@ -465,33 +454,69 @@ const cpu = {
 
 
   getR(r) {
-    const ra = ((this.rs0 << 3) | (this.rs1 << 4)) + r;
+    const ra = (this.SFR[PSW] & rsMask) + r;
     return this.iram[ra];
   },
 
 
   putR(r, v) {
-    const ra = ((this.rs0 << 3) | (this.rs1 << 4)) + r;
-    this.iram[ra] = v & 0xFF;
+    const ra = (this.SFR[PSW] & rsMask) + r;
+    this.iram[ra] = v;
   },
 
 
   getDirect(ra) {
-    if (ra < 0x80)
-      return this.iram[ra];
-    else
-      return addrToSFR[ra].get(ra);
+    if (ra < 0x80) return this.iram[ra];
+
+    switch (ra) {
+    case SBUF:
+      return this.sbufQueue.length ? this.sbufQueue.shift() : 0x00;
+
+    case PSW:
+
+      if (parityTable[this.SFR[ACC]] << pswBits.pShift)
+        this.SFR[PSW] |= pswBits.pMask;
+      else
+        this.SFR[PSW] &= ~pswBits.pMask;
+
+      return this.SFR[PSW];
+
+    case P3:
+      const a = this.SFR[P3];
+      this.SFR[P3] ^= 1;          // Fake RxD toggling
+      return a;
+
+    default:
+      return this.SFR[ra];
+    }
   },
 
 
   putDirect(ra, v) {
 
-    if (ra < 0x80) 
-      this.iram[ra] = v & 0xFF;
-    else
-      addrToSFR[ra].put(ra, v & 0xFF);
+    if (ra < 0x80) {
+      this.iram[ra] = v;
+    } else {
 
-    if (cpu.debugDirect) console.log(`${addrToSFR[ra].name} is now ${toHex2(v)}`);
+      switch (ra) {
+
+      case SBUF:
+        process.stdout.write(String.fromCharCode(v));
+
+        // Transmitting a character immediately signals TI
+        this.SFR[SCON] |= sconBits.tiMask;
+        if (this.debugSCON) console.log(`putSBUF SCON now=${toHex2(this.SFR[SCON])}`);
+
+        // TODO: Make this do an interrupt
+        break;
+
+      default:
+        this.SFR[ra] = v;
+        break;
+      }
+    }
+
+    if (this.debugDirect) console.log(`${displayableAddress(ra, 'd')} is now ${toHex2(v)}`);
   },
 
 
@@ -499,7 +524,7 @@ const cpu = {
     const bm = 1 << (bn & 0x07);
     const ra = bn < 0x30 ? 0x20 + (bn >> 3) : bn & 0xF8;
     const v = this.getDirect(ra);
-    return (v & bm) ? 1 : 0;
+    return +!!(v & bm);
   },
 
 
@@ -524,7 +549,7 @@ const cpu = {
     if (bn < 0x80) {
       return toHex2(bn);
     } else {
-      return `${addrToSFR[bn & 0xF8].name}.${bn & 0x07}`;
+      return `${displayableAddress(bn & 0xF8, 'b')}.${bn & 0x07}`;
     }
   },
 
@@ -540,7 +565,7 @@ const cpu = {
             .join(' ');
     
     const handlers = {
-      bit: x => this.bitName(bytes[+x]),
+      bit: x => displayableAddress(bytes[+x], 'b'),
       immed: x => '#' + toHex2(bytes[+x]),
       immed16: x => '#' + toHex4(bytes[+x] << 8 | bytes[+x + 1]),
       addr16: x => displayableAddress(bytes[+x] << 8 | bytes[+x + 1], 'c'),
@@ -566,8 +591,8 @@ ${displayableAddress(pc, 'c')}: ${disassembly}  ${ope.name} ${operands}`;
 
   dumpState() {
     console.log(`\
- a=${toHex2(this.a)}   b=${toHex2(this.b)}  \
-sp=${toHex2(this.sp)} psw=${toHex2(this.getPSW())}  dptr=${toHex4(this.dptr)}
+ a=${toHex2(this.SFR[ACC])}   b=${toHex2(this.SFR[B])}  \
+sp=${toHex2(this.SFR[SP])} psw=${toHex2(this.SFR[PSW])}  dptr=${toHex4(this.getDPTR())}
 ${_.range(0, 8)
   .map((v, rn) => `r${rn}=${toHex2(this.getR(rn))}`)
   .join('  ')
@@ -663,28 +688,28 @@ ${_.range(0, 8)
     case 0x52:                // ANL dir,A
       ira = this.fetch();
       a = this.getDirect(ira);
-      this.putDirect(ira, this.a & a);
+      this.putDirect(ira, this.SFR[ACC] & a);
       break;
 
     case 0x53:                // ANL dir,#imm
       ira = this.fetch();
-      this.putDirect(ira, this.a & this.getDirect(ira));
+      this.putDirect(ira, this.SFR[ACC] & this.getDirect(ira));
       break;
 
     case 0x54:                // ANL A,#imm
       imm = this.fetch();
-      this.a = this.a & imm;
+      this.SFR[ACC] = this.SFR[ACC] & imm;
       break;
 
     case 0x55:                // ANL A,dir
       ira = this.fetch();
-      this.a = this.a & this.getDirect(ira);
+      this.SFR[ACC] = this.SFR[ACC] & this.getDirect(ira);
       break;
 
     case 0x56:                // ANL A,@R0
     case 0x57:                // ANL A,@R1
       ira = this.getR(op & 1);
-      this.a = this.a & this.iram[ira];
+      this.SFR[ACC] = this.SFR[ACC] & this.iram[ira];
       break;
 
     case 0x58:                // ANL A,Rn
@@ -696,39 +721,37 @@ ${_.range(0, 8)
     case 0x5E:                // ANL A,Rn
     case 0x5F:                // ANL A,Rn
       r = op & 0x07;
-      this.a = this.a & this.getR(r);
+      this.SFR[ACC] = this.SFR[ACC] & this.getR(r);
       break;
 
     case 0x82:                // ANL C,bit
       bit = this.fetch();
-      b = this.getBit(bit);
-      this.c = this.c & b;
+      this.putCY(this.getBit(bit));
       break;
 
     case 0xB0:                // ANL C,/bit
       bit = this.fetch();
-      b = this.getBit(bit);
-      this.c = this.c & (1 ^ b);
+      this.putCY(1 ^ this.getBit(bit));
       break;
 
 
       ////////// CJNE
     case 0xB4:                // CJNE A,#imm,rela
-      a = this.a;
+      a = this.SFR[ACC];
       imm = this.fetch();
       b = imm;
       rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
-      this.c = a < b ? 1 : 0;
+      this.putCY(+!!(a < b));
       break;
 
     case 0xB5:                // CJNE A,dir,rela
-      a = this.a;
+      a = this.SFR[ACC];
       ira = this.fetch();
       b = this.getDirect(ira);
       rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
-      this.c = a < b ? 1 : 0;
+      this.putCY(+!!(a < b));
       break;
 
     case 0xB6:                // CJNE @R0,#imm,rela
@@ -739,7 +762,7 @@ ${_.range(0, 8)
       b = imm;
       rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
-      this.c = a < b ? 1 : 0;
+      this.putCY(+!!(a < b));
       break;
 
     case 0xB8:                // CJNE R0,#imm,rela
@@ -756,7 +779,7 @@ ${_.range(0, 8)
       b = imm;
       rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
-      this.c = a < b ? 1 : 0;
+      this.putCY(+!!(a < b));
       break;
 
       ////////// CLR
@@ -766,11 +789,11 @@ ${_.range(0, 8)
       break;
       
     case 0xC3:                // CLR C
-      this.c = 0;
+      this.putCY(0);
       break;
       
     case 0xE4:                // CLR A
-      this.a = 0;
+      this.SFR[ACC] = 0;
       break;
       
 
@@ -781,27 +804,27 @@ ${_.range(0, 8)
       break;
       
     case 0xB3:                // CPL C
-      this.c = 1 ^ this.c;
+      this.putCY(1 ^ this.getCY());
       break;
       
     case 0xF4:                // CPL A
-      this.a = 0xFF ^ this.a;
+      this.SFR[ACC] = 0xFF ^ this.SFR[ACC];
       break;
       
 
       ////////// DA
     case 0xD4:                // DA A
-      if (this.ac || (this.a & 0x0F) > 9) this.a = this.a + 0x06;
-      if (this.a > 0xFF) this.c = 1;
-      if (this.c || (this.a & 0xF0) > 0x90) this.a = this.a + 0x60;
-      if (this.a > 0xFF) this.c = 1;
-      this.a = this.a & 0xFF;
+      if (this.ac || (this.SFR[ACC] & 0x0F) > 9) this.SFR[ACC] = this.SFR[ACC] + 0x06;
+      if (this.SFR[ACC] > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
+      if (this.getCY() || (this.SFR[ACC] & 0xF0) > 0x90) this.SFR[ACC] = this.SFR[ACC] + 0x60;
+      if (this.SFR[ACC] > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
+      this.SFR[ACC] = this.SFR[ACC] & 0xFF;
       break;
       
 
       ////////// DEC
     case 0x14:                // DEC A
-      this.a = (this.a - 1) & 0xFF;
+      this.SFR[ACC] = (this.SFR[ACC] - 1) & 0xFF;
       break;
 
     case 0x15:                // DEC dir
@@ -830,13 +853,13 @@ ${_.range(0, 8)
 
       ////////// DIV
     case 0x84:                // DIV AB
-      this.c = 0;
+      this.SFR[PSW] &= ~pswBits.cyMask; // DIV always clears CY
 
-      if (this.b === 0) {
+      if (this.SFR[B] === 0) {
         this.ov = 1;
       } else {
         this.ov = 0;
-        this.a = Math.floor(this.a / this.b);
+        this.SFR[ACC] = Math.floor(this.SFR[ACC] / this.SFR[B]);
       }
 
       break;
@@ -869,7 +892,7 @@ ${_.range(0, 8)
 
       ////////// INC
     case 0x04:                // INC A
-      this.a = (this.a + 1) & 0xFF;
+      this.SFR[ACC] = (this.SFR[ACC] + 1) & 0xFF;
       break;
 
     case 0x05:                // INC dir
@@ -896,7 +919,7 @@ ${_.range(0, 8)
       break;
 
     case 0xA3:                // INC DPTR
-      this.dptr = (this.dptr + 1) & 0xFFFF;
+      this.putDPTR((this.getDPTR() + 1) & 0xFFFF);
       break;
 
 
@@ -924,13 +947,13 @@ ${_.range(0, 8)
       ////////// JC
     case 0x40:                // JC rela
       rela = this.toSigned(this.fetch());
-      if (this.c) this.pc += rela;
+      if (this.getCY()) this.pc += rela;
       break;
 
 
       ////////// JMP
     case 0x73:                // JMP @A+DPTR
-      this.pc = (this.a + this.dptr) & 0xFFFF;
+      this.pc = (this.SFR[ACC] + this.getDPTR()) & 0xFFFF;
       break;
 
 
@@ -945,21 +968,21 @@ ${_.range(0, 8)
       ////////// JNC
     case 0x50:                // JNC rela
       rela = this.toSigned(this.fetch());
-      if (!this.c) this.pc += rela;
+      if (!this.getCY()) this.pc += rela;
       break;
 
 
       ////////// JNZ
     case 0x70:                // JNZ rela
       rela = this.toSigned(this.fetch());
-      if (this.a !== 0) this.pc += rela;
+      if (this.SFR[ACC] !== 0) this.pc += rela;
       break;
 
 
       ////////// JZ
     case 0x60:                // JZ rela
       rela = this.toSigned(this.fetch());
-      if (this.a === 0) this.pc += rela;
+      if (this.SFR[ACC] === 0) this.pc += rela;
       break;
 
 
@@ -993,7 +1016,7 @@ ${_.range(0, 8)
     case 0xF7:                // MOV @R1,a
       r = op & 1;
       ira = this.getR(r);
-      this.iram[ira] = this.a;
+      this.iram[ira] = this.SFR[ACC];
       break;
 
     case 0xA6:                // MOV @R0,dir
@@ -1006,13 +1029,13 @@ ${_.range(0, 8)
       break;
 
     case 0x74:                // MOV A,#imm
-      this.a = this.fetch();
+      this.SFR[ACC] = this.fetch();
       break;
 
     case 0xE6:                // MOV A,@R0
     case 0xE7:                // MOV A,@R1
       ira = this.getR(r);
-      this.a = this.iram[ira];
+      this.SFR[ACC] = this.iram[ira];
       break;
 
     case 0xE8:                // MOV A,R0
@@ -1024,23 +1047,23 @@ ${_.range(0, 8)
     case 0xEE:                // MOV A,R6
     case 0xEF:                // MOV A,R7
       r = op & 0x07;
-      this.a = this.getR(r);
+      this.SFR[ACC] = this.getR(r);
       break;
 
     case 0xE5:                // MOV A,dir
       ira = this.fetch();
-      this.a = this.getDirect(ira);
+      this.SFR[ACC] = this.getDirect(ira);
       break;
 
     case 0xA2:                // MOV C,bit
       bit = this.fetch();
-      this.c = this.getBit(bit);
+      this.putCY(this.getBit(bit));
       break;
 
     case 0x90:                // MOV DPTR,#immed16
       a = this.fetch();
       b = this.fetch();
-      this.dptr = a | (b << 8);
+      this.putDPTR(a | (b << 8));
       break;
 
     case 0x78:                // MOV R0,#imm
@@ -1065,7 +1088,7 @@ ${_.range(0, 8)
     case 0xFE:                // MOV R6,A
     case 0xFF:                // MOV R7,A
       r = op & 0x07;
-      this.putR(r, this.a);
+      this.putR(r, this.SFR[ACC]);
       break;
 
     case 0xA8:                // MOV R0,dir
@@ -1083,7 +1106,7 @@ ${_.range(0, 8)
 
     case 0x92:                // MOV bit,C
       bit = this.fetch();
-      this.putBit(bit, this.c);
+      this.putBit(bit, this.getCY());
       break;
 
     case 0x75:                // MOV dir,#imm
@@ -1116,7 +1139,7 @@ ${_.range(0, 8)
 
     case 0xF5:                // MOV dir,A
       ira = this.fetch();
-      this.putDirect(ira, this.a);
+      this.putDirect(ira, this.SFR[ACC]);
       break;
 
     case 0x85:                // MOV dir,dir
@@ -1129,49 +1152,54 @@ ${_.range(0, 8)
 
       ////////// MOVC
     case 0x93:                // MOVC A,@A+DPTR
-      this.a = this.pmem[(this.a + this.dptr) & 0xFFFF];
+      this.SFR[ACC] = this.pmem[(this.SFR[ACC] + this.getDPTR()) & 0xFFFF];
       break;
 
     case 0x83:                // MOVC A,@A+PC
-      this.a = this.pmem[(this.a + this.pc) & 0xFFFF];
+      this.SFR[ACC] = this.pmem[(this.SFR[ACC] + this.pc) & 0xFFFF];
       break;
 
 
       ////////// MOVX
     case 0xF0:                // MOVX @DPTR,A
-      this.p1 = this.dptr & 0xFF;
-      this.p2 = this.dptr >>> 8;
-      this.xram[this.dptr] = this.a;
+      a = this.getDPTR();
+      this.p1 = a & 0xFF;
+      this.p2 = a >>> 8;
+      this.xram[a] = this.SFR[ACC];
       break;
 
     case 0xF2:                // MOVX @R0,A
     case 0xF3:                // MOVX @R1,A
       r = op & 1;
       this.p1 = this.getR(r);
-      this.xram[(this.p2 << 8) | this.p1] = this.a;
+      this.xram[(this.p2 << 8) | this.p1] = this.SFR[ACC];
       break;
 
     case 0xE0:                // MOVX A,@DPTR
-      this.p1 = this.dptr & 0xFF;
-      this.p2 = this.dptr >>> 8;
-      this.a = this.xram[this.dptr];
+      a = this.getDPTR();
+      this.p1 = a & 0xFF;
+      this.p2 = a >>> 8;
+      this.SFR[ACC] = this.xram[a];
       break;
 
     case 0xE2:                // MOVX A,@R0
     case 0xE3:                // MOVX A,@R1
       r = op & 1;
       this.p1 = this.getR(r);
-      this.a = this.xram[(this.p2 << 8) | this.p1];
+      this.SFR[ACC] = this.xram[(this.p2 << 8) | this.p1];
       break;
 
 
       ////////// MUL
     case 0xA4:                // MUL AB
-      a = this.a * this.b;
-      this.c = 0;
-      this.ov = a > 0xFF ? 1 : 0;
-      this.a = a & 0xFF;
-      this.b = a >>> 8;
+      a = this.SFR[ACC] * this.SFR[B];
+
+      // MUL always clears CY.
+      this.SFR[PSW] &= ~(pswBits.cyMask | pswBits.ovMask);
+
+      if (a > 0xFF) this.SFR[PSW] |= pswBits.ovMask;
+      this.SFR[ACC] = a & 0xFF;
+      this.SFR[B] = a >>> 8;
       break;
 
 
@@ -1179,28 +1207,28 @@ ${_.range(0, 8)
     case 0x42:                // ORL dir,A
       ira = this.fetch();
       a = this.getDirect(ira);
-      this.putDirect(ira, this.a | a);
+      this.putDirect(ira, this.SFR[ACC] | a);
       break;
 
     case 0x43:                // ORL dir,#imm
       ira = this.fetch();
-      this.putDirect(ira, this.a | this.getDirect(ira));
+      this.putDirect(ira, this.SFR[ACC] | this.getDirect(ira));
       break;
 
     case 0x44:                // ORL A,#imm
       imm = this.fetch();
-      this.a = this.a | imm;
+      this.SFR[ACC] = this.SFR[ACC] | imm;
       break;
 
     case 0x45:                // ORL A,dir
       ira = this.fetch();
-      this.a = this.a | this.getDirect(ira);
+      this.SFR[ACC] = this.SFR[ACC] | this.getDirect(ira);
       break;
 
     case 0x46:                // ORL A,@R0
     case 0x47:                // ORL A,@R1
       ira = this.getR(op & 1);
-      this.a = this.a | this.iram[ira];
+      this.SFR[ACC] = this.SFR[ACC] | this.iram[ira];
       break;
 
     case 0x48:                // ORL A,Rn
@@ -1212,19 +1240,19 @@ ${_.range(0, 8)
     case 0x4E:                // ORL A,Rn
     case 0x4F:                // ORL A,Rn
       r = op & 0x07;
-      this.a = this.a | this.getR(r);
+      this.SFR[ACC] = this.SFR[ACC] | this.getR(r);
       break;
 
     case 0x72:                // ORL C,bit
       bit = this.fetch();
       b = this.getBit(bit);
-      this.c = this.c | b;
+      this.putCY(this.getCY() | b);
       break;
 
     case 0xA0:                // ORL C,/bit
       bit = this.fetch();
       b = 1 ^ this.getBit(bit);
-      this.c = this.c | b;
+      this.putCY(this.getCY() | b);
       break;
 
 
@@ -1264,32 +1292,32 @@ ${_.range(0, 8)
 
       ////////// RL
     case 0x23:                // RL A
-      this.a = this.a << 1;
-      this.a = (this.a & 0xFF) | (this.a >>> 8);
+      this.SFR[ACC] = this.SFR[ACC] << 1;
+      this.SFR[ACC] = (this.SFR[ACC] & 0xFF) | (this.SFR[ACC] >>> 8);
       break;
 
 
       ////////// RLC
     case 0x33:                // RLC A
-      b = this.c;
-      this.a = this.a << 1;
-      this.c = this.a >>> 8;
-      this.a = (this.a & 0xFF) | b;
+      b = this.getCY();
+      this.SFR[ACC] = this.SFR[ACC] << 1;
+      this.putCY(this.SFR[ACC] >>> 8);
+      this.SFR[ACC] = (this.SFR[ACC] & 0xFF) | b;
       break;
 
 
       ////////// RR
     case 0x03:                // RR A
-      a = this.a << 7;
-      this.a = (this.a >>> 1) | a;
+      a = this.SFR[ACC] << 7;
+      this.SFR[ACC] = (this.SFR[ACC] >>> 1) | a;
       break;
 
 
       ////////// RRC
     case 0x13:                // RRC A
-      b = this.c << 7;
-      this.c = this.a & 1;
-      this.a = (this.a >>> 1) | b;
+      b = this.getCY() << 7;
+      this.putCY(this.SFR[ACC] & 1);
+      this.SFR[ACC] = (this.SFR[ACC] >>> 1) | b;
       break;
 
 
@@ -1300,7 +1328,7 @@ ${_.range(0, 8)
       break;
       
     case 0xD3:                // SETB C
-      this.c = 1;
+      this.putCY(1);
       break;
       
 
@@ -1343,13 +1371,13 @@ ${_.range(0, 8)
 
       ////////// SWAP
     case 0xC4:                // SWAP A
-      this.a = ((this.a & 0xF) << 4) | (this.a >>> 4);
+      this.SFR[ACC] = ((this.SFR[ACC] & 0xF) << 4) | (this.SFR[ACC] >>> 4);
       break;
 
 
       ////////// UNDEFINED
     case 0xA5:                // UNDEFINED
-      this.c = 1;
+      this.putCY(1);
       break;
 
 
@@ -1358,8 +1386,8 @@ ${_.range(0, 8)
     case 0xC7:                // XCH A,@R1
       ira = this.getR(op & 1);
       a = this.iram[ira];
-      this.iram[ira] = this.a;
-      this.a = a;
+      this.iram[ira] = this.SFR[ACC];
+      this.SFR[ACC] = a;
       break;
 
     case 0xC8:                // XCH R0
@@ -1372,8 +1400,8 @@ ${_.range(0, 8)
     case 0xCF:                // XCH R7
       r = op & 0x07;
       a = this.getR(r);
-      this.putR(r, this.a);
-      this.a = a;
+      this.putR(r, this.SFR[ACC]);
+      this.SFR[ACC] = a;
       break;
 
       
@@ -1382,8 +1410,8 @@ ${_.range(0, 8)
     case 0xD7:                // XCHD A,@R1
       ira = this.getR(op & 1);
       a = this.iram[ira];
-      this.iram[ira] = (a & 0xF0) | (this.a & 0x0F);
-      this.a = (this.a & 0xF0) | (a & 0x0F);
+      this.iram[ira] = (a & 0xF0) | (this.SFR[ACC] & 0x0F);
+      this.SFR[ACC] = (this.SFR[ACC] & 0xF0) | (a & 0x0F);
       break;
 
 
@@ -1391,28 +1419,28 @@ ${_.range(0, 8)
     case 0x62:                // XRL dir,A
       ira = this.fetch();
       a = this.getDirect(ira);
-      this.putDirect(ira, this.a ^ a);
+      this.putDirect(ira, this.SFR[ACC] ^ a);
       break;
 
     case 0x63:                // XRL dir,#imm
       ira = this.fetch();
-      this.putDirect(ira, this.a ^ this.getDirect(ira));
+      this.putDirect(ira, this.SFR[ACC] ^ this.getDirect(ira));
       break;
 
     case 0x64:                // XRL A,#imm
       imm = this.fetch();
-      this.a = this.a ^ imm;
+      this.SFR[ACC] = this.SFR[ACC] ^ imm;
       break;
 
     case 0x65:                // XRL A,dir
       ira = this.fetch();
-      this.a = this.a ^ this.getDirect(ira);
+      this.SFR[ACC] = this.SFR[ACC] ^ this.getDirect(ira);
       break;
 
     case 0x66:                // XRL A,@R0
     case 0x67:                // XRL A,@R1
       ira = this.getR(op & 1);
-      this.a = this.a ^ this.iram[ira];
+      this.SFR[ACC] = this.SFR[ACC] ^ this.iram[ira];
       break;
 
     case 0x68:                // XRL A,Rn
@@ -1424,7 +1452,7 @@ ${_.range(0, 8)
     case 0x6E:                // XRL A,Rn
     case 0x6F:                // XRL A,Rn
       r = op & 0x07;
-      this.a = this.a ^ this.getR(r);
+      this.SFR[ACC] = this.SFR[ACC] ^ this.getR(r);
       break;
 
 
@@ -1444,16 +1472,6 @@ function toHex2(v) {
 
 function toHex4(v) {
   return `${toHex2(v >>> 8)}${toHex2(v & 0xFF)}`;
-}
-
-
-function getSFR(a) {
-  return cpu.sfrSpace[a];
-}
-
-
-function putSFR(a, v) {
-  cpu.sfrSpace[a] = v;
 }
 
 
@@ -1508,81 +1526,6 @@ try {
 
   console.log(s);
 } catch(e) {
-}
-
-
-function getPSW(ra) {
-  cpu.updatePSW();
-  return cpu.psw;
-}
-
-
-function putPSW(ra, v) {
-  cpu.psw = v;
-}
-
-
-function getDPL(ra) {
-  return cpu.dptr & 0xFF;
-}
-
-
-function putDPL(ra, v) {
-  cpu.dptr = (cpu.dptr & ~0xFF) | v;
-}
-
-
-function getDPH(ra) {
-  return cpu.dptr >>> 8;
-}
-
-
-function putDPH(ra, v) {
-  cpu.dptr = (v << 8) | (cpu.dptr & 0xFF);
-}
-
-
-function getSBUF(ra) {
-
-  if (cpu.sbufQueue.length) {
-    return cpu.sbufQueue.shift();
-  } else {
-    return 0x00;
-  }
-}
-
-
-function putSBUF(ra, v) {
-  process.stdout.write(String.fromCharCode(v));
-
-  // Transmitting a character immediately signals TI
-  cpu.scon = cpu.scon | SFR.SCON.bits.tiMask;
-  if (cpu.debugSCON) console.log(`putSBUF SCON now=${toHex2(cpu.scon)}`);
-
-  // TODO: Make this do an interrupt
-}
-
-
-function getSCON(ra) {
-  return cpu.scon;
-}
-
-
-function putSCON(ra, v) {
-  cpu.scon = v;
-  if (cpu.debugSCON) console.log(`putSCON SCON now=${toHex2(cpu.scon)}`);
-}
-
-
-function getP3(ra) {
-  const a = cpu.p3;
-  cpu.p3 = cpu.p3 ^ 1;          // Fake RxD toggling
-  return a;
-}
-
-
-function putP3(ra, v) {
-  cpu.p3 = v;
 }
 
 
@@ -1981,13 +1924,13 @@ function startCLI() {
 function sbufRx(c) {
 
   // Ignore characters if receiver is not enabled
-  if ((cpu.scon & SFR.SCON.bits.renMask) === 0) return;
+  if ((cpu.SFR[SCON] & sconBits.renMask) === 0) return;
 
   cpu.sbufQueue.push(c);
 
   // Character arrival indicated via SCON.RI
-  cpu.scon = cpu.scon | SFR.SCON.bits.riMask;
-  if (cpu.debugSCON) console.log(`sbufRx SCON now=${toHex2(cpu.scon)}`);
+  cpu.SFR[SCON] |= sconBits.riMask;
+  if (cpu.debugSCON) console.log(`sbufRx SCON now=${toHex2(cpu.SFR[SCON])}`);
 
   // TODO: Make this do RI interrupt
 }
@@ -2130,10 +2073,19 @@ if (sym) {
     });
 }
 
+// Only start the thing if we are not loaded via require.
+if (require.main === module) {
+  console.log('[Control-\\ will interrupt execution and return to prompt]');
 
-console.log('[Control-\\ will interrupt execution and return to prompt]');
+  if (process.stdin.setRawMode)
+    startCLI();
+  else
+    doGo(['go']);
+} else {
+  module.exports.opTable = opTable;
+  module.exports.SFRs = SFRs;
+  module.exports.toHex2 = toHex2;
+  module.exports.toHex4 = toHex4;
+  module.exports.cpu = cpu;
+}
 
-if (process.stdin.setRawMode)
-  startCLI();
-else
-  doGo(['go']);
