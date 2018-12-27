@@ -336,6 +336,8 @@ const parityTable = [
 
 
 const cpu = {
+
+  // Program counter - invisible to software in most ways
   pc: 0,
 
   // Internal RAM
@@ -356,13 +358,14 @@ const cpu = {
   // 1: High priority in progress.
   ipl: -1,
 
-  // Serial port
+  // Serial port input queue
   sbufQueue: [],
 
   // Simulator state and control
   tracing: false,
   running: true,
 
+  // Statistics
   instructionsExecuted: 0,
   executionTime: 0,
 
@@ -430,7 +433,7 @@ const cpu = {
 
     const ovValue = +!(aSign == bSign && aSign == sSign) << pswBits.ovShift;
     const acValue = +(((a & 0x0F) + ((b + c) & 0x0F)) > 0x0F) << pswBits.acShift;
-    const cyValue = +!!(a > 0xFF) << pswBits.cyShift;
+    const cyValue = +(a > 0xFF) << pswBits.cyShift;
     this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) | ovValue | acValue | cyValue;
 
     this.SFR[ACC] = a;
@@ -440,10 +443,10 @@ const cpu = {
   doSUBB(op, b) {
     const toSub = b + this.getCY();
     const acValue = +!!((toSub & 0x0F) > (this.SFR[ACC] & 0x0F)) << pswBits.acShift;
-    const cyValue = +!!(toSub > this.SFR[ACC]) << pswBits.cyShift;
+    const cyValue = +(toSub > this.SFR[ACC]) << pswBits.cyShift;
     this.SFR[ACC] = this.SFR[ACC] - toSub;
     a = this.toSigned(this.SFR[ACC]) - this.toSigned(toSub);
-    const ovValue = +!!(a < -128 || a > 127) << pswBits.ovShift;
+    const ovValue = +(a < -128 || a > 127) << pswBits.ovShift;
     this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) | ovValue | acValue | cyValue;
   },
 
@@ -465,6 +468,8 @@ const cpu = {
   },
 
 
+  // Direct accesses in 0x00..0x7F are internal RAM.
+  // Above that, direct accesses are to SFRs.
   getDirect(ra) {
     if (ra < 0x80) return this.iram[ra];
 
@@ -482,9 +487,11 @@ const cpu = {
       return this.SFR[PSW];
 
     case P3:
-      const a = this.SFR[P3];
       this.SFR[P3] ^= 1;          // Fake RxD toggling
-      return a;
+      return this.SFR[P3];
+
+    case SCON:
+//      if (this.debugSCON) console.log(`getDirect SCON=${toHex2(this.SFR[SCON])}`);
 
     default:
       return this.SFR[ra];
@@ -492,6 +499,8 @@ const cpu = {
   },
 
 
+  // Direct accesses in 0x00..0x7F are internal RAM.
+  // Above that, direct accesses are to SFRs.
   putDirect(ra, v) {
 
     if (ra < 0x80) {
@@ -503,12 +512,14 @@ const cpu = {
       case SBUF:
         process.stdout.write(String.fromCharCode(v));
 
-        // Transmitting a character immediately signals TI
-        this.SFR[SCON] |= sconBits.tiMask;
-        if (this.debugSCON) console.log(`putSBUF SCON now=${toHex2(this.SFR[SCON])}`);
+        // Transmitting a character immediately signals TI saying it is done.
+        this.putDirect(SCON, this.getDirect(SCON) | sconBits.tiMask);
 
         // TODO: Make this do an interrupt
         break;
+
+      case SCON:
+        if (this.debugSCON) console.log(`putDirect SCON now=${toHex2(v)}`);
 
       default:
         this.SFR[ra] = v;
@@ -742,7 +753,7 @@ ${_.range(0, 8)
       b = imm;
       rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
-      this.putCY(+!!(a < b));
+      this.putCY(+(a < b));
       break;
 
     case 0xB5:                // CJNE A,dir,rela
@@ -751,7 +762,7 @@ ${_.range(0, 8)
       b = this.getDirect(ira);
       rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
-      this.putCY(+!!(a < b));
+      this.putCY(+(a < b));
       break;
 
     case 0xB6:                // CJNE @R0,#imm,rela
@@ -762,7 +773,7 @@ ${_.range(0, 8)
       b = imm;
       rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
-      this.putCY(+!!(a < b));
+      this.putCY(+(a < b));
       break;
 
     case 0xB8:                // CJNE R0,#imm,rela
@@ -779,7 +790,7 @@ ${_.range(0, 8)
       b = imm;
       rela = this.toSigned(this.fetch());
       if (a !== b) this.pc += rela;
-      this.putCY(+!!(a < b));
+      this.putCY(+(a < b));
       break;
 
       ////////// CLR
