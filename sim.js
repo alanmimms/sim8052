@@ -1867,6 +1867,7 @@ function doDump(words) {
 
 
 function doGo(words) {
+  startOfLastStep = cpu.instructionsExecuted;
   run(cpu.pc);
 }
 
@@ -1879,6 +1880,7 @@ function doTil(words) {
     let b = getAddress(words);
     stopReasons[b] = 'now at ' + toHex4(b);
     console.log(`[Running until ${toHex4(b)}]`);
+    startOfLastStep = cpu.instructionsExecuted;
     run(cpu.pc);
   }
 }
@@ -1886,6 +1888,7 @@ function doTil(words) {
 
 function doStep(words) {
   const n = (words.length > 1) ? parseInt(words[1]) : 1;
+  startOfLastStep = cpu.instructionsExecuted;
   run(cpu.pc, n);
 }
 
