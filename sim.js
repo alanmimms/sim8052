@@ -1773,20 +1773,45 @@ function doSFR(words) {
 
 
 function doIRAM(words) {
-  let x;
-  let w;
+  let x, endAddress;
+  let n = 0;
 
   if (words.length < 2) {
     x = ++lastX;
   } else {
     x = getAddress(words);
+
+    if (words.length > 2) {
+      endAddress = Math.min(x + parseInt(words[2], 16), 0x100);
+    } else {
+      endAddress = x + 1;
+    }
   }
 
-  w = cpu.iram[x];
-
-  let addr = displayableAddress(x, 'd');
-  console.log(`${addr}: ${toHex2(w)}`);
+  let longestAddr = 0;
+  const addrs = [];
+  const lines = [];
+  let line = '';
   lastX = x;
+
+  while (x < endAddress) {
+
+    if ((n++ & 0x0F) === 0) {
+      if (line.length > 0) lines.push(line);
+      const addr = displayableAddress(x, 'd') + ':';
+      if (addr.length > longestAddr) longestAddr = addr.length;
+      addrs.push(addr);
+      line = '';
+    }
+
+    line += ' ' + toHex2(cpu.iram[x++]);
+  }
+
+  if (line.length > 0) lines.push(line);
+
+  console.log(lines
+              .map((L, lineX) => _.padStart(addrs[lineX], longestAddr) + L)
+              .join('\n'));
 }
 
 
