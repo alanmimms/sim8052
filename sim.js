@@ -656,7 +656,8 @@ ${_.range(0, 8)
     case 0x27:                // ADD A,@R1
     case 0x36:                // ADDC A,@R0
     case 0x37:                // ADDC A,@R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       this.doADD(op, this.iram[ira]);
       break;
 
@@ -719,7 +720,8 @@ ${_.range(0, 8)
 
     case 0x56:                // ANL A,@R0
     case 0x57:                // ANL A,@R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       this.SFR[ACC] = this.SFR[ACC] & this.iram[ira];
       break;
 
@@ -845,7 +847,8 @@ ${_.range(0, 8)
 
     case 0x16:                // DEC @R0
     case 0x17:                // DEC @R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       this.iram[ira] = this.iram[ira] - 1;
       break;
 
@@ -913,7 +916,8 @@ ${_.range(0, 8)
 
     case 0x06:                // INC @R0
     case 0x07:                // INC @R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       this.ira[ira] = this.iram[ira] + 1;
       break;
 
@@ -1017,8 +1021,8 @@ ${_.range(0, 8)
       ////////// MOV
     case 0x76:                // MOV @R0,#imm
     case 0x77:                // MOV @R1,#imm
-      imm = this.fetch();
       r = op & 1;
+      imm = this.fetch();
       ira = this.getR(r);
       this.iram[ira] = imm;
       break;
@@ -1032,9 +1036,9 @@ ${_.range(0, 8)
 
     case 0xA6:                // MOV @R0,dir
     case 0xA7:                // MOV @R1,dir
+      r = op & 1;
       ira = this.fetch();
       a = this.getDirect(ira);
-      r = op & 1;
       ira = this.getR(r);
       this.iram[ira] = a;
       break;
@@ -1045,6 +1049,7 @@ ${_.range(0, 8)
 
     case 0xE6:                // MOV A,@R0
     case 0xE7:                // MOV A,@R1
+      r = op & 1;
       ira = this.getR(r);
       this.SFR[ACC] = this.iram[ira];
       break;
@@ -1128,6 +1133,7 @@ ${_.range(0, 8)
 
     case 0x86:                // MOV dir,@R0
     case 0x87:                // MOV dir,@R1
+      r = op & 1;
       ira = this.getR(r);
       a = this.iram[ira];
       ira = this.fetch();
@@ -1238,7 +1244,8 @@ ${_.range(0, 8)
 
     case 0x46:                // ORL A,@R0
     case 0x47:                // ORL A,@R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       this.SFR[ACC] = this.SFR[ACC] | this.iram[ira];
       break;
 
@@ -1363,7 +1370,8 @@ ${_.range(0, 8)
 
     case 0x96:                // SUBB A,@R0
     case 0x97:                // SUBB A,@R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       this.doSUBB(op, this.iram[ira]);
       break;
 
@@ -1395,7 +1403,8 @@ ${_.range(0, 8)
       ////////// XCH
     case 0xC6:                // XCH A,@R0
     case 0xC7:                // XCH A,@R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       a = this.iram[ira];
       this.iram[ira] = this.SFR[ACC];
       this.SFR[ACC] = a;
@@ -1419,7 +1428,8 @@ ${_.range(0, 8)
       ////////// XCHD
     case 0xD6:                // XCHD A,@R0
     case 0xD7:                // XCHD A,@R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       a = this.iram[ira];
       this.iram[ira] = (a & 0xF0) | (this.SFR[ACC] & 0x0F);
       this.SFR[ACC] = (this.SFR[ACC] & 0xF0) | (a & 0x0F);
@@ -1450,7 +1460,8 @@ ${_.range(0, 8)
 
     case 0x66:                // XRL A,@R0
     case 0x67:                // XRL A,@R1
-      ira = this.getR(op & 1);
+      r = op & 1;
+      ira = this.getR(r);
       this.SFR[ACC] = this.SFR[ACC] ^ this.iram[ira];
       break;
 
@@ -1680,7 +1691,8 @@ function displayableAddress(x, space) {
   });
 
   if (closestSym && closestOffset < OFFSET_THRESHOLD) {
-    return closestSym.name + (closestOffset ? "+" + toHex4(closestOffset) : "");
+    return closestSym.name + (closestOffset ? "+" + toHex4(closestOffset) : "") +
+      `=${toHex4(x)}`;
   } else {
     return toHex4(x);
   }
@@ -1829,7 +1841,7 @@ function doStep(words) {
 
 
 function doOver(words) {
-  _.range(1, 8).forEach(offs => stopReasons[cpu.pc + offs] = `skipped ${offs}`);
+  _.range(1, 0x10).forEach(offs => stopReasons[cpu.pc + offs] = `skipped ${offs}`);
   startOfLastStep = cpu.instructionsExecuted;
   run(cpu.pc);
 }
