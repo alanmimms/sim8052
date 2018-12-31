@@ -1,0 +1,525 @@
+A51 MACRO ASSEMBLER  RAMLOAD                                                              08/23/2004 14:23:47 PAGE     1
+
+
+MACRO ASSEMBLER A51 V7.03
+OBJECT MODULE PLACED IN ramload.OBJ
+ASSEMBLER INVOKED BY: C:\CAD\Keil\C51\BIN\A51.EXE ramload.asm SET(SMALL) DEBUG EP
+
+LOC  OBJ            LINE     SOURCE
+
+  000A                 1     LF EQU 0Ah
+  000D                 2     CR EQU 0DH
+  001B                 3     ESC EQU 1Bh
+  003A                 4     StartChar EQU ':'
+  002F                 5     Slash EQU '/'
+  000D                 6     Skip EQU 13
+                       7     
+  000F                 8     Ch DATA 0Fh
+  0010                 9     State DATA 10h
+  0011                10     DataByte DATA 11h
+  0012                11     ByteCount DATA 12h
+  0013                12     HighAddr DATA 13h
+  0014                13     LowAddr DATA 14h
+  0015                14     RecType DATA 15h
+  0016                15     ChkSum DATA 16h
+  0017                16     HASave DATA 17h
+  0018                17     LASave DATA 18h
+  0019                18     FilChkHi DATA 19h
+  001A                19     FilChkLo DATA 1Ah
+                      20     
+  0020                21     Flags DATA 20h
+  0000                22     HexFlag BIT Flags.0
+  0001                23     EndFlag BIT Flags.1
+  0002                24     DoneFlag BIT Flags.2
+                      25     
+  0021                26     EFlags DATA 21h
+  0008                27     ErrFlag1 BIT EFlags.0
+  0009                28     ErrFlag2 BIT EFlags.1
+  000A                29     ErrFlag3 BIT EFlags.2
+  000B                30     ErrFlag4 BIT EFlags.3
+  000C                31     ErrFlag5 BIT EFlags.4
+  000D                32     ErrFlag6 BIT EFlags.5
+  0003                33     DatSkipFlag BIT Flags.3
+                      34     
+  2003                35     ExInt0 EQU 02003h
+  200B                36     T0Int EQU 0200Bh
+  2013                37     ExInt1 EQU 02013h
+  201B                38     T1Int EQU 0201Bh
+  2023                39     SerInt EQU 02023h
+  202B                40     T2Int EQU 0202Bh
+                      41     
+0000                  42     ORG 0000h
+0000 020250           43     LJMP Start
+                      44     
+0003                  45     ORG 0003h
+0003 022003           46      LJMP ExInt0
+0006 32               47     RETI
+                      48     
+000B                  49     ORG 000Bh
+000B 02200B           50      LJMP T0Int
+000E 32               51     RETI
+                      52     
+0013                  53     ORG 0013h
+0013 022013           54      LJMP ExInt1
+0016 32               55     RETI
+                      56     
+001B                  57     ORG 001Bh
+001B 02201B           58      LJMP T1Int
+A51 MACRO ASSEMBLER  RAMLOAD                                                              08/23/2004 14:23:47 PAGE     2
+
+001E 32               59     RETI
+                      60     
+0023                  61     ORG 0023h
+0023 022023           62      LJMP SerInt
+0026 32               63     RETI
+                      64     
+002B                  65     ORG 002Bh
+002B 02202B           66      LJMP T2Int
+002E 32               67     RETI
+                      68     
+003D                  69     ORG 0003Dh
+003D 743F             70     ErrLoop: MOV A,#'?'
+003F 31D0             71      ACALL PutChar
+0041 31C2             72      ACALL GetChar
+0043 80F8             73      SJMP ErrLoop
+                      74     
+0045 752100           75     HexOK: MOV EFlags,#0
+0048 31C2             76      ACALL GetChar
+004A B42FF8           77      CJNE A,#Slash,HexOK
+                      78      
+004D 31B1             79      ACALL GetByte
+004F 2008F3           80      JB ErrFlag1,HexOK
+0052 851113           81      MOV HighAddr,DataByte
+                      82      
+0055 31B1             83      ACALL GetByte
+0057 2008EB           84      JB ErrFlag1,HexOK
+005A 851114           85      MOV LowAddr,DataByte
+                      86      
+005D 31C2             87      ACALL GetChar
+005F B40DE3           88      CJNE A,#CR,HexOK
+                      89     
+0062 7440             90      MOV A,#'@'
+0064 31D0             91      ACALL PutChar
+0066 3099FD           92      JNB TI,$
+0069 C014             93      PUSH LowAddr
+006B C013             94      PUSH HighAddr
+006D 22               95      RET
+                      96     
+006E E4               97     HexIn: CLR A
+006F F510             98      MOV State,A
+0071 F520             99      MOV Flags,A
+0073 F513            100      MOV HighAddr,A
+0075 F514            101      MOV LowAddr,A
+0077 F517            102      MOV HASave,A
+0079 F518            103      MOV LASave,A
+007B F516            104      MOV ChkSum,A
+007D F519            105      MOV FilChkHi,A
+007F F51A            106      MOV FilChkLo,A
+0081 F521            107      MOV Eflags,A
+0083 D20B            108      SETB ErrFlag4
+                     109     
+0085 31C2            110     StateLoop: ACALL GetChar
+0087 31D8            111      ACALL AscHex
+0089 F50F            112      MOV Ch,A
+008B 11A5            113      ACALL GoState
+008D 3002F5          114      JNB DoneFlag,StateLoop
+                     115      
+0090 31D0            116      ACALL PutChar
+0092 7428            117      MOV A,#'('
+0094 31D0            118      ACALL PutChar
+0096 E519            119      MOV A,FilChkHi
+0098 5128            120      ACALL PrByte
+009A E51A            121      MOV A,FilChkLo
+009C 5128            122      ACALL PrByte
+009E 7429            123      MOV A,#')'
+00A0 31D0            124      ACALL PutChar
+A51 MACRO ASSEMBLER  RAMLOAD                                                              08/23/2004 14:23:47 PAGE     3
+
+00A2 511F            125      ACALL CRLF
+00A4 22              126      RET
+                     127     
+00A5 E510            128     GoState: MOV A,State
+00A7 540F            129      ANL A,#0Fh
+00A9 23              130      RL  A
+00AA 9000AE          131      MOV DPTR,#StateTable
+00AD 73              132      JMP @A+DPTR
+                     133     
+00AE 01CE            134     StateTable: AJMP StWait
+00B0 01D6            135      AJMP StLeft
+00B2 01FD            136      AJMP StGetCnt
+00B4 01D6            137      AJMP StLeft
+00B6 2106            138      AJMP StGetAd1
+00B8 01D6            139      AJMP StLeft
+00BA 210F            140      AJMP StGetAd2
+00BC 01D6            141      AJMP StLeft
+00BE 2118            142      AJMP StGetRec
+00C0 01D6            143      AJMP StLeft
+00C2 2134            144      AJMP StGetDat
+00C4 01D6            145      AJMP StLeft
+00C6 2152            146      AJMP StGetChk
+00C8 2171            147      AJMP StSkip
+00CA 2172            148      AJMP BadState
+00CC 2172            149      AJMP BadState
+                     150     
+00CE E50F            151     StWait: MOV A,Ch
+00D0 B43A02          152      CJNE A,#StartChar,SWEX
+00D3 0510            153      INC State
+00D5 22              154     SWEX: RET
+                     155     
+00D6 E50F            156     StLeft: MOV A,Ch
+00D8 300008          157      JNB HexFlag,SLERR
+00DB 540F            158      ANL A,#0Fh
+00DD C4              159      SWAP A
+00DE F511            160      MOV DataByte,A
+00E0 0510            161      INC State
+00E2 22              162      RET
+                     163     
+00E3 D208            164     SLERR: SETB ErrFlag1
+00E5 D202            165      SETB DoneFlag
+00E7 22              166      RET
+                     167     
+00E8 E50F            168     StRight: MOV A,Ch
+00EA 30000B          169      JNB HexFlag,SRERR
+00ED 540F            170      ANL A,#0Fh
+00EF 4511            171      ORL A,DataByte
+00F1 F511            172      MOV DataByte,A
+00F3 2516            173      ADD A,ChkSum
+00F5 F516            174      MOV ChkSum,A
+00F7 22              175      RET
+                     176     
+00F8 D208            177     SRERR: SETB ErrFlag1
+00FA D202            178      SETB DoneFlag
+00FC 22              179      RET
+                     180     
+00FD 11E8            181     StGetCnt: ACALL StRight
+00FF E511            182      MOV A,DataByte
+0101 F512            183      MOV ByteCount,A
+0103 0510            184      INC State
+0105 22              185      RET
+                     186     
+0106 11E8            187     StGetAd1: ACALL StRight
+0108 E511            188      MOV A,DataByte
+010A F513            189      MOV HighAddr,A
+010C 0510            190      INC State
+A51 MACRO ASSEMBLER  RAMLOAD                                                              08/23/2004 14:23:47 PAGE     4
+
+010E 22              191      RET
+                     192     
+010F 11E8            193     StGetAd2: ACALL STRight
+0111 E511            194      MOV A,DataByte
+0113 F514            195      MOV LowAddr,A
+0115 0510            196      INC State
+0117 22              197      RET
+                     198     
+0118 11E8            199     StGetRec: ACALL StRight
+011A E511            200      MOV A,DataByte
+011C F515            201      MOV RecType,A
+011E 600C            202      JZ SGRDat
+0120 B4010C          203      CJNE A,#1,SGRErr
+0123 D201            204      SETB EndFlag
+0125 D203            205      SETB DatSkipFlag
+0127 75100B          206      MOV State,#11
+012A 8002            207      SJMP SGREX
+012C 0510            208     SGRDat: INC State
+012E 22              209     SGREX: RET
+                     210     
+012F D209            211     SGRErr: SETB ErrFlag2
+0131 D202            212      SETB DoneFlag
+0133 22              213      RET
+                     214     
+0134 11E8            215     StGetDat: ACALL StRight
+0136 20030F          216      JB DatSkipFlag,SGD1
+                     217     
+0139 3176            218      ACALL Store
+                     219     
+013B E511            220      MOV A,DataByte
+013D 251A            221      ADD A,FilChkLo
+013F F51A            222      MOV FilChkLo,A
+0141 E4              223      CLR A
+0142 3519            224      ADDC A,FilChkHi
+0144 F519            225      MOV FilChkHi,A
+0146 E511            226      MOV A,DataByte
+0148 D51204          227     SGD1: DJNZ ByteCount,SGDEX
+014B 0510            228      INC State
+014D 8002            229      SJMP SGDEX2
+                     230     
+014F 1510            231     SGDEX: DEC State
+0151 22              232     SGDEX2: RET
+                     233     
+0152 11E8            234     StGetChk: ACALL StRight
+0154 300104          235      JNB EndFlag,SGC1
+0157 D202            236      SETB DoneFlag
+0159 8010            237      SJMP SGCEX
+                     238     
+015B E516            239     SGC1: MOV A,ChkSum
+015D 700D            240      JNZ SGCErr
+015F 751600          241      MOV ChkSum,#0
+0162 751000          242      MOV State,#0
+0165 851418          243      MOV LASave,LowAddr
+0168 851317          244      MOV HASave,HighAddr
+016B 22              245     SGCEX: RET
+                     246     
+016C D20A            247     SGCErr: SETB ErrFlag3
+016E D202            248      SETB DoneFlag
+0170 22              249      RET
+                     250     
+0171 22              251     StSkip: RET
+                     252     
+0172 75100D          253     BadState: MOV State,#Skip
+0175 22              254      RET
+                     255     
+0176 851383          256     Store: MOV DPH,HighAddr
+A51 MACRO ASSEMBLER  RAMLOAD                                                              08/23/2004 14:23:47 PAGE     5
+
+0179 851482          257      MOV DPL,LowAddr
+017C E511            258      MOV A,DataByte
+017E F0              259      MOVX @DPTR,A
+                     260     
+017F E0              261      MOVX A,@DPTR
+0180 B51113          262      CJNE A,DataByte,StoreErr
+                     263     
+0183 C20B            264      CLR ErrFlag4
+0185 A3              265      INC DPTR
+0186 858313          266      MOV HighAddr, DPH
+0189 858214          267      MOV LowAddr, DPL
+018C E4              268      CLR A
+018D B51305          269      CJNE A,HighAddr,StoreEx
+0190 B51402          270      CJNE A,LowAddr,StoreEx
+0193 D20C            271      SETB ErrFlag5
+0195 22              272     StoreEx: RET
+                     273     
+0196 D20D            274     StoreErr: SETB ErrFlag6
+0198 D202            275      SETB DoneFlag
+019A 22              276      RET
+                     277     
+019B E587            278     SerStart: MOV A,PCON  ; 9k6
+019D D2E7            279      SETB ACC.7     ; CLR
+019F F587            280      MOV PCON,A
+01A1 758DE5          281      MOV TH1,#0E5h  ; F3
+01A4 758BE5          282      MOV TL1,#0E5h  ; F3
+01A7 758920          283      MOV TMOD,#20h
+01AA 758840          284      MOV TCON,#40h
+01AD 759852          285      MOV SCON,#52h
+01B0 22              286      RET
+                     287     
+01B1 31C2            288     GetByte: ACALL GetChar
+01B3 31D8            289      ACALL AscHex
+01B5 F50F            290      MOV Ch,A
+01B7 11D6            291      ACALL StLeft
+01B9 31C2            292      ACALL GetChar
+01BB 31D8            293      ACALL AscHex
+01BD F50F            294      MOV Ch,A
+01BF 11E8            295      ACALL StRight
+01C1 22              296      RET
+                     297     
+01C2 3098FD          298     GetChar: JNB RI,$
+01C5 C298            299      CLR RI
+01C7 E599            300      MOV A,SBUF
+01C9 B41B03          301      CJNE A,#ESC,GCEX
+01CC 020250          302      LJMP Start
+01CF 22              303     GCEX: RET
+                     304     
+01D0 3099FD          305     PutChar: JNB TI,$
+01D3 C299            306      CLR TI
+01D5 F599            307      MOV SBUF,A
+01D7 22              308      RET
+                     309     
+01D8 B43000          310     AscHex: CJNE A,#'0',AH1
+01DB 401E            311     AH1: JC AHBad
+01DD B43A00          312      CJNE A,#'9'+1,AH2
+01E0 4020            313     AH2: JC AHVal09
+                     314     
+01E2 B44100          315      CJNE A,#'A',AH3
+01E5 4014            316     AH3: JC AHBad
+01E7 B44700          317      CJNE A,#'F'+1,AH4
+01EA 4013            318     AH4: JC AHValAF
+                     319     
+01EC B46100          320      CJNE A,#'a',AH5
+01EF 400A            321     AH5: JC AHBad
+01F1 B46700          322      CJNE A,#'f'+1,AH6
+A51 MACRO ASSEMBLER  RAMLOAD                                                              08/23/2004 14:23:47 PAGE     6
+
+01F4 5005            323     AH6: JNC AHBad
+01F6 C3              324      CLR C
+01F7 9427            325      SUBB A,#27h
+01F9 8007            326      SJMP AHVal09
+                     327     
+01FB C200            328     AHBad: CLR HexFlag
+01FD 8008            329      SJMP AHEX
+01FF C3              330     AHValAF: CLR C
+0200 9407            331      SUBB A,#7
+0202 C3              332     AHVal09: CLR C
+0203 9430            333      SUBB A,#'0'
+0205 D200            334      SETB HexFlag
+0207 22              335     AHEX: RET
+                     336     
+0208 540F            337     HexAsc: ANL A,#0Fh
+                     338     
+020A B40A00          339      CJNE A,#0Ah,HA1
+020D 4002            340     HA1: JC HAVal09
+020F 2407            341      ADD A,#7
+0211 2430            342     HAVal09: ADD A,#'0'
+0213 22              343      RET
+                     344     
+0214 743A            345     ErrPrt: MOV A,#':'
+0216 31D0            346      CALL PutChar
+0218 E521            347      MOV A,Eflags
+021A 6002            348      JZ ErrPrtEx
+021C 5128            349      CALL PrByte
+021E 22              350     ErrPrtEx: RET
+                     351     
+021F 740D            352     CRLF: MOV A,#CR
+0221 31D0            353      CALL PutChar
+0223 740A            354      MOV A,#LF
+0225 31D0            355      CALL PutChar
+0227 22              356      RET
+                     357     
+0228 C0E0            358     PrByte: PUSH ACC
+022A C4              359      SWAP A
+022B 5108            360      CALL HexAsc
+022D 31D0            361      CALL PutChar
+022F D0E0            362      POP ACC
+0231 5108            363      CALL HexAsc
+0233 31D0            364      CALL PutChar
+0235 22              365      RET
+                     366     
+0250                 367     ORG 00250h
+0250 75A800          368     Start: MOV IE,#0
+0253 75815F          369      MOV SP,#5Fh
+0256 319B            370      ACALL SerStart
+0258 511F            371      ACALL CRLF
+025A 743D            372      MOV A,#'='
+025C 31D0            373      ACALL PutChar
+025E 116E            374      ACALL HexIn
+                     375     
+0260 5114            376      ACALL ErrPrt
+                     377     
+0262 E521            378      MOV A,EFlags
+0264 6003            379      JZ LongOK
+0266 02003D          380      LJMP ErrLoop
+0269 020045          381      LongOK: LJMP HexOK
+                     382     
+                     383     END
+A51 MACRO ASSEMBLER  RAMLOAD                                                              08/23/2004 14:23:47 PAGE     7
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+ACC. . . . . . . .  D ADDR   00E0H   A   
+AH1. . . . . . . .  C ADDR   01DBH   A   
+AH2. . . . . . . .  C ADDR   01E0H   A   
+AH3. . . . . . . .  C ADDR   01E5H   A   
+AH4. . . . . . . .  C ADDR   01EAH   A   
+AH5. . . . . . . .  C ADDR   01EFH   A   
+AH6. . . . . . . .  C ADDR   01F4H   A   
+AHBAD. . . . . . .  C ADDR   01FBH   A   
+AHEX . . . . . . .  C ADDR   0207H   A   
+AHVAL09. . . . . .  C ADDR   0202H   A   
+AHVALAF. . . . . .  C ADDR   01FFH   A   
+ASCHEX . . . . . .  C ADDR   01D8H   A   
+BADSTATE . . . . .  C ADDR   0172H   A   
+BYTECOUNT. . . . .  D ADDR   0012H   A   
+CH . . . . . . . .  D ADDR   000FH   A   
+CHKSUM . . . . . .  D ADDR   0016H   A   
+CR . . . . . . . .  N NUMB   000DH   A   
+CRLF . . . . . . .  C ADDR   021FH   A   
+DATABYTE . . . . .  D ADDR   0011H   A   
+DATSKIPFLAG. . . .  B ADDR   0020H.3 A   
+DONEFLAG . . . . .  B ADDR   0020H.2 A   
+DPH. . . . . . . .  D ADDR   0083H   A   
+DPL. . . . . . . .  D ADDR   0082H   A   
+EFLAGS . . . . . .  D ADDR   0021H   A   
+ENDFLAG. . . . . .  B ADDR   0020H.1 A   
+ERRFLAG1 . . . . .  B ADDR   0021H.0 A   
+ERRFLAG2 . . . . .  B ADDR   0021H.1 A   
+ERRFLAG3 . . . . .  B ADDR   0021H.2 A   
+ERRFLAG4 . . . . .  B ADDR   0021H.3 A   
+ERRFLAG5 . . . . .  B ADDR   0021H.4 A   
+ERRFLAG6 . . . . .  B ADDR   0021H.5 A   
+ERRLOOP. . . . . .  C ADDR   003DH   A   
+ERRPRT . . . . . .  C ADDR   0214H   A   
+ERRPRTEX . . . . .  C ADDR   021EH   A   
+ESC. . . . . . . .  N NUMB   001BH   A   
+EXINT0 . . . . . .  N NUMB   2003H   A   
+EXINT1 . . . . . .  N NUMB   2013H   A   
+FILCHKHI . . . . .  D ADDR   0019H   A   
+FILCHKLO . . . . .  D ADDR   001AH   A   
+FLAGS. . . . . . .  D ADDR   0020H   A   
+GCEX . . . . . . .  C ADDR   01CFH   A   
+GETBYTE. . . . . .  C ADDR   01B1H   A   
+GETCHAR. . . . . .  C ADDR   01C2H   A   
+GOSTATE. . . . . .  C ADDR   00A5H   A   
+HA1. . . . . . . .  C ADDR   020DH   A   
+HASAVE . . . . . .  D ADDR   0017H   A   
+HAVAL09. . . . . .  C ADDR   0211H   A   
+HEXASC . . . . . .  C ADDR   0208H   A   
+HEXFLAG. . . . . .  B ADDR   0020H.0 A   
+HEXIN. . . . . . .  C ADDR   006EH   A   
+HEXOK. . . . . . .  C ADDR   0045H   A   
+HIGHADDR . . . . .  D ADDR   0013H   A   
+IE . . . . . . . .  D ADDR   00A8H   A   
+LASAVE . . . . . .  D ADDR   0018H   A   
+LF . . . . . . . .  N NUMB   000AH   A   
+LONGOK . . . . . .  C ADDR   0269H   A   
+LOWADDR. . . . . .  D ADDR   0014H   A   
+PCON . . . . . . .  D ADDR   0087H   A   
+PRBYTE . . . . . .  C ADDR   0228H   A   
+PUTCHAR. . . . . .  C ADDR   01D0H   A   
+A51 MACRO ASSEMBLER  RAMLOAD                                                              08/23/2004 14:23:47 PAGE     8
+
+RECTYPE. . . . . .  D ADDR   0015H   A   
+RI . . . . . . . .  B ADDR   0098H.0 A   
+SBUF . . . . . . .  D ADDR   0099H   A   
+SCON . . . . . . .  D ADDR   0098H   A   
+SERINT . . . . . .  N NUMB   2023H   A   
+SERSTART . . . . .  C ADDR   019BH   A   
+SGC1 . . . . . . .  C ADDR   015BH   A   
+SGCERR . . . . . .  C ADDR   016CH   A   
+SGCEX. . . . . . .  C ADDR   016BH   A   
+SGD1 . . . . . . .  C ADDR   0148H   A   
+SGDEX. . . . . . .  C ADDR   014FH   A   
+SGDEX2 . . . . . .  C ADDR   0151H   A   
+SGRDAT . . . . . .  C ADDR   012CH   A   
+SGRERR . . . . . .  C ADDR   012FH   A   
+SGREX. . . . . . .  C ADDR   012EH   A   
+SKIP . . . . . . .  N NUMB   000DH   A   
+SLASH. . . . . . .  N NUMB   002FH   A   
+SLERR. . . . . . .  C ADDR   00E3H   A   
+SP . . . . . . . .  D ADDR   0081H   A   
+SRERR. . . . . . .  C ADDR   00F8H   A   
+START. . . . . . .  C ADDR   0250H   A   
+STARTCHAR. . . . .  N NUMB   003AH   A   
+STATE. . . . . . .  D ADDR   0010H   A   
+STATELOOP. . . . .  C ADDR   0085H   A   
+STATETABLE . . . .  C ADDR   00AEH   A   
+STGETAD1 . . . . .  C ADDR   0106H   A   
+STGETAD2 . . . . .  C ADDR   010FH   A   
+STGETCHK . . . . .  C ADDR   0152H   A   
+STGETCNT . . . . .  C ADDR   00FDH   A   
+STGETDAT . . . . .  C ADDR   0134H   A   
+STGETREC . . . . .  C ADDR   0118H   A   
+STLEFT . . . . . .  C ADDR   00D6H   A   
+STORE. . . . . . .  C ADDR   0176H   A   
+STOREERR . . . . .  C ADDR   0196H   A   
+STOREEX. . . . . .  C ADDR   0195H   A   
+STRIGHT. . . . . .  C ADDR   00E8H   A   
+STSKIP . . . . . .  C ADDR   0171H   A   
+STWAIT . . . . . .  C ADDR   00CEH   A   
+SWEX . . . . . . .  C ADDR   00D5H   A   
+T0INT. . . . . . .  N NUMB   200BH   A   
+T1INT. . . . . . .  N NUMB   201BH   A   
+T2INT. . . . . . .  N NUMB   202BH   A   
+TCON . . . . . . .  D ADDR   0088H   A   
+TH1. . . . . . . .  D ADDR   008DH   A   
+TI . . . . . . . .  B ADDR   0098H.1 A   
+TL1. . . . . . . .  D ADDR   008BH   A   
+TMOD . . . . . . .  D ADDR   0089H   A   
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)

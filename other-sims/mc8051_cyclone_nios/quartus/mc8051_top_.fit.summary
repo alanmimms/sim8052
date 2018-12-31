@@ -1,0 +1,11 @@
+Flow Status : Successful - Wed Oct 13 18:41:53 2004
+Quartus II Version : 4.1 Build 208 09/10/2004 SP 2 SJ Full Version
+Revision Name : mc8051_top_
+Top-level Entity Name : mc8051_top
+Family : Cyclone
+Device : EP1C20F400C7
+Timing Models : Production
+Total logic elements : 3,736 / 20,060 ( 18 % )
+Total pins : 74 / 301 ( 24 % )
+Total memory bits : 197,632 / 294,912 ( 67 % )
+Total PLLs : 1 / 2 ( 50 % )

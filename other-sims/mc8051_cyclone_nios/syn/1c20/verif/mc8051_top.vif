@@ -1,0 +1,189 @@
+#
+# Synplicity Verification Interface File
+# Generated using Synplify-pro
+#
+# Copyright (c) 1996-2004 Synplicity, Inc.
+# All rights reserved
+#
+
+global env
+# Set logfile options
+vif_set_result_file  mc8051_top.vlf
+
+# RTL and technology files
+vif_add_file -original  -vhdl ../../vhdl/mc8051_p.vhd
+vif_add_file -original  -vhdl ../../vhdl/addsub_core_.vhd
+vif_add_file -original  -vhdl ../../vhdl/addsub_core_struc.vhd
+vif_add_file -original  -vhdl ../../vhdl/addsub_cy_.vhd
+vif_add_file -original  -vhdl ../../vhdl/addsub_cy_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/addsub_ovcy_.vhd
+vif_add_file -original  -vhdl ../../vhdl/addsub_ovcy_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/alucore_.vhd
+vif_add_file -original  -vhdl ../../vhdl/alucore_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/alumux_.vhd
+vif_add_file -original  -vhdl ../../vhdl/alumux_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/comb_divider_.vhd
+vif_add_file -original  -vhdl ../../vhdl/comb_divider_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/comb_mltplr_.vhd
+vif_add_file -original  -vhdl ../../vhdl/comb_mltplr_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/control_fsm_.vhd
+vif_add_file -original  -vhdl ../../vhdl/control_fsm_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/dcml_adjust_.vhd
+vif_add_file -original  -vhdl ../../vhdl/dcml_adjust_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/control_mem_.vhd
+vif_add_file -original  -vhdl ../../vhdl/control_mem_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_alu_.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_alu_struc.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_siu_.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_siu_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_tmrctr_.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_tmrctr_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_control_.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_control_struc.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_core_.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_core_struc.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_chipsel_.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_chipsel_rtl.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_datamux_.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_datamux_rtl.vhd
+vif_add_file -original  -vhdl ../../generate/cyclonepll.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_top_.vhd
+vif_add_file -original  -vhdl ../../vhdl/mc8051_top_struc.vhd
+vif_set_top_module -original -top mc8051_top
+ 
+vif_add_library -translated $env(QUARTUS_ROOTDIR)/eda/fv_lib/verilog
+vif_add_file -translated -verilog mc8051_top.vqm
+vif_set_top_module -translated -top mc8051_top 
+
+
+# Read FSM encoding
+
+
+# Memory map points
+# Memory redundancies
+
+
+# SRL redundancies
+# SRL map points
+
+# Compiler merged registers
+
+# Compiler pruned constant registers
+
+
+# RTL sequential redundancies
+vif_set_merge -original i_mc8051_core/i_mc8051_control/i_control_mem/s_tf1_h2[0] i_mc8051_core/gen_mc8051_siu/0/i_mc8051_siu/s_ff1
+vif_set_merge -original i_mc8051_core/gen_mc8051_siu.0.i_mc8051_siu/s_ff0 i_mc8051_core/i_mc8051_control/i_control_mem/s_tf1_h1[0]
+
+# Technology sequential redundancies
+vif_set_equiv -translated i_mc8051_core/i_mc8051_control/i_control_mem/state_o_3__Z i_mc8051_core/i_mc8051_control/i_control_mem/state_o_0_3__Z
+
+# Inverted map points
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_int0_h1[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_int0_h1_i_0_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_int1_h1[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_int1_h1_i_0_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_int0_h2[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_int0_h2_i_0_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_int1_h2[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_int1_h2_i_0_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p3[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p3_i_7__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p2[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p2_i_7__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p1[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p1_i_7__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p0[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p0_i_7__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p3[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p3_i_6__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p2[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p2_i_6__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p1[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p1_i_6__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p0[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p0_i_6__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p3[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p3_i_5__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p2[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p2_i_5__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p1[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p1_i_5__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p0[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p0_i_5__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p3[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p3_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p2[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p2_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p1[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p1_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p0[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p0_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p3[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p3_i_3__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p2[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p2_i_3__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p1[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p1_i_3__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p0[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p0_i_3__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p3[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p3_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p2[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p2_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p1[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p1_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p0[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p0_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p3[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p3_i_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p2[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p2_i_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p1[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p1_i_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p0[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p0_i_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p3[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p3_i_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p2[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p2_i_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p1[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p1_i_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/p0[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/p0_i_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/sp[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/sp_i_0_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/sp[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/sp_i_0_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/sp[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/sp_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p3[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p3_i_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p3[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p3_i_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p3[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p3_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p3[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p3_i_3__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p3[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p3_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p3[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p3_i_5__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p3[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p3_i_6__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p3[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p3_i_7__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p2[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p2_i_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p2[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p2_i_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p2[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p2_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p2[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p2_i_3__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p2[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p2_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p2[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p2_i_5__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p2[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p2_i_6__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p2[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p2_i_7__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p1[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p1_i_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p1[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p1_i_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p1[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p1_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p1[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p1_i_3__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p1[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p1_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p1[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p1_i_5__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p1[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p1_i_6__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p1[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p1_i_7__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p0[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p0_i_0__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p0[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p0_i_1__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p0[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p0_i_2__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p0[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p0_i_3__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p0[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p0_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p0[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p0_i_5__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p0[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p0_i_6__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/s_p0[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/s_p0_i_7__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/i_mc8051_control/i_control_mem/state[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/state_o_i_4__Z
+vif_set_map_point -register -inverted -original i_mc8051_core/gen_mc8051_siu.0.i_mc8051_siu/s_txdm0 -translated i_mc8051_core/gen_mc8051_siu.0.i_mc8051_siu/txd_o_i_Z
+vif_set_map_point -register -inverted -original i_mc8051_core/gen_mc8051_siu.0.i_mc8051_siu/rxd_o -translated i_mc8051_core/gen_mc8051_siu.0.i_mc8051_siu/rxd_o_i_Z
+
+# Port directions
+
+# Black box mapping
+
+
+# Register pruning
+
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/s_intdelay2 -translated i_mc8051_core/i_mc8051_control/i_control_mem/intblock_o_Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/s_intpre2 -translated i_mc8051_core/i_mc8051_control/i_control_mem/intpre2_o_Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/s_intlow -translated i_mc8051_core/i_mc8051_control/i_control_mem/intlow_o_Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/s_inthigh -translated i_mc8051_core/i_mc8051_control/i_control_mem/inthigh_o_Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/psw[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/psw_o_0__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/psw[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/psw_o_1__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/psw[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/psw_o_2__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/psw[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/psw_o_3__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/psw[4] -translated i_mc8051_core/i_mc8051_control/i_control_mem/psw_o_4__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/psw[5] -translated i_mc8051_core/i_mc8051_control/i_control_mem/psw_o_5__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/psw[6] -translated i_mc8051_core/i_mc8051_control/i_control_mem/psw_o_6__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/psw[7] -translated i_mc8051_core/i_mc8051_control/i_control_mem/psw_o_7__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/state[3] -translated i_mc8051_core/i_mc8051_control/i_control_mem/state_o_3__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/state[2] -translated i_mc8051_core/i_mc8051_control/i_control_mem/state_o_2__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/state[1] -translated i_mc8051_core/i_mc8051_control/i_control_mem/state_o_1__Z
+vif_set_map_point -register -original i_mc8051_core/i_mc8051_control/i_control_mem/state[0] -translated i_mc8051_core/i_mc8051_control/i_control_mem/state_o_0__Z
+vif_set_map_point -register -original i_mc8051_core/gen_mc8051_tmrctr.0.i_mc8051_tmrctr/s_tf1 -translated i_mc8051_core/gen_mc8051_tmrctr.0.i_mc8051_tmrctr/tf1_o_Z
+vif_set_map_point -register -original i_mc8051_core/gen_mc8051_tmrctr.0.i_mc8051_tmrctr/s_tf0 -translated i_mc8051_core/gen_mc8051_tmrctr.0.i_mc8051_tmrctr/tf0_o_Z
+vif_set_map_point -register -original i_mc8051_datamux/s_prog_data[0] -translated i_mc8051_datamux/prog_data_o_0__Z
+vif_set_map_point -register -original i_mc8051_datamux/s_prog_data[1] -translated i_mc8051_datamux/prog_data_o_1__Z
+vif_set_map_point -register -original i_mc8051_datamux/s_prog_data[2] -translated i_mc8051_datamux/prog_data_o_2__Z
+vif_set_map_point -register -original i_mc8051_datamux/s_prog_data[3] -translated i_mc8051_datamux/prog_data_o_3__Z
+vif_set_map_point -register -original i_mc8051_datamux/s_prog_data[4] -translated i_mc8051_datamux/prog_data_o_4__Z
+vif_set_map_point -register -original i_mc8051_datamux/s_prog_data[5] -translated i_mc8051_datamux/prog_data_o_5__Z
+vif_set_map_point -register -original i_mc8051_datamux/s_prog_data[6] -translated i_mc8051_datamux/prog_data_o_6__Z
+vif_set_map_point -register -original i_mc8051_datamux/s_prog_data[7] -translated i_mc8051_datamux/prog_data_o_7__Z

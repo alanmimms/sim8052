@@ -1,0 +1,3 @@
+"ramload.obj" 
+TO "ramload" 
+RAMSIZE(256) 

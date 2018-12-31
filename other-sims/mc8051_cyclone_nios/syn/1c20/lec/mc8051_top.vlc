@@ -1,0 +1,6 @@
+-y $ALTERA/eda/fv_lib
+// -y $ALTERA/eda/fv_lib/stratix_atoms.v
+// -y $ALTERA/eda/fv_lib/stratix_bbox.v
+// -y $ALTERA/eda/fv_lib/lpms.v
+// -y $ALTERA/eda/fv_lib/lpms_bbox.v
+// -y $ALTERA/eda/fv_lib/prims.v

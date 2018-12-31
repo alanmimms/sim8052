@@ -1,0 +1,253 @@
+# Copyright (C) 1991-2004 Altera Corporation
+# Any  megafunction  design,  and related netlist (encrypted  or  decrypted),
+# support information,  device programming or simulation file,  and any other
+# associated  documentation or information  provided by  Altera  or a partner
+# under  Altera's   Megafunction   Partnership   Program  may  be  used  only
+# to program  PLD  devices (but not masked  PLD  devices) from  Altera.   Any
+# other  use  of such  megafunction  design,  netlist,  support  information,
+# device programming or simulation file,  or any other  related documentation
+# or information  is prohibited  for  any  other purpose,  including, but not
+# limited to  modification,  reverse engineering,  de-compiling, or use  with
+# any other  silicon devices,  unless such use is  explicitly  licensed under
+# a separate agreement with  Altera  or a megafunction partner.  Title to the
+# intellectual property,  including patents,  copyrights,  trademarks,  trade
+# secrets,  or maskworks,  embodied in any such megafunction design, netlist,
+# support  information,  device programming or simulation file,  or any other
+# related documentation or information provided by  Altera  or a megafunction
+# partner, remains with Altera, the megafunction partner, or their respective
+# licensors. No other licenses, including any licenses needed under any third
+# party's intellectual property, are provided herein.
+
+
+# The default values for assignments are stored in the file
+#		mc8051_top__assignment_defaults.qdf
+# If this file doesn't exist, and for assignments not listed, see file
+#		assignment_defaults.qdf
+
+# Altera recommends that you do not modify this file. This
+# file is updated automatically by the Quartus II software
+# and any changes you make may be lost or overwritten.
+
+
+# Project-Wide Assignments
+# ========================
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION "4.0 SP1"
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:34:50  AUGUST 09, 2004"
+set_global_assignment -name LAST_QUARTUS_VERSION "4.1 SP2"
+set_global_assignment -name VQM_FILE ../syn/1c20/mc8051_top.vqm
+set_global_assignment -name VHDL_FILE ../generate/mc8051_pram.vhd
+set_global_assignment -name VHDL_FILE ../generate/mc8051_rom.vhd
+set_global_assignment -name VHDL_FILE ../generate/mc8051_ram.vhd
+set_global_assignment -name VHDL_FILE ../generate/mc8051_ramx.vhd
+
+# Pin & Location Assignments
+# ==========================
+set_location_assignment PIN_K5 -to clk
+set_location_assignment PIN_W3 -to int0_i
+set_location_assignment PIN_V19 -to int1_i
+set_location_assignment PIN_V4 -to all_t0_i
+set_location_assignment PIN_W4 -to all_t1_i
+set_location_assignment PIN_C13 -to all_rxd_i
+set_location_assignment PIN_A13 -to all_txd_o
+set_location_assignment PIN_R11 -to all_rxd_o
+set_location_assignment PIN_Y9 -to all_rxdwr_o
+set_location_assignment PIN_C19 -to p0_i\[0\]
+set_location_assignment PIN_T10 -to p2_o\[0\]
+set_location_assignment PIN_V10 -to p2_o\[1\]
+set_location_assignment PIN_Y10 -to p2_o\[2\]
+set_location_assignment PIN_U11 -to p2_o\[3\]
+set_location_assignment PIN_W8 -to p2_o\[5\]
+set_location_assignment PIN_V9 -to p2_o\[6\]
+set_location_assignment PIN_U8 -to p2_o\[7\]
+set_location_assignment PIN_T13 -to p3_o\[0\]
+set_location_assignment PIN_V12 -to p3_o\[1\]
+set_location_assignment PIN_U12 -to p3_o\[2\]
+set_location_assignment PIN_T12 -to p3_o\[3\]
+set_location_assignment PIN_W12 -to p3_o\[4\]
+set_location_assignment PIN_Y12 -to p3_o\[5\]
+set_location_assignment PIN_Y8 -to p3_o\[6\]
+set_location_assignment PIN_U9 -to p3_o\[7\]
+set_location_assignment PIN_W15 -to p0_o\[0\]
+set_location_assignment PIN_U15 -to p0_o\[1\]
+set_location_assignment PIN_V14 -to p0_o\[2\]
+set_location_assignment PIN_Y14 -to p0_o\[3\]
+set_location_assignment PIN_T14 -to p0_o\[4\]
+set_location_assignment PIN_V13 -to p0_o\[5\]
+set_location_assignment PIN_W13 -to p0_o\[6\]
+set_location_assignment PIN_R13 -to p0_o\[7\]
+set_location_assignment PIN_E14 -to p1_o\[0\]
+set_location_assignment PIN_E13 -to p1_o\[1\]
+set_location_assignment PIN_C14 -to p1_o\[2\]
+set_location_assignment PIN_D14 -to p1_o\[3\]
+set_location_assignment PIN_E12 -to p1_o\[4\]
+set_location_assignment PIN_F12 -to p1_o\[5\]
+set_location_assignment PIN_B3 -to p1_o\[6\]
+set_location_assignment PIN_B14 -to p1_o\[7\]
+set_location_assignment PIN_C18 -to p2_i\[0\]
+set_location_assignment PIN_D18 -to p2_i\[1\]
+set_location_assignment PIN_D17 -to p2_i\[2\]
+set_location_assignment PIN_E17 -to p2_i\[3\]
+set_location_assignment PIN_F18 -to p2_i\[4\]
+set_location_assignment PIN_E19 -to p2_i\[5\]
+set_location_assignment PIN_F15 -to p2_i\[6\]
+set_location_assignment PIN_F20 -to p2_i\[7\]
+set_location_assignment PIN_G15 -to p3_i\[0\]
+set_location_assignment PIN_G20 -to p3_i\[1\]
+set_location_assignment PIN_G19 -to p3_i\[2\]
+set_location_assignment PIN_G14 -to p3_i\[3\]
+set_location_assignment PIN_G18 -to p3_i\[4\]
+set_location_assignment PIN_G17 -to p3_i\[5\]
+set_location_assignment PIN_H18 -to p3_i\[6\]
+set_location_assignment PIN_H17 -to p3_i\[7\]
+set_location_assignment PIN_D19 -to p0_i\[1\]
+set_location_assignment PIN_D20 -to p0_i\[2\]
+set_location_assignment PIN_F17 -to p0_i\[3\]
+set_location_assignment PIN_E18 -to p0_i\[4\]
+set_location_assignment PIN_F16 -to p0_i\[5\]
+set_location_assignment PIN_F19 -to p0_i\[6\]
+set_location_assignment PIN_G16 -to p0_i\[7\]
+set_location_assignment PIN_U20 -to p1_i\[0\]
+set_location_assignment PIN_J19 -to p1_i\[1\]
+set_location_assignment PIN_H14 -to p1_i\[2\]
+set_location_assignment PIN_J17 -to p1_i\[3\]
+set_location_assignment PIN_J15 -to p1_i\[4\]
+set_location_assignment PIN_J20 -to p1_i\[5\]
+set_location_assignment PIN_J14 -to p1_i\[6\]
+set_location_assignment PIN_J18 -to p1_i\[7\]
+set_location_assignment PIN_Y4 -to reset_n
+set_location_assignment PIN_T11 -to p2_o\[4\]
+
+# Analysis & Synthesis Assignments
+# ================================
+set_global_assignment -name SPEED_DISK_USAGE_TRADEOFF SMART
+set_global_assignment -name SAVE_DISK_SPACE OFF
+set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 7
+set_global_assignment -name EDA_DESIGN_ENTRY_SYNTHESIS_TOOL "Synplify Pro"
+set_global_assignment -name FAMILY Cyclone
+set_global_assignment -name TOP_LEVEL_ENTITY mc8051_top
+
+# Fitter Assignments
+# ==================
+set_global_assignment -name DEVICE EP1C20F400C7
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_RETIMING ON
+set_instance_assignment -name IO_STANDARD LVTTL -to clk
+set_instance_assignment -name IO_STANDARD LVTTL -to int0_i
+set_instance_assignment -name IO_STANDARD LVTTL -to int1_i
+set_instance_assignment -name IO_STANDARD LVTTL -to all_t0_i
+set_instance_assignment -name IO_STANDARD LVTTL -to all_t1_i
+set_instance_assignment -name IO_STANDARD LVTTL -to all_rxd_i
+set_instance_assignment -name IO_STANDARD LVTTL -to all_txd_o
+set_instance_assignment -name IO_STANDARD LVTTL -to all_rxd_o
+set_instance_assignment -name IO_STANDARD LVTTL -to all_rxdwr_o
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_i\[0\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_o\[0\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_o\[1\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_o\[2\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_o\[3\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_o\[5\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_o\[6\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_o\[7\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_o\[0\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_o\[1\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_o\[2\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_o\[3\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_o\[4\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_o\[5\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_o\[6\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_o\[7\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_o\[0\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_o\[1\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_o\[2\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_o\[3\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_o\[4\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_o\[5\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_o\[6\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_o\[7\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_o\[0\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_o\[1\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_o\[2\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_o\[3\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_o\[4\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_o\[5\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_o\[6\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_o\[7\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_i\[0\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_i\[1\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_i\[2\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_i\[3\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_i\[4\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_i\[5\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_i\[6\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_i\[7\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_i\[0\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_i\[1\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_i\[2\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_i\[3\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_i\[4\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_i\[5\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_i\[6\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p3_i\[7\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_i\[1\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_i\[2\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_i\[3\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_i\[4\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_i\[5\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_i\[6\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p0_i\[7\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_i\[0\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_i\[1\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_i\[2\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_i\[3\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_i\[4\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_i\[5\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_i\[6\]
+set_instance_assignment -name IO_STANDARD LVTTL -to p1_i\[7\]
+set_instance_assignment -name IO_STANDARD LVTTL -to reset_n
+set_instance_assignment -name IO_STANDARD LVTTL -to p2_o\[4\]
+
+# Timing Analysis Assignments
+# ===========================
+set_global_assignment -name NUMBER_OF_SOURCES_PER_DESTINATION_TO_REPORT 500
+set_global_assignment -name NUMBER_OF_DESTINATION_TO_REPORT 500
+
+# LogicLock Region Assignments
+# ============================
+set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT off
+
+# ----------------
+# start CLOCK(clk)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name FMAX_REQUIREMENT "50.0 MHz" -section_id clk
+	set_global_assignment -name DUTY_CYCLE 50 -section_id clk
+	set_global_assignment -name INVERT_BASE_CLOCK OFF -section_id clk
+	set_global_assignment -name MULTIPLY_BASE_CLOCK_PERIOD_BY 1 -section_id clk
+	set_global_assignment -name DIVIDE_BASE_CLOCK_PERIOD_BY 1 -section_id clk
+
+# end CLOCK(clk)
+# --------------
+
+# ---------------------------------------------
+# start EDA_TOOL_SETTINGS(eda_design_synthesis)
+
+	# Analysis & Synthesis Assignments
+	# ================================
+	set_global_assignment -name EDA_LMF_FILE synplcty.lmf -section_id eda_design_synthesis
+	set_global_assignment -name EDA_INPUT_DATA_FORMAT "VERILOG HDL" -section_id eda_design_synthesis
+
+# end EDA_TOOL_SETTINGS(eda_design_synthesis)
+# -------------------------------------------
+
+# ------------------------
+# start ENTITY(mc8051_top)
+
+	# Timing Assignments
+	# ==================
+	set_instance_assignment -name CLOCK_SETTINGS clk -to clk
+
+# end ENTITY(mc8051_top)
+# ----------------------

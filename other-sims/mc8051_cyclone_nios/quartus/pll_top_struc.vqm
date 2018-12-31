@@ -1,0 +1,64 @@
+//
+// Written by Synplify
+// Synplify 7.3.5, Build 222R.
+// Wed Aug 11 16:10:31 2004
+//
+// Source file index table:
+// Object locations will have the form <file>:<line>
+// file 0 "noname"
+// file 1 "\c:\cad\synplify_75\synplify_75\lib\vhd\std.vhd "
+// file 2 "\d:\trash\pll\vhdl\pll_p.vhd "
+// file 3 "\c:\cad\synplify_75\synplify_75\lib\vhd\std1164.vhd "
+// file 4 "\c:\cad\synplify_75\synplify_75\lib\vhd\arith.vhd "
+// file 5 "\d:\trash\pll\vhdl\pll_top_.vhd "
+// file 6 "\d:\trash\pll\vhdl\pll_top_struc.vhd "
+
+module pll_top (
+  clk,
+  reset,
+  clk_pll
+);
+input clk ;
+input reset ;
+output clk_pll /* synthesis syn_tristate = 1 */;
+wire clk ;
+wire reset ;
+wire clk_pll ;
+wire VCC ;
+wire GND ;
+wire reset_c ;
+wire clk_c ;
+wire clk_pll_c ;
+//@1:1
+  assign VCC = 1'b1;
+//@1:1
+  assign GND = 1'b0;
+// @5:12
+  cyclone_io reset_in (
+	.padio(reset),
+	.combout(reset_c),
+	.oe(GND)
+);
+defparam reset_in.operation_mode = "input";
+// @5:11
+  cyclone_io clk_in (
+	.padio(clk),
+	.combout(clk_c),
+	.oe(GND)
+);
+defparam clk_in.operation_mode = "input";
+// @5:13
+  cyclone_io clk_pll_out (
+	.padio(clk_pll),
+	.datain(clk_pll_c),
+	.oe(VCC)
+);
+defparam clk_pll_out.operation_mode = "output";
+// @6:12
+  cyclone_pll cyclone_pll_1 (
+	.inclk0(clk_c),
+	.areset(reset_c),
+	.c0(clk_pll_c)
+);
+endmodule /* pll_top */
+

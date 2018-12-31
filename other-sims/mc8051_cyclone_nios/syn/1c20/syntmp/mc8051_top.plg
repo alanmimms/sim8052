@@ -1,0 +1,21 @@
+@P:  Part : EP1C20FC400-7
+@P:  Worst Slack : -6.523
+@P:  clk - Estimated Frequency : NA
+@P:  clk - Requested Frequency : 60.0 MHz
+@P:  clk - Estimated Period : NA
+@P:  clk - Requested Period : 16.667
+@P:  clk - Slack : NA
+@P:  mc8051_top|i_cyclonepll.s_clk_pll_derived_clock - Estimated Frequency : 15.1 MHz
+@P:  mc8051_top|i_cyclonepll.s_clk_pll_derived_clock - Requested Frequency : 18.8 MHz
+@P:  mc8051_top|i_cyclonepll.s_clk_pll_derived_clock - Estimated Period : 66.378
+@P:  mc8051_top|i_cyclonepll.s_clk_pll_derived_clock - Requested Period : 53.333
+@P:  mc8051_top|i_cyclonepll.s_clk_pll_derived_clock - Slack : 18.434
+@P:  System - Estimated Frequency : 45.2 MHz
+@P:  System - Requested Frequency : 25.0 MHz
+@P:  System - Estimated Period : 22.146
+@P:  System - Requested Period : 40.000
+@P:  System - Slack : 17.854
+@P: mc8051_top Part : ep1c20fc400-7
+@P: mc8051_top I/O ATOMs : 74
+@P: mc8051_top Total LUTs: : 3330 of 20060 (16%)
+@P: mc8051_top Logic resources : 3330 ATOMs of 20060 (16%)
