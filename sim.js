@@ -533,17 +533,22 @@ const cpu = {
   },
 
 
-  getBit(bn) {
+  getBitAddrMask(bn) {
     const bm = 1 << (bn & 0x07);
-    const ra = bn < 0x30 ? 0x20 + (bn >> 3) : bn & 0xF8;
+    const ra = bn < 0x10 ? 0x20 + (bn >>> 3) : bn & 0xF8;
+    return {ra, bm};
+  },
+  
+
+  getBit(bn) {
+    const {ra, bm} = this.getBitAddrMask(bn);
     const v = this.getDirect(ra);
     return +!!(v & bm);
   },
 
 
   putBit(bn, b) {
-    const bm = 1 << (bn & 0x07);
-    const ra = bn < 0x80 ? 0x20 + (bn >> 3) : bn & 0xF8;
+    const {ra, bm} = this.getBitAddrMask(bn);
     let v = this.getDirect(ra);
 
     if (b) {
@@ -1422,6 +1427,13 @@ ${_.range(0, 8)
 
 
       ////////// XCH
+    case 0xC5:                // XCH A,dir
+      ira = this.fetch();
+      a = this.iram[ira];
+      this.iram[ira] = this.SFR[ACC];
+      this.SFR[ACC] = a;
+      break;
+
     case 0xC6:                // XCH A,@R0
     case 0xC7:                // XCH A,@R1
       r = op & 1;
