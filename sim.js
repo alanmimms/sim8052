@@ -210,7 +210,7 @@ const opTable = [
   /* 9D */ {n: 1, name: "SUBB",  operands: "A,R5"},
   /* 9E */ {n: 1, name: "SUBB",  operands: "A,R6"},
   /* 9F */ {n: 1, name: "SUBB",  operands: "A,R7"},
-  /* A0 */ {n: 2, name: "ORL",   operands: "C,1:cBit"},
+  /* A0 */ {n: 2, name: "ORL",   operands: "C,1:nbit"},
   /* A1 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
   /* A2 */ {n: 2, name: "MOV",   operands: "C,1:bit"},
   /* A3 */ {n: 1, name: "INC",   operands: "DPTR"},
@@ -226,7 +226,7 @@ const opTable = [
   /* AD */ {n: 2, name: "MOV",   operands: "R5,1:direct"},
   /* AE */ {n: 2, name: "MOV",   operands: "R6,1:direct"},
   /* AF */ {n: 2, name: "MOV",   operands: "R7,1:direct"},
-  /* B0 */ {n: 2, name: "ANL",   operands: "C,1:cBit"},
+  /* B0 */ {n: 2, name: "ANL",   operands: "C,1:nbit"},
   /* B1 */ {n: 2, name: "ACALL", operands: "1:addr11"},
   /* B2 */ {n: 2, name: "CPL",   operands: "1:bit"},
   /* B3 */ {n: 1, name: "CPL",   operands: "C"},
@@ -377,6 +377,11 @@ const cpu = {
 
   fetch() {
     return this.pmem[this.pc++];
+  },
+
+
+  getOV() {
+    return +!!(this.SFR[PSW] & pswBits.ovMask);
   },
 
 
@@ -584,6 +589,7 @@ const cpu = {
     
     const handlers = {
       bit: x => displayableAddress(bytes[+x], 'b'),
+      nbit: x => '/' + displayableAddress(bytes[+x], 'b'),
       immed: x => '#' + toHex2(bytes[+x]),
       immed16: x => '#' + toHex4(bytes[+x] << 8 | bytes[+x + 1]),
       addr16: x => displayableAddress(bytes[+x] << 8 | bytes[+x + 1], 'c'),
@@ -609,7 +615,8 @@ ${displayableAddress(pc, 'c')}: ${disassembly}  ${ope.name} ${operands}`;
 
   dumpState() {
     console.log(`\
- a=${toHex2(this.SFR[ACC])}   b=${toHex2(this.SFR[B])}  \
+ a=${toHex2(this.SFR[ACC])}   b=${toHex2(this.SFR[B])} \
+ cy=${+this.getCY()} ov=${+this.getOV()}  \
 sp=${toHex2(this.SFR[SP])} psw=${toHex2(this.SFR[PSW])}  dptr=${toHex4(this.getDPTR())}
 ${_.range(0, 8)
   .map((v, rn) => `r${rn}=${toHex2(this.getR(rn))}`)
