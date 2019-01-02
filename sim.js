@@ -894,7 +894,10 @@ ${_.range(0, 8)
         this.ov = 1;
       } else {
         this.ov = 0;
-        this.SFR[ACC] = Math.floor(this.SFR[ACC] / this.SFR[B]);
+        a = Math.floor(this.SFR[ACC] / this.SFR[B]);
+        b = this.SFR[ACC] % this.SFR[B];
+        this.SFR[ACC] = a;
+        this.SFR[B] = b;
       }
 
       break;
@@ -1236,11 +1239,11 @@ ${_.range(0, 8)
     case 0xA4:                // MUL AB
       a = this.SFR[ACC] * this.SFR[B];
 
-      // MUL always clears CY.
+      // MUL always clears CY and sometimes OV.
       this.SFR[PSW] &= ~(pswBits.cyMask | pswBits.ovMask);
 
       if (a > 0xFF) this.SFR[PSW] |= pswBits.ovMask;
-      this.SFR[ACC] = a & 0xFF;
+      this.SFR[ACC] = a;
       this.SFR[B] = a >>> 8;
       break;
 
@@ -1250,7 +1253,7 @@ ${_.range(0, 8)
       ira = this.fetch();
       a = this.getDirect(ira);
       a |= this.SFR[ACC];
-      this.putDirect(ira, aa);
+      this.putDirect(ira, a);
       break;
 
     case 0x43:                // ORL dir,#imm
