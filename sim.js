@@ -1447,7 +1447,11 @@ ${_.range(0, 8)
 
       ////////// SWAP
     case 0xC4:                // SWAP A
-      this.SFR[ACC] = ((this.SFR[ACC] & 0xF) << 4) | (this.SFR[ACC] >>> 4);
+      a = this.SFR[ACC];
+      b = a >>> 4;
+      a &= 0x0f;
+      a <<= 4;
+      this.SFR[ACC] = a | b;
       break;
 
 
@@ -1460,18 +1464,18 @@ ${_.range(0, 8)
       ////////// XCH
     case 0xC5:                // XCH A,dir
       ira = this.fetch();
-      a = this.iram[ira];
+      b = this.iram[ira];
       this.iram[ira] = this.SFR[ACC];
-      this.SFR[ACC] = a;
+      this.SFR[ACC] = b;
       break;
 
     case 0xC6:                // XCH A,@R0
     case 0xC7:                // XCH A,@R1
       r = op & 1;
       ira = this.getR(r);
-      a = this.iram[ira];
+      b = this.iram[ira];
       this.iram[ira] = this.SFR[ACC];
-      this.SFR[ACC] = a;
+      this.SFR[ACC] = b;
       break;
 
     case 0xC8:                // XCH A,R0
@@ -1483,9 +1487,9 @@ ${_.range(0, 8)
     case 0xCE:                // XCH A,R6
     case 0xCF:                // XCH A,R7
       r = op & 0x07;
-      a = this.getR(r);
+      b = this.getR(r);
       this.putR(r, this.SFR[ACC]);
-      this.SFR[ACC] = a;
+      this.SFR[ACC] = b;
       break;
 
       
@@ -1494,8 +1498,10 @@ ${_.range(0, 8)
     case 0xD7:                // XCHD A,@R1
       r = op & 1;
       ira = this.getR(r);
-      [a, b] = [this.iram[ira] >>> 4, this.iram[ira] & 0x0F];
-      this.SFR[ACC] = (b << 4) | a;
+      a = this.SFR[ACC];
+      b = this.iram[ira];
+      this.SFR[ACC] = (a & 0xF0) | (b & 0x0F);
+      this.iram[ira] = (b & 0xF0) | (a & 0x0F);
       break;
 
 
