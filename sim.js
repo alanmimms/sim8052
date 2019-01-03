@@ -390,6 +390,11 @@ const cpu = {
   },
 
 
+  getAC() {
+    return +!!(this.SFR[PSW] & pswBits.acMask);
+  },
+
+
   putCY(v) {
     if (v)
       this.SFR[PSW] |= pswBits.cyMask;
@@ -449,7 +454,7 @@ const cpu = {
     const toSub = b + this.getCY();
     const a = this.toSigned(this.SFR[ACC]) - this.toSigned(toSub);
 
-    const acValue = +!!((toSub & 0x0F) > (this.SFR[ACC] & 0x0F)) << pswBits.acShift;
+    const acValue = +((toSub & 0x0F) > (this.SFR[ACC] & 0x0F)) << pswBits.acShift;
     const cyValue = +(toSub > this.SFR[ACC]) << pswBits.cyShift;
     const ovValue = +(a < -128 || a > 127) << pswBits.ovShift;
     this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) | ovValue | acValue | cyValue;
@@ -848,11 +853,18 @@ ${_.range(0, 8)
 
       ////////// DA
     case 0xD4:                // DA A
-      if (this.ac || (this.SFR[ACC] & 0x0F) > 9) this.SFR[ACC] = this.SFR[ACC] + 0x06;
-      if (this.SFR[ACC] > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
-      if (this.getCY() || (this.SFR[ACC] & 0xF0) > 0x90) this.SFR[ACC] = this.SFR[ACC] + 0x60;
-      if (this.SFR[ACC] > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
-      this.SFR[ACC] = this.SFR[ACC] & 0xFF;
+      a = this.SFR[ACC] & 0x0F;
+      b = this.SFR[ACC] & 0xF0;
+
+      // Lower nybble
+      if (this.getAC() || a > 9) a += 0x06;
+      if (b + a > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
+
+      // Upper nybble
+      if (this.getCY() || b > 0x90) b += 0x60;
+      if (b + a > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
+
+      this.SFR[ACC] = b | a;
       break;
       
 
@@ -1206,31 +1218,31 @@ ${_.range(0, 8)
       ////////// MOVX
     case 0xF0:                // MOVX @DPTR,A
       a = this.getDPTR();
-      this.p1 = a & 0xFF;
-      this.p2 = a >>> 8;
+      this.SFR[P1] = a & 0xFF;
+      this.SFR[P2] = a >>> 8;
       this.xram[a] = this.SFR[ACC];
       break;
 
     case 0xF2:                // MOVX @R0,A
     case 0xF3:                // MOVX @R1,A
       r = op & 1;
-      this.p1 = this.getR(r);
-      a = (this.p2 << 8) | this.p1;
+      this.SFR[P1] = this.getR(r);
+      a = (this.SFR[P2] << 8) | this.SFR[P1];
       this.xram[a] = this.SFR[ACC];
       break;
 
     case 0xE0:                // MOVX A,@DPTR
       a = this.getDPTR();
-      this.p1 = a & 0xFF;
-      this.p2 = a >>> 8;
+      this.SFR[P1] = a & 0xFF;
+      this.SFR[P2] = a >>> 8;
       this.SFR[ACC] = this.xram[a];
       break;
 
     case 0xE2:                // MOVX A,@R0
     case 0xE3:                // MOVX A,@R1
       r = op & 1;
-      this.p1 = this.getR(r);
-      a = (this.p2 << 8) | this.p1;
+      this.SFR[P1] = this.getR(r);
+      a = (this.SFR[P2] << 8) | this.SFR[P1];
       this.SFR[ACC] = this.xram[a];
       break;
 
@@ -1747,17 +1759,45 @@ function displayableAddress(x, space) {
 
 
 function doMem(words) {
-  let x;
+  let x, endAddress;
+  let n = 0;
 
   if (words.length < 2) {
     x = ++lastX;
   } else {
     x = getAddress(words);
+
+    if (words.length > 2) {
+      endAddress = Math.min(x + parseInt(words[2], 16), 0x10000);
+    } else {
+      endAddress = x + 1;
+    }
   }
 
-  const addr = displayableAddress(x, 'x');
-  console.log(`${addr}: ${toHex2(cpu.xram[x])}`);
+  let longestAddr = 0;
+  const addrs = [];
+  const lines = [];
+  let line = '';
   lastX = x;
+
+  while (x < endAddress) {
+
+    if ((n++ & 0x0F) === 0) {
+      if (line.length > 0) lines.push(line);
+      const addr = displayableAddress(x, 'x') + ':';
+      if (addr.length > longestAddr) longestAddr = addr.length;
+      addrs.push(addr);
+      line = '';
+    }
+
+    line += ' ' + toHex2(cpu.xram[x++]);
+  }
+
+  if (line.length > 0) lines.push(line);
+
+  console.log(lines
+              .map((L, lineX) => _.padStart(addrs[lineX], longestAddr) + L)
+              .join('\n'));
 }
 
 
