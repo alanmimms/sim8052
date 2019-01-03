@@ -854,22 +854,25 @@ ${_.range(0, 8)
 
       ////////// DA
     case 0xD4:                // DA A
-      a = this.SFR[ACC] & 0x0F;
-      b = this.SFR[ACC] & 0xF0;
+      r = this.SFR[ACC];      // r = original content of ACC
+      a = r & 0x0F;
+      b = r & 0xF0;
+      c = this.getCY();
 
       // Lower nybble
       if (this.getAC() || a > 0x09) a += 0x06;
-      if (b + a > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
+      c |= +(b + a > 0xFF);
 
       // Upper nybble
       if (this.getCY() || b > 0x90) b += 0x60;
-      if (b + a > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
+      c |= +(b + a > 0xFF);
+
+//      console.log(`\
+//DA ACC=${      toHex2(this.SFR[ACC])}  AC=${this.getAC()} CY=${this.getCY()}
+//   now ${toHex1(b >>> 4)}${toHex1(a)}  AC=${this.getAC()} CY=${c}`);
 
       this.SFR[ACC] = b | a;
-
-      console.log(`\
-DA ${toHex2(this.SFR[ACC])} with AC=${this.getAC()} CY=${this.getCY()}
-==>${toHex1(b)}${toHex1(a)}  now AC=${this.getAC()} CY=${this.getCY()}`);
+      this.putCY(c);
       break;
       
 
