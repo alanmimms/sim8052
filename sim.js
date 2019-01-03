@@ -434,6 +434,7 @@ const cpu = {
   doADD(op, b) {
     const c = op & 0x10 ? this.getCY() : 0;
     const a = this.SFR[ACC] + b + c;
+
     // There is no overflow if
     // * Both operands are positive and sum is positive or
     // * Both operands are negative and sum is negative.
@@ -680,22 +681,22 @@ ${_.range(0, 8)
       this.doADD(op, this.iram[ira]);
       break;
 
-    case 0x28:                // ADD Rn
-    case 0x29:                // ADD Rn
-    case 0x2A:                // ADD Rn
-    case 0x2B:                // ADD Rn
-    case 0x2C:                // ADD Rn
-    case 0x2D:                // ADD Rn
-    case 0x2E:                // ADD Rn
-    case 0x2F:                // ADD Rn
-    case 0x38:                // ADDC Rn
-    case 0x39:                // ADDC Rn
-    case 0x3A:                // ADDC Rn
-    case 0x3B:                // ADDC Rn
-    case 0x3C:                // ADDC Rn
-    case 0x3D:                // ADDC Rn
-    case 0x3E:                // ADDC Rn
-    case 0x3F:                // ADDC Rn
+    case 0x28:                // ADD R0
+    case 0x29:                // ADD R1
+    case 0x2A:                // ADD R2
+    case 0x2B:                // ADD R3
+    case 0x2C:                // ADD R4
+    case 0x2D:                // ADD R5
+    case 0x2E:                // ADD R6
+    case 0x2F:                // ADD R7
+    case 0x38:                // ADDC R0
+    case 0x39:                // ADDC R1
+    case 0x3A:                // ADDC R2
+    case 0x3B:                // ADDC R3
+    case 0x3C:                // ADDC R4
+    case 0x3D:                // ADDC R5
+    case 0x3E:                // ADDC R6
+    case 0x3F:                // ADDC R7
       r = op & 0x07;
       this.doADD(op, this.getR(r));
       break;
@@ -750,14 +751,14 @@ ${_.range(0, 8)
       this.SFR[ACC] &= a;
       break;
 
-    case 0x58:                // ANL A,Rn
-    case 0x59:                // ANL A,Rn
-    case 0x5A:                // ANL A,Rn
-    case 0x5B:                // ANL A,Rn
-    case 0x5C:                // ANL A,Rn
-    case 0x5D:                // ANL A,Rn
-    case 0x5E:                // ANL A,Rn
-    case 0x5F:                // ANL A,Rn
+    case 0x58:                // ANL A,R0
+    case 0x59:                // ANL A,R1
+    case 0x5A:                // ANL A,R2
+    case 0x5B:                // ANL A,R3
+    case 0x5C:                // ANL A,R4
+    case 0x5D:                // ANL A,R5
+    case 0x5E:                // ANL A,R6
+    case 0x5F:                // ANL A,R7
       r = op & 0x07;
       this.SFR[ACC] &= this.getR(r);
       break;
@@ -857,7 +858,7 @@ ${_.range(0, 8)
       b = this.SFR[ACC] & 0xF0;
 
       // Lower nybble
-      if (this.getAC() || a > 9) a += 0x06;
+      if (this.getAC() || a > 0x09) a += 0x06;
       if (b + a > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
 
       // Upper nybble
@@ -865,6 +866,10 @@ ${_.range(0, 8)
       if (b + a > 0xFF) this.SFR[PSW] |= pswBits.cyMask;
 
       this.SFR[ACC] = b | a;
+
+      console.log(`\
+DA ${toHex2(this.SFR[ACC])} with AC=${this.getAC()} CY=${this.getCY()}
+==>${toHex1(b)}${toHex1(a)}  now AC=${this.getAC()} CY=${this.getCY()}`);
       break;
       
 
@@ -885,14 +890,14 @@ ${_.range(0, 8)
       this.iram[ira] = this.iram[ira] - 1;
       break;
 
-    case 0x18:                // DEC Rn
-    case 0x19:                // DEC Rn
-    case 0x1A:                // DEC Rn
-    case 0x1B:                // DEC Rn
-    case 0x1C:                // DEC Rn
-    case 0x1D:                // DEC Rn
-    case 0x1E:                // DEC Rn
-    case 0x1F:                // DEC Rn
+    case 0x18:                // DEC R0
+    case 0x19:                // DEC R1
+    case 0x1A:                // DEC R2
+    case 0x1B:                // DEC R3
+    case 0x1C:                // DEC R4
+    case 0x1D:                // DEC R5
+    case 0x1E:                // DEC R6
+    case 0x1F:                // DEC R7
       r = op & 0x07;
       this.putR(r, this.getR(r) - 1);
       break;
@@ -1295,14 +1300,14 @@ ${_.range(0, 8)
       this.SFR[ACC] |= a;
       break;
 
-    case 0x48:                // ORL A,Rn
-    case 0x49:                // ORL A,Rn
-    case 0x4A:                // ORL A,Rn
-    case 0x4B:                // ORL A,Rn
-    case 0x4C:                // ORL A,Rn
-    case 0x4D:                // ORL A,Rn
-    case 0x4E:                // ORL A,Rn
-    case 0x4F:                // ORL A,Rn
+    case 0x48:                // ORL A,R0
+    case 0x49:                // ORL A,R1
+    case 0x4A:                // ORL A,R2
+    case 0x4B:                // ORL A,R3
+    case 0x4C:                // ORL A,R4
+    case 0x4D:                // ORL A,R5
+    case 0x4E:                // ORL A,R6
+    case 0x4F:                // ORL A,R7
       r = op & 0x07;
       this.SFR[ACC] |= this.getR(r);
       break;
@@ -1365,10 +1370,10 @@ ${_.range(0, 8)
 
       ////////// RLC
     case 0x33:                // RLC A
-      b = this.getCY();
-      this.SFR[ACC] = this.SFR[ACC] << 1;
-      this.putCY(this.SFR[ACC] >>> 8);
-      this.SFR[ACC] = (this.SFR[ACC] & 0xFF) | b;
+      c = this.getCY();
+      this.putCY(this.SFR[ACC] >>> 7);
+      this.SFR[ACC] <<= 1;
+      this.SFR[ACC] |= c;
       break;
 
 
@@ -1381,9 +1386,10 @@ ${_.range(0, 8)
 
       ////////// RRC
     case 0x13:                // RRC A
-      b = this.getCY() << 7;
+      c = this.getCY();
       this.putCY(this.SFR[ACC] & 1);
-      this.SFR[ACC] = (this.SFR[ACC] >>> 1) | b;
+      this.SFR[ACC] >>>= 1;
+      this.SFR[ACC] |= c << 7;
       break;
 
 
@@ -1465,14 +1471,14 @@ ${_.range(0, 8)
       this.SFR[ACC] = a;
       break;
 
-    case 0xC8:                // XCH R0
-    case 0xC9:                // XCH R1
-    case 0xCA:                // XCH R2
-    case 0xCB:                // XCH R3
-    case 0xCC:                // XCH R4
-    case 0xCD:                // XCH R5
-    case 0xCE:                // XCH R6
-    case 0xCF:                // XCH R7
+    case 0xC8:                // XCH A,R0
+    case 0xC9:                // XCH A,R1
+    case 0xCA:                // XCH A,R2
+    case 0xCB:                // XCH A,R3
+    case 0xCC:                // XCH A,R4
+    case 0xCD:                // XCH A,R5
+    case 0xCE:                // XCH A,R6
+    case 0xCF:                // XCH A,R7
       r = op & 0x07;
       a = this.getR(r);
       this.putR(r, this.SFR[ACC]);
@@ -1524,14 +1530,14 @@ ${_.range(0, 8)
       this.SFR[ACC] ^= this.iram[ira];
       break;
 
-    case 0x68:                // XRL A,Rn
-    case 0x69:                // XRL A,Rn
-    case 0x6A:                // XRL A,Rn
-    case 0x6B:                // XRL A,Rn
-    case 0x6C:                // XRL A,Rn
-    case 0x6D:                // XRL A,Rn
-    case 0x6E:                // XRL A,Rn
-    case 0x6F:                // XRL A,Rn
+    case 0x68:                // XRL A,R0
+    case 0x69:                // XRL A,R1
+    case 0x6A:                // XRL A,R2
+    case 0x6B:                // XRL A,R3
+    case 0x6C:                // XRL A,R4
+    case 0x6D:                // XRL A,R5
+    case 0x6E:                // XRL A,R6
+    case 0x6F:                // XRL A,R7
       r = op & 0x07;
       this.SFR[ACC] ^= this.getR(r);
       break;
@@ -1546,6 +1552,10 @@ Unimplmented opcode=0x${toHex2(op)} at 0x${toHex4(this.pc-1)}`);
   },
 };
 
+
+function toHex1(v) {
+  return (v & 0x0F).toString(16).toUpperCase() + '';
+}
 
 function toHex2(v) {
   return (v | 0x100000).toString(16).toUpperCase().slice(-2) + '';
