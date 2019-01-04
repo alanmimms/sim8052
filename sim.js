@@ -2218,6 +2218,9 @@ function run(pc, maxCount) {
 }
 
 
+const syms = {d: {}, c: {}, b: {}, n: {}, x: {}};
+
+
 function setupMain() {
   const hexName = './sim.hex';
   const symName = hexName.split(/\./).slice(0, -1).join('.') + '.sym';
@@ -2232,9 +2235,6 @@ function setupMain() {
     const buf = Buffer.from(block);
     buf.copy(cpu.pmem, base);
   }
-
-
-  const syms = {d: {}, c: {}, b: {}, n: {}, x: {}};
 
 
   if (sym) {
