@@ -2302,5 +2302,15 @@ if (require.main === module) {
   module.exports.toHex2 = toHex2;
   module.exports.toHex4 = toHex4;
   module.exports.cpu = cpu;
+
+  module.exports.pswBits = pswBits;
+  module.exports.pconBits = pconBits;
+  module.exports.sconBits = sconBits;
+  module.exports.ipBits = ipBits;
+  module.exports.ieBits = ieBits;
+  module.exports.tmodBits = tmodBits;
+  module.exports.tconBits = tconBits;
+  module.exports.t2conBits = t2conBits;
 }
+
 
