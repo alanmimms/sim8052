@@ -432,35 +432,45 @@ const cpu = {
 
 
   doADD(op, b) {
-    const c = op & 0x10 ? this.getCY() : 0;
-    const a = this.SFR[ACC] + b + c;
+    const c = (op & 0x10) ? this.getCY() : 0;
+    const a = this.SFR[ACC]
 
-    // There is no overflow if
-    // * Both operands are positive and sum is positive or
-    // * Both operands are negative and sum is negative.
-    const aSign = !!(this.SFR[ACC] & 0x80);
-    const bSign = !!((b + c) & 0x80);
-    const sSign = !!(a & 0x80);
+    const acValue = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
+    const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
+    const cyValue = +(a + b + c > 0xFF);
+    const ovValue = cyValue ^ c6Value;
 
-    const ovValue = +!(aSign == bSign && aSign == sSign) << pswBits.ovShift;
-    const acValue = +(((a & 0x0F) + ((b + c) & 0x0F)) > 0x0F) << pswBits.acShift;
-    const cyValue = +(a > 0xFF) << pswBits.cyShift;
-    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) | ovValue | acValue | cyValue;
+    if (0) console.log(`\
+doAdd a=${toHex2(a)} b=${toHex2(b)} c=${c} yields \
+AC==${acValue} CY=${cyValue} OV=${ovValue}`);
 
-    this.SFR[ACC] = a;
+    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) |
+      ovValue << pswBits.ovShift |
+      acValue << pswBits.acShift |
+      cyValue << pswBits.cyShift;
+
+    this.SFR[ACC] = a + b + c;
   },
 
 
   doSUBB(op, b) {
-    const toSub = b + this.getCY();
-    const a = this.toSigned(this.SFR[ACC]) - this.toSigned(toSub);
+    const c = this.getCY();
+    const toSub = b + c;
+    const a = this.SFR[ACC];
+    const result = (a - toSub) & 0xFF;
 
-    const acValue = +((toSub & 0x0F) > (this.SFR[ACC] & 0x0F)) << pswBits.acShift;
-    const cyValue = +(toSub > this.SFR[ACC]) << pswBits.cyShift;
-    const ovValue = +(a < -128 || a > 127) << pswBits.ovShift;
-    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) | ovValue | acValue | cyValue;
+    const cyValue = +(a < toSub);
+    const acValue = +((a & 0x0F) < (toSub & 0x0F) ||
+                      (c && ((b & 0x0F) == 0x0F)));
+    const ovValue = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
+                      (a > 0x7F && b < 0x80 && result < 0x80));
 
-    this.SFR[ACC] = a;
+    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) |
+      ovValue << pswBits.ovShift |
+      acValue << pswBits.acShift |
+      cyValue << pswBits.cyShift;
+
+    this.SFR[ACC] = a - toSub;
   },
 
 
@@ -669,7 +679,13 @@ ${_.range(0, 8)
     case 0x25:                // ADD A,dir
     case 0x35:                // ADDC A,dir
       ira = this.fetch();
+      a = this.SFR[ACC];
+      b = this.getDirect(ira);
+      c = this.getCY();
       this.doADD(op, this.getDirect(ira));
+      if (0) console.log(`\
+ADDC A=${toHex2(a)},dir=${toHex2(b)} CY=${c} yields \
+ACC=${toHex2(this.SFR[ACC])} CY=${this.getCY()}`);
       break;
 
     case 0x26:                // ADD A,@R0
@@ -854,24 +870,28 @@ ${_.range(0, 8)
 
       ////////// DA
     case 0xD4:                // DA A
-      r = this.SFR[ACC];      // r = original content of ACC
-      a = r & 0x0F;
-      b = r & 0xF0;
+      a = this.SFR[ACC];
       c = this.getCY();
 
       // Lower nybble
-      if (this.getAC() || a > 0x09) a += 0x06;
-      c |= +(b + a > 0xFF);
+      if ((a & 0x0F) > 0x09 || this.getAC()) {
+        a += 0x06;
+        c |= +(a > 0xFF);
+        a &= 0xFF;              // Necessary?
+      }
 
       // Upper nybble
-      if (this.getCY() || b > 0x90) b += 0x60;
-      c |= +(b + a > 0xFF);
+      if ((a & 0xF0) > 0x90 || c) {
+        a += 0x60;
+        c |= +(a > 0xFF);
+        a &= 0xFF;              // Not necessary
+      }
 
-//      console.log(`\
-//DA ACC=${      toHex2(this.SFR[ACC])}  AC=${this.getAC()} CY=${this.getCY()}
-//   now ${toHex1(b >>> 4)}${toHex1(a)}  AC=${this.getAC()} CY=${c}`);
+    if (0) console.log(`\
+DA a=${toHex2(this.SFR[ACC])} CY=${this.getCY()} yields \
+A==${toHex2(a)} CY=${c}`);
 
-      this.SFR[ACC] = b | a;
+      this.SFR[ACC] = a;
       this.putCY(c);
       break;
       
@@ -1373,10 +1393,13 @@ ${_.range(0, 8)
 
       ////////// RLC
     case 0x33:                // RLC A
+      a = this.SFR[ACC];
       c = this.getCY();
       this.putCY(this.SFR[ACC] >>> 7);
       this.SFR[ACC] <<= 1;
       this.SFR[ACC] |= c;
+      if (0) console.log(`\
+RLC ${toHex2(a)} CY=${c} yields ${toHex2(this.SFR[ACC])} CY=${this.getCY()}`);
       break;
 
 
@@ -1464,8 +1487,8 @@ ${_.range(0, 8)
       ////////// XCH
     case 0xC5:                // XCH A,dir
       ira = this.fetch();
-      b = this.iram[ira];
-      this.iram[ira] = this.SFR[ACC];
+      b = this.getDirect(ira);
+      this.putDirect(ira, this.SFR[ACC]);
       this.SFR[ACC] = b;
       break;
 
