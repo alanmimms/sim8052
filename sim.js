@@ -471,10 +471,6 @@ const cpu = {
     const cyValue = +(a + b + c > 0xFF);
     const ovValue = cyValue ^ c6Value;
 
-    if (0) console.log(`\
-doAdd a=${toHex2(a)} b=${toHex2(b)} c=${c} yields \
-AC==${acValue} CY=${cyValue} OV=${ovValue}`);
-
     this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) |
       ovValue << pswBits.ovShift |
       acValue << pswBits.acShift |
@@ -714,9 +710,6 @@ ${_.range(0, 8)
       b = this.getDirect(ira);
       c = this.getCY();
       this.doADD(op, this.getDirect(ira));
-      if (0) console.log(`\
-ADDC A=${toHex2(a)},dir=${toHex2(b)} CY=${c} yields \
-ACC=${toHex2(this.SFR[ACC])} CY=${this.getCY()}`);
       break;
 
     case 0x26:                // ADD A,@R0
@@ -917,10 +910,6 @@ ACC=${toHex2(this.SFR[ACC])} CY=${this.getCY()}`);
         c |= +(a > 0xFF);
         a &= 0xFF;              // Not necessary
       }
-
-    if (0) console.log(`\
-DA a=${toHex2(this.SFR[ACC])} CY=${this.getCY()} yields \
-A==${toHex2(a)} CY=${c}`);
 
       this.SFR[ACC] = a;
       this.putCY(c);
@@ -1429,8 +1418,6 @@ A==${toHex2(a)} CY=${c}`);
       this.putCY(this.SFR[ACC] >>> 7);
       this.SFR[ACC] <<= 1;
       this.SFR[ACC] |= c;
-      if (0) console.log(`\
-RLC ${toHex2(a)} CY=${c} yields ${toHex2(this.SFR[ACC])} CY=${this.getCY()}`);
       break;
 
 
