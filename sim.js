@@ -14,33 +14,64 @@ const PMEMSize = 65536;
 const XRAMSize = 65536;
 
 // These constants simplify accesses to SFRs.
-const ACC = 0xE0;
-const B = 0xF0;
-const SP = 0x81;
-const P0 = 0x80;
-const P1 = 0x90;
-const P2 = 0xA0;
-const P3 = 0xB0;
-const IP = 0xB8;
-const IE = 0xA8;
-const TMOD = 0x89;
-const TCON = 0x88;
-const T2CON = 0xC8;
-const T2MOD = 0xC9;
-const TH0 = 0x8C;
-const TL0 = 0x8A;
-const TH1 = 0x8D;
-const TL1 = 0x8B;
-const TH2 = 0xCD;
-const TL2 = 0xCC;
-const RCAP2H = 0xCB;
-const RCAP2L = 0xCA;
-const PCON = 0x87;
-const PSW = 0xD0;
-const DPL = 0x82;
-const DPH = 0x83;
-const SCON = 0x98;
-const SBUF = 0x99;
+const SFRs = {
+  ACC: 0xE0,
+  B: 0xF0,
+  SP: 0x81,
+  P0: 0x80,
+  P1: 0x90,
+  P2: 0xA0,
+  P3: 0xB0,
+  IP: 0xB8,
+  IE: 0xA8,
+  TMOD: 0x89,
+  TCON: 0x88,
+  T2CON: 0xC8,
+  T2MOD: 0xC9,
+  TH0: 0x8C,
+  TL0: 0x8A,
+  TH1: 0x8D,
+  TL1: 0x8B,
+  TH2: 0xCD,
+  TL2: 0xCC,
+  RCAP2H: 0xCB,
+  RCAP2L: 0xCA,
+  PCON: 0x87,
+  PSW: 0xD0,
+  DPL: 0x82,
+  DPH: 0x83,
+  SCON: 0x98,
+  SBUF: 0x99,
+};
+
+
+const ACC = SFRs.ACC;
+const B = SFRs.B;
+const SP = SFRs.SP;
+const P0 = SFRs.P0;
+const P1 = SFRs.P1;
+const P2 = SFRs.P2;
+const P3 = SFRs.P3;
+const IP = SFRs.IP;
+const IE = SFRs.IE;
+const TMOD = SFRs.TMOD;
+const TCON = SFRs.TCON;
+const T2CON = SFRs.T2CON;
+const T2MOD = SFRs.T2MOD;
+const TH0 = SFRs.TH0;
+const TL0 = SFRs.TL0;
+const TH1 = SFRs.TH1;
+const TL1 = SFRs.TL1;
+const TH2 = SFRs.TH2;
+const TL2 = SFRs.TL2;
+const RCAP2H = SFRs.RCAP2H;
+const RCAP2L = SFRs.RCAP2L;
+const PCON = SFRs.PCON;
+const PSW = SFRs.PSW;
+const DPL = SFRs.DPL;
+const DPH = SFRs.DPH;
+const SCON = SFRs.SCON;
+const SBUF = SFRs.SBUF;
 
 
 // Define opcodes. The `operands` string is a sequence of zero or more
@@ -2200,61 +2231,65 @@ function run(pc, maxCount) {
 }
 
 
-const hexName = './sim.hex';
-const symName = hexName.split(/\./).slice(0, -1).join('.') + '.sym';
-const hex = fs.readFileSync(hexName, {encoding: 'utf-8'});
-const sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'});
+function setupMain() {
+  const hexName = './sim.hex';
+  const symName = hexName.split(/\./).slice(0, -1).join('.') + '.sym';
+  const hex = fs.readFileSync(hexName, {encoding: 'utf-8'});
+  const sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'});
 
-const MemoryMap = require('nrf-intel-hex');
-const memMap = MemoryMap.fromHex(hex);
+  const MemoryMap = require('nrf-intel-hex');
+  const memMap = MemoryMap.fromHex(hex);
 
-for (let [base, block] of memMap) {
-  console.log(`Block ${toHex4(base)}: ${toHex4(block.length)} bytes`);
-  const buf = Buffer.from(block);
-  buf.copy(cpu.pmem, base);
-}
-
-
-const syms = {d: {}, c: {}, b: {}, n: {}, x: {}};
+  for (let [base, block] of memMap) {
+    console.log(`Block ${toHex4(base)}: ${toHex4(block.length)} bytes`);
+    const buf = Buffer.from(block);
+    buf.copy(cpu.pmem, base);
+  }
 
 
-if (sym) {
-  sym.split(/\n/)
-    .forEach(line => {
-      const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
-      const addrSpace = line.slice(13, 14).trim().toLowerCase() || 'n';
-      const type = line.slice(15, 22).trim();
-      let addr = '0x' + line.slice(23, 30).trim();
-      let bit = undefined;
+  const syms = {d: {}, c: {}, b: {}, n: {}, x: {}};
 
-      switch (type) {
-      case 'NUMB':
-        addr = +('0x' + addr);
-        break;
 
-      case 'ADDR':
+  if (sym) {
+    sym.split(/\n/)
+      .forEach(line => {
+        const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
+        const addrSpace = line.slice(13, 14).trim().toLowerCase() || 'n';
+        const type = line.slice(15, 22).trim();
+        let addr = '0x' + line.slice(23, 30).trim();
+        let bit = undefined;
 
-        if (addrSpace === 'B') {
-          [addr, bit] = addr.split(/\./);
+        switch (type) {
+        case 'NUMB':
+          addr = +('0x' + addr);
+          break;
+
+        case 'ADDR':
+
+          if (addrSpace === 'B') {
+            [addr, bit] = addr.split(/\./);
+          }
+
+          addr = +addr.replace('H', '');
+          break;
+
+        case 'REG':
+          break;
+
+        default:
+          addr = null;
+          break;
         }
-
-        addr = +addr.replace('H', '');
-        break;
-
-      case 'REG':
-        break;
-
-      default:
-        addr = null;
-        break;
-      }
-      
-      syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
-    });
+        
+        syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
+      });
+  }
 }
+
 
 // Only start the thing if we are not loaded via require.
 if (require.main === module) {
+  setupMain();
   console.log('[Control-\\ will interrupt execution and return to prompt]');
 
   if (process.stdin.setRawMode)
