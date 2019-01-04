@@ -6,6 +6,53 @@ const cpu = sim.cpu;
 Object.keys(sim.SFRs).forEach(name => global[name] = sim.SFRs[name]);
 
 
+//////////// NOP ////////////
+test('NOP', () => {
+  cpu.pmem[0x100] = 0x00;       // NOP
+  cpu.SFR[ACC] = 0x42;
+  cpu.SFR[PSW] = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x101);
+  expect(cpu.SFR[PSW]).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(0x42);
+});
+
+//////////// ACALL ////////////
+for (let fromPage = 0; fromPage < 8; ++fromPage) {
+
+  test(`ACALL from page${fromPage}`, () => {
+    const pageOffset = 0x24;
+    const callBase = fromPage * 0x100 + 0x42;
+
+    for (let toPage = 0; toPage < 8; ++toPage) {
+      const callTarget = (toPage * 0x100) + pageOffset;
+      cpu.pmem[callBase] = (toPage * 0x20) + 0x11;      // ACALL pageN
+      cpu.pmem[callBase + 1] = pageOffset;
+      cpu.pmem[callTarget] = 0x22;                      // RET
+
+      cpu.SFR[ACC] = 0x42;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[SP] = 0x07;
+
+      cpu.run1(callBase);                       // CALL
+      expect(cpu.pc).toBe(callTarget);
+      expect(cpu.SFR[PSW]).toBe(0);
+      expect(cpu.SFR[ACC]).toBe(0x42);
+      expect(cpu.SFR[SP]).toBe(0x09);
+      cpu.run1(callTarget);                     // RET
+      expect(cpu.pc).toBe(callBase + 2);
+      expect(cpu.SFR[PSW]).toBe(0);
+      expect(cpu.SFR[ACC]).toBe(0x42);
+      expect(cpu.SFR[SP]).toBe(0x07);
+
+      // Clean out RET for next iter
+      cpu.pmem[callTarget] = 0x00;
+    }
+  });
+}
+
+
 //////////// RLC ////////////
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.pmem[0x100] = 0x33;       // RLC A
