@@ -8,6 +8,9 @@ const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
 
+
+const debugADDC_DA = false;
+
 const insnsPerTick = 100;
 
 const PMEMSize = 65536;
@@ -406,7 +409,15 @@ const cpu = {
   debugDirect: false,
 
 
+  // Trace of PC
+  fetchHistoryMask: 0x0F,
+  fetchHistory: new Array(16),
+  fetchHistoryX: 0,
+
+
   fetch() {
+    this.fetchHistory[this.fetchHistoryX++] = this.pc;
+    this.fetchHistoryX &= this.fetchHistoryMask;
     return this.pmem[this.pc++];
   },
 
@@ -471,11 +482,18 @@ const cpu = {
     const cyValue = +(a + b + c > 0xFF);
     const ovValue = cyValue ^ c6Value;
 
-    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) |
-      ovValue << pswBits.ovShift |
-      acValue << pswBits.acShift |
-      cyValue << pswBits.cyShift;
+    if (debugADDC_DA) console.log(`\
+doADD(${(op & 0x10) ? 'ADDC' : 'ADD'} \
+A=${toHex2(this.SFR[ACC])},${toHex2(b)} CY=${c} \
+AC=${acValue} CY=${cyValue} OV=${ovValue}`);
 
+    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) |
+      (ovValue << pswBits.ovShift) |
+      (acValue << pswBits.acShift) |
+      (cyValue << pswBits.cyShift);
+
+    if (debugADDC_DA) console.log(`                now PSW=${toHex2(this.SFR[PSW])} \
+acShift=${pswBits.acShift} acMask=${toHex2(pswBits.acMask)}`);
     this.SFR[ACC] = a + b + c;
   },
 
@@ -529,6 +547,7 @@ const cpu = {
 
     case PSW:
 
+      // Update parity before returning PSW
       if (parityTable[this.SFR[ACC]] << pswBits.pShift)
         this.SFR[PSW] |= pswBits.pMask;
       else
@@ -620,9 +639,25 @@ const cpu = {
   },
 
 
+  dumpFetchHistory() {
+    console.log(`Fetch history:`);
+
+    for (let k = 1; k <= this.fetchHistoryMask; ++k) {
+      const x = (this.fetchHistoryX - k) & this.fetchHistoryMask;
+      console.log(`${toHex2(k)}: ${toHex4(this.fetchHistory[x])}`);
+    }
+  },
+  
+
   disassemble(pc) {
     const op = this.pmem[pc];
     const ope = opTable[op];
+
+    if (!ope) {
+      console.log(`Undefined opTable[${op}] pc=${pc}`);
+      this.dumpFetchHistory();
+    }
+
     const nextPC = pc + ope.n;
     const bytes = this.pmem.slice(pc, nextPC);
     const disassembly = bytes.toString('hex')
@@ -660,13 +695,15 @@ ${displayableAddress(pc, 'c')}: ${disassembly}  ${ope.name} ${operands}`;
     console.log(`\
  a=${toHex2(this.SFR[ACC])}   b=${toHex2(this.SFR[B])} \
  cy=${+this.getCY()} ov=${+this.getOV()}  \
-sp=${toHex2(this.SFR[SP])} psw=${toHex2(this.SFR[PSW])}  dptr=${toHex4(this.getDPTR())}
+sp=${toHex2(this.SFR[SP])} psw=${toHex2(this.SFR[PSW])}  dptr=${toHex4(this.getDPTR())}  \
+pc=${toHex4(this.pc)}
 ${_.range(0, 8)
   .map((v, rn) => `r${rn}=${toHex2(this.getR(rn))}`)
   .join('  ')
 }`);
   },
 
+  rlcString: '',
 
   run1(pc) {
     this.pc = pc;
@@ -674,10 +711,36 @@ ${_.range(0, 8)
     ++this.instructionsExecuted;
     let rela, ira, imm, bit, a, b, c, r;
 
+    if (debugADDC_DA) {
+      if (pc === 0x675) {
+        console.log(`\
+PRNTOS: TOS=${toHex2(this.getR(7))}${toHex2(this.getR(6))}\
+=${this.getR(7)*255+this.getR(6)}`);
+      } else if (pc === 0x69c) {
+        console.log(`PRNHEX: \
+${(this.SFR[ACC] & 0x0F).toString(16)}\
+${(this.getR(7) >>> 4).toString(16)}\
+${(this.getR(7) & 0x0F).toString(16)}\
+${(this.getR(6) >>> 4).toString(16)}\
+${(this.getR(6) & 0x0F).toString(16)}`);
+      } else if (pc === 0x68B) {
+        this.rlcString = `\
+[${toHex2(this.getR(5))}]RLC TOS=${toHex2(this.getR(7))}${toHex2(this.getR(6))}, \
+CY=${this.getCY()}`;
+      } else if (pc === 0x694) {
+        this.rlcString += `  AC=${this.getAC()}`;
+      } else if (pc === 0x695) {
+        console.log(`\
+${this.rlcString}  ADDC/DA=${toHex2(this.SFR[ACC])}${toHex2(this.iram[0x08])}, \
+CY=${this.getCY()}`);
+      }
+    }
+
     switch (op) {
 
       ////////// NOP
     case 0x00:                // NOP
+      this.running = false;
       break;
 
 
@@ -706,9 +769,6 @@ ${_.range(0, 8)
     case 0x25:                // ADD A,dir
     case 0x35:                // ADDC A,dir
       ira = this.fetch();
-      a = this.SFR[ACC];
-      b = this.getDirect(ira);
-      c = this.getCY();
       this.doADD(op, this.getDirect(ira));
       break;
 
@@ -897,6 +957,9 @@ ${_.range(0, 8)
       a = this.SFR[ACC];
       c = this.getCY();
 
+      if (debugADDC_DA) console.log(`\
+DA A=${toHex2(a)} CY=${c} AC=${this.getAC()}`);
+      
       // Lower nybble
       if ((a & 0x0F) > 0x09 || this.getAC()) {
         a += 0x06;
@@ -910,6 +973,9 @@ ${_.range(0, 8)
         c |= +(a > 0xFF);
         a &= 0xFF;              // Not necessary
       }
+
+      if (debugADDC_DA) console.log(`\
+                yields A=${toHex2(a)} CY=${c}`);
 
       this.SFR[ACC] = a;
       this.putCY(c);
@@ -1002,7 +1068,7 @@ ${_.range(0, 8)
     case 0x07:                // INC @R1
       r = op & 1;
       ira = this.getR(r);
-      this.ira[ira] = this.iram[ira] + 1;
+      this.iram[ira] = this.iram[ira] + 1;
       break;
 
     case 0x08:                // INC R0
@@ -1163,7 +1229,7 @@ ${_.range(0, 8)
     case 0x90:                // MOV DPTR,#immed16
       a = this.fetch();
       b = this.fetch();
-      this.putDPTR(a | (b << 8));
+      this.putDPTR(a << 8 | b);
       break;
 
     case 0x78:                // MOV R0,#imm
@@ -1615,7 +1681,7 @@ function toHex4(v) {
 }
 
 
-// Take a string and return a bit field object containing xBit and
+// Take a string and return a bit field object containing xShift and
 // xMask values for each bit. The string is a space separated list of
 // fields left to right where the leftmost is bit #7 and rightmost is
 // bit #0 and '.' is used for a reserved bit.
@@ -1627,7 +1693,7 @@ function makeBits(bitDescriptiorString) {
     .map((name, index) => {
 
       if (name !== '.') {
-        o[name + 'Bit'] = index;
+        o[name + 'Shift'] = index;
         o[name + 'Mask'] = 1 << index;
       }
     });
@@ -1925,6 +1991,7 @@ function doIRAM(words) {
       line = '';
     }
 
+    if (((n - 1) & 0x07) === 0) line += ' ';
     line += ' ' + toHex2(cpu.iram[x++]);
   }
 
@@ -2093,8 +2160,6 @@ function startCLI() {
     input: process.stdin,
     output: process.stdout,
     terminal: true,
-    historySize: 1000,
-    removeHistoryDuplicates: true,
     completer: line => {
       const completions = commands.map(c => c.name);
       const hits = completions.filter(c => c.indexOf(line) === 0);
