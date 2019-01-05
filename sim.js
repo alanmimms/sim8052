@@ -810,8 +810,8 @@ ${_.range(0, 8)
 
     case 0xB0:                // ANL C,/bit
       bit = this.fetch();
-      c = 1 ^ this.getBit(bit);
-      this.putCY(this.getCY() & c);
+      c = this.getBit(bit);
+      this.putCY(this.getCY() & +!c);
       break;
 
 
@@ -880,15 +880,15 @@ ${_.range(0, 8)
       ////////// CPL
     case 0xB2:                // CPL bit
       bit = this.fetch();
-      this.putBit(bit, 1 ^ this.getBit(bit));
+      this.putBit(bit, +!this.getBit(bit));
       break;
       
     case 0xB3:                // CPL C
-      this.putCY(1 ^ this.getCY());
+      this.putCY(+!this.getCY());
       break;
       
     case 0xF4:                // CPL A
-      this.SFR[ACC] = 0xFF ^ this.SFR[ACC];
+      this.SFR[ACC] ^= 0xFF;
       break;
       
 
@@ -1364,9 +1364,8 @@ ${_.range(0, 8)
 
     case 0xA0:                // ORL C,/bit
       bit = this.fetch();
-      c = 1 ^ this.getBit(bit);
-      c |= this.getCY();
-      this.putCY(c);
+      c = +!this.getBit(bit);
+      this.putCY(this.getCY() | c);
       break;
 
 
