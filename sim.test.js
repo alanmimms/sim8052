@@ -217,6 +217,7 @@ function testADDC_DA(x, y) {
   expect(cpu.pc).toBe(0x102);
   expect(cpu.SFR[ACC]).toBe(addcSum & 0xFF);
   expect(cpu.getCY()).toBe(+(addcSum > 0xFF));
+  expect(cpu.getAC()).toBe(+((x & 0x0F) + (y & 0x0F) > 0x0F));
 
   cpu.run1(cpu.pc);         // DA
   expect(cpu.pc).toBe(0x103);
