@@ -740,7 +740,6 @@ CY=${this.getCY()}`);
 
       ////////// NOP
     case 0x00:                // NOP
-      this.running = false;
       break;
 
 
