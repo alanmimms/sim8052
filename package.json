@@ -6,8 +6,8 @@
   "author": "Alan Mimms <alanmimms@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "lodash": "^4.5.1",
-    "nrf-intel-hex": "^1.3.0"
+    "intel-hex": "^0.1.1",
+    "lodash": "^4.5.1"
   },
   "devDependencies": {
     "jest": "^23.6.0"

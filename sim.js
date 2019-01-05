@@ -2291,15 +2291,12 @@ function setupMain() {
   const hex = fs.readFileSync(hexName, {encoding: 'utf-8'});
   const sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'});
 
-  const MemoryMap = require('nrf-intel-hex');
-  const memMap = MemoryMap.fromHex(hex);
+  const IntelHex = require('intel-hex');
+  const hexParsed = IntelHex.parse(hex, PMEMSize);
+  const hexLength = hexParsed.highestAddress - hexParsed.lowestAddress;
 
-  for (let [base, block] of memMap) {
-    console.log(`Block ${toHex4(base)}: ${toHex4(block.length)} bytes`);
-    const buf = Buffer.from(block);
-    buf.copy(cpu.pmem, base);
-  }
-
+  console.log(`Loaded ${toHex4(hexParsed.lowestAddress)}: ${toHex4(hexLength)} bytes`);
+  hexParsed.data.copy(cpu.pmem, hexParsed.lowestAddress);
 
   if (sym) {
     sym.split(/\n/)
