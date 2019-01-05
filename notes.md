@@ -1,3 +1,16 @@
+# Decimal printing
+
+* Numbers < 128 print normally
+  * But 128=80, 129=81, ...
+* Numbers >= 200 and < 256 print normally
+* Adding ten to a number outputs ten more even when it's wrong
+  * E.g., 170=10, 180=20
+* 10 and 31 display normally, but 32=20
+* 64=40
+* 70-79=46-55, but 80=80 and 90=90, 100=100, 120=120
+* 15=15, but 17-19=11-13, and then 20=20
+
+
 # tb51intl/TB51.LST
 
 The PRNTOS algorithm works by taking each bit in the 16-bit number on
