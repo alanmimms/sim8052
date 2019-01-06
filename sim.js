@@ -2320,7 +2320,7 @@ node ${argv[0]} hex-file-name sym-file-name`);
   hexParsed.data.copy(cpu.pmem, hexParsed.lowestAddress);
 
   if (sym) {
-    if (sym.match(/[A-Z_0-9]+( \.)*\s+[A-Z]\s+[A-Z]+\s+([0-9A-F])<4>H\s+[A-Z]\s*/)) {
+    if (sym.match(/[A-Z_0-9]+( \.)*\s+[A-Z]\s+[A-Z]+\s+[0-9A-F]+H\s+[A-Z]\s*/)) {
       // Type #1: "ACC . . . .  D ADDR    00E0H   A       "
       console.log('Type #1 symbol table file');
 
