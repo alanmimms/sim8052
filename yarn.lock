@@ -1336,11 +1336,6 @@ ini@~1.3.0:
   resolved "https://registry.yarnpkg.com/ini/-/ini-1.3.5.tgz#eee25f56db1c9ec6085e0c22778083f596abf927"
   integrity sha512-RZY5huIKCMRWDUqZlEi72f/lmXKMvuszcMBduliQ3nnWbx9X/ZBQO7DijMEYS9EhHBb2qacRUMtC7svLwe0lcw==
 
-intel-hex@^0.1.1:
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/intel-hex/-/intel-hex-0.1.1.tgz#825445dbabdab8d7988c6dfdb470dfbbb19fd494"
-  integrity sha1-glRF26vauNeYjG39tHDfu7Gf1JQ=
-
 invariant@^2.2.2, invariant@^2.2.4:
   version "2.2.4"
   resolved "https://registry.yarnpkg.com/invariant/-/invariant-2.2.4.tgz#610f3c92c9359ce1db616e538008d23ff35158e6"
