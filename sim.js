@@ -2298,38 +2298,78 @@ function setupMain() {
   hexParsed.data.copy(cpu.pmem, hexParsed.lowestAddress);
 
   if (sym) {
-    sym.split(/\n/)
-      .forEach(line => {
-        const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
-        const addrSpace = line.slice(13, 14).trim().toLowerCase() || 'n';
-        const type = line.slice(15, 22).trim();
-        let addr = '0x' + line.slice(23, 30).trim();
-        let bit = undefined;
+    if (sym.match(/[A-Z_0-9]+( \.)*\s+[A-Z]\s+[A-Z]+\s+([0-9A-F])<4>H\s+[A-Z]\s*/)) {
+      // Type #1: "ACC . . . .  D ADDR    00E0H   A       "
+      console.log('Type #1 symbol table file');
 
-        switch (type) {
-        case 'NUMB':
-          addr = +('0x' + addr);
-          break;
+      sym.split(/\n/)
+        .forEach(line => {
+          const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
+          const addrSpace = line.slice(13, 14).trim().toLowerCase() || 'n';
+          const type = line.slice(15, 22).trim();
+          let addr = '0x' + line.slice(23, 30).trim();
+          let bit = undefined;
 
-        case 'ADDR':
+          switch (type) {
+          case 'NUMB':
+            addr = +('0x' + addr);
+            break;
 
-          if (addrSpace === 'B') {
-            [addr, bit] = addr.split(/\./);
+          case 'ADDR':
+
+            if (addrSpace === 'B') {
+              [addr, bit] = addr.split(/\./);
+            }
+
+            addr = +addr.replace('H', '');
+            break;
+
+          case 'REG':
+            break;
+
+          default:
+            addr = null;
+            break;
           }
+          
+          syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
+        });
+    } else if (sym.match(/[A-Z_0-9]+\s+[A-Z]+\s+([0-9A-F])<4>\s+[0-9]+\s*/)) {
+      // Type #2: "AABS         CODE      139C    4795"
+      console.log('Type #2 symbol table file');
 
-          addr = +addr.replace('H', '');
-          break;
+      sym.split(/\n/)
+        .forEach(line => {
+          const [all, name, type, addr, num] = line.match(/(\w+)\s+(\w+)\s+(\w+)\s+(\w+)\s*/);
+          let bit = undefined;
 
-        case 'REG':
-          break;
+          switch (type) {
+          case 'NUMB':
+            addr = +('0x' + addr);
+            break;
 
-        default:
-          addr = null;
-          break;
-        }
-        
-        syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
-      });
+          case 'ADDR':
+
+            if (addrSpace === 'B') {
+              [addr, bit] = addr.split(/\./);
+            }
+
+            addr = +addr.replace('H', '');
+            break;
+
+          case 'REG':
+            break;
+
+          default:
+            addr = null;
+            break;
+          }
+          
+          syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
+        });
+    } else {
+      console.log("Unrecognized .sym file content");
+    }
   }
 }
 
