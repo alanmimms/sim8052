@@ -2285,16 +2285,38 @@ const syms = {d: {}, c: {}, b: {}, n: {}, x: {}};
 
 
 function setupMain() {
-  const hexName = './sim.hex';
-  const symName = hexName.split(/\./).slice(0, -1).join('.') + '.sym';
-  const hex = fs.readFileSync(hexName, {encoding: 'utf-8'});
-  const sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'});
+  const argv = process.argv.slice(1);
 
-  const IntelHex = require('intel-hex');
+  function usageExit(msg) {
+    console.error(`${msg}
+Usage:
+node ${argv[0]} hex-file-name sym-file-name`);
+    process.exit(1);
+  }
+
+  if (argv.length < 2 || argv.length > 3) usageExit('[missing parameter]');
+
+  const hexName = argv[1];
+  const symName = argv[2] || (hexName.split(/\./).slice(0, -1).join('.') + '.sym');
+  let hex, sym;
+
+  try {
+    hex = fs.readFileSync(hexName, {encoding: 'utf-8'});
+  } catch(e) {
+    usageExit(`Unable to open ${e.path}: ${e.code}`);
+  }
+
+  try {
+    sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'});
+  } catch(e) {
+    if (argv[2]) usageExit(`Unable to open ${e.path}: ${e.code}`);
+  }
+
+  const IntelHex = require('./intel-hex');
   const hexParsed = IntelHex.parse(hex, PMEMSize);
   const hexLength = hexParsed.highestAddress - hexParsed.lowestAddress;
 
-  console.log(`Loaded ${toHex4(hexParsed.lowestAddress)}: ${toHex4(hexLength)} bytes`);
+  console.log(`Loaded ${toHex4(hexParsed.lowestAddress)}: ${hexLength.toString(16)} bytes`);
   hexParsed.data.copy(cpu.pmem, hexParsed.lowestAddress);
 
   if (sym) {
