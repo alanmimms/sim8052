@@ -8,9 +8,6 @@ const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
 
-
-const debugADDC_DA = false;
-
 const insnsPerTick = 100;
 
 const PMEMSize = 65536;
@@ -490,11 +487,6 @@ const cpu = {
     const cyValue = +(a + b + c > 0xFF);
     const ovValue = cyValue ^ c6Value;
 
-    if (debugADDC_DA) console.log(`\
-doADD(${(op & 0x10) ? 'ADDC' : 'ADD'} \
-A=${toHex2(this.SFR[ACC])},${toHex2(b)} CY=${c} \
-AC=${acValue} CY=${cyValue} OV=${ovValue}`);
-
     this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) |
       (ovValue << pswBits.ovShift) |
       (acValue << pswBits.acShift) |
@@ -708,38 +700,11 @@ ${_.range(0, 8)
 }`);
   },
 
-  rlcString: '',
-
   run1(pc) {
     this.pc = pc;
     const op = this.fetch();
     ++this.instructionsExecuted;
     let rela, ira, imm, bit, a, b, c, r;
-
-    if (debugADDC_DA) {
-      if (pc === 0x675) {
-        console.log(`\
-PRNTOS: TOS=${toHex2(this.getR(7))}${toHex2(this.getR(6))}\
-=${this.getR(7)*255+this.getR(6)}`);
-      } else if (pc === 0x69c) {
-        console.log(`PRNHEX: \
-${(this.SFR[ACC] & 0x0F).toString(16)}\
-${(this.getR(7) >>> 4).toString(16)}\
-${(this.getR(7) & 0x0F).toString(16)}\
-${(this.getR(6) >>> 4).toString(16)}\
-${(this.getR(6) & 0x0F).toString(16)}`);
-      } else if (pc === 0x68B) {
-        this.rlcString = `\
-[${toHex2(this.getR(5))}]RLC TOS=${toHex2(this.getR(7))}${toHex2(this.getR(6))}, \
-CY=${this.getCY()}`;
-      } else if (pc === 0x694) {
-        this.rlcString += `  AC=${this.getAC()}`;
-      } else if (pc === 0x695) {
-        console.log(`\
-${this.rlcString}  ADDC/DA=${toHex2(this.SFR[ACC])}${toHex2(this.iram[0x08])}, \
-CY=${this.getCY()}`);
-      }
-    }
 
     switch (op) {
 
@@ -961,9 +926,6 @@ CY=${this.getCY()}`);
       a = this.SFR[ACC];
       c = this.getCY();
 
-      if (debugADDC_DA) console.log(`\
-DA A=${toHex2(a)} CY=${c} AC=${this.getAC()}`);
-      
       // Lower nybble
       if ((a & 0x0F) > 0x09 || this.getAC()) {
         a += 0x06;
@@ -977,9 +939,6 @@ DA A=${toHex2(a)} CY=${c} AC=${this.getAC()}`);
         c |= +(a > 0xFF);
         a &= 0xFF;              // Not necessary
       }
-
-      if (debugADDC_DA) console.log(`\
-                yields A=${toHex2(a)} CY=${c}`);
 
       this.SFR[ACC] = a;
       this.putCY(c);
