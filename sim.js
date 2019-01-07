@@ -1741,6 +1741,21 @@ const commands = [
    doFn: doTil,
   },
 
+  {name: 'break',
+   description: 'Set breakpoint at specified address.',
+   doFn: doBreak,
+  },
+
+  {name: 'blist',
+   description: 'List breakpoints.',
+   doFn: doBreakList,
+  },
+
+  {name: 'unbreak',
+   description: 'Clear breakpoint at specified address.',
+   doFn: doUnbreak,
+  },
+
   {name: 'mem',
    description: 'Display external memory at specified address.',
    doFn: doMem,
@@ -1840,7 +1855,7 @@ function handleLine(line) {
 
 const OFFSET_THRESHOLD = 0x80;
 
-function displayableAddress(x, space) {
+function displayableAddress(x, space = 'c') {
   let closestOffset = Number.POSITIVE_INFINITY;
   let closestSym = null;
 
@@ -2043,13 +2058,52 @@ function doGo(words) {
 function doTil(words) {
 
   if (words.length !== 2) {
-    console.log("Must specified an address to go Til");
+    console.log("Must specify an address to go Til");
   } else {
     let b = getAddress(words);
     stopReasons[b] = 'now at ' + toHex4(b);
     console.log(`[Running until ${toHex4(b)}]`);
     startOfLastStep = cpu.instructionsExecuted;
     run(cpu.pc);
+    if (cpu.pc === b) delete stopReasons[b];
+  }
+}
+
+
+function doBreak(words) {
+
+  if (words.length !== 2) {
+    console.log("Must specify an address for breakpoint");
+  } else {
+    let b = getAddress(words);
+    stopReasons[b] = 'breakpoint at ' + toHex4(b);
+  }
+}
+
+
+function doBreakList(words) {
+  const addrs = Object.keys(stopReasons);
+
+  const maxWidth = addrs
+        .reduce((prevMax, a) => Math.max(prevMax, displayableAddress(a, 'c').length), 0);
+
+  console.log('Breakpoints:');
+
+  console.log(
+    addrs
+      .sort((a, b) => parseInt(a, 16) - parseInt(b, 16))
+      .map(b => displayableAddress(b, 'c').padStart(maxWidth) + ": " + stopReasons[b])
+      .join('\n'));
+}
+
+
+function doUnbreak(words) {
+
+  if (words.length !== 2) {
+    console.log("Must specify an address to clear breakpoint");
+  } else {
+    let b = getAddress(words);
+    delete stopReasons[b];
   }
 }
 
@@ -2227,7 +2281,6 @@ function run(pc, maxCount) {
 
       if (stopReasons[cpu.pc]) {
 	console.log(`[${stopReasons[cpu.pc]}]`); // Say why we stopped
-	stopReasons = {};
         cpu.running = false;
       } else {
 	let beforePC = cpu.pc;
@@ -2253,7 +2306,6 @@ function run(pc, maxCount) {
 	console.log(`[Executed ${nInstructions} instructions ` +
 		    `or ${ips.toFixed(1)}/s]`);
 	startOfLastStep = 0;	// Report full count next time if not in a step
-	delete stopReasons[cpu.pc];
       }
 
       startCLI();
@@ -2311,12 +2363,12 @@ node ${argv[0]} hex-file-name sym-file-name`);
           const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
           const addrSpace = line.slice(13, 14).trim().toLowerCase() || 'n';
           const type = line.slice(15, 22).trim();
-          let addr = '0x' + line.slice(23, 30).trim();
+          let addr = parseInt(line.slice(23, 30).trim(), 16);
           let bit = undefined;
 
           switch (type) {
           case 'NUMB':
-            addr = +('0x' + addr);
+            addr = parseInt(addr, 16);
             break;
 
           case 'ADDR':
@@ -2363,7 +2415,7 @@ node ${argv[0]} hex-file-name sym-file-name`);
 
           case 'BIT':
             addrSpace = 'b';
-            addr = +('0x' + addr);
+            addr = parseInt(addr, 16);
             bit = addr & 7;
             addr &= ~7;
             break;
@@ -2374,7 +2426,7 @@ node ${argv[0]} hex-file-name sym-file-name`);
           }
           
           if (addr !== null) {
-            if (addrSpace !== 'B') addr = +('0x' + addr);
+            if (addrSpace !== 'B') addr = parseInt(addr, 16);
             syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
           }
         });
