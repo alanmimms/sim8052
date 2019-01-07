@@ -663,15 +663,15 @@ const cpu = {
             .join(' ');
     
     const handlers = {
-      bit: x => displayableAddress(bytes[+x], 'b'),
-      nbit: x => '/' + displayableAddress(bytes[+x], 'b'),
-      immed: x => '#' + toHex2(bytes[+x]),
-      immed16: x => '#' + toHex4(bytes[+x] << 8 | bytes[+x + 1]),
-      addr16: x => displayableAddress(bytes[+x] << 8 | bytes[+x + 1], 'c'),
+      bit: x => displayableBit(bytes[x]),
+      nbit: x => '/' + displayableBit(bytes[x]),
+      immed: x => '#' + toHex2(bytes[x]),
+      immed16: x => '#' + toHex4(bytes[x] << 8 | bytes[x + 1]),
+      addr16: x => displayableAddress(bytes[x] << 8 | bytes[x + 1], 'c'),
       addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[x], 'c'),
       verbatum: x => x,
-      direct: x => displayableAddress(bytes[+x], 'd'),
-      rela: x => displayableAddress(nextPC + this.toSigned(bytes[+x]), 'c'),
+      direct: x => displayableAddress(bytes[x], 'd'),
+      rela: x => displayableAddress(nextPC + this.toSigned(bytes[x]), 'c'),
     };
 
     const operands = ope.operands.split(/,/)
@@ -680,7 +680,7 @@ const cpu = {
               if (handler == null) handler = 'verbatum';
               return {offset, handler};
             })
-            .map(x => handlers[x.handler](x.offset, ope.operands))
+            .map(x => handlers[x.handler](x.offset))
             .join(',');
 
     return `\
@@ -1855,24 +1855,48 @@ function handleLine(line) {
 
 const OFFSET_THRESHOLD = 0x80;
 
-function displayableAddress(x, space = 'c') {
+function findClosestSymbol(x, space) {
   let closestOffset = Number.POSITIVE_INFINITY;
   let closestSym = null;
 
   Object.values(syms[space]).forEach(sym => {
     const offset = x - sym.addr;
 
-    if (offset >= 0 && closestOffset > offset) {
+    if (offset >= 0 && offset < closestOffset) {
       closestSym = sym;
       closestOffset = offset;
     }
   });
 
   if (closestSym && closestOffset < OFFSET_THRESHOLD) {
+    return [closestSym, closestOffset];
+  } else {
+    return [];
+  }
+}
+
+
+function displayableBit(ba) {
+  let [closestSym, closestOffset] = findClosestSymbol(ba, 'b');
+
+  if (closestSym && closestOffset === 0) {
+    return `${closestSym.name}=${toHex2(ba)}`;
+  } else if (closestSym && closestOffset < 8 && (closestSym.addr & 0xF8) === 0) {
+    return `${closestSym.name}.${closestOffset}=${toHex2(ba)}`;
+  } else {
+    return toHex2(ba) + 'H';
+  }
+}
+
+
+function displayableAddress(x, space = 'c') {
+  const [closestSym, closestOffset] = findClosestSymbol(x, space);
+
+  if (closestSym) {
     return closestSym.name + (closestOffset ? "+" + toHex4(closestOffset) : "") +
       `=${toHex4(x)}`;
   } else {
-    return toHex4(x);
+    return toHex4(x) + 'H';
   }
 }
 
@@ -2084,16 +2108,23 @@ function doBreak(words) {
 function doBreakList(words) {
   const addrs = Object.keys(stopReasons);
 
-  const maxWidth = addrs
-        .reduce((prevMax, a) => Math.max(prevMax, displayableAddress(a, 'c').length), 0);
+  if (addrs.length === 0) {
+    console.log('No breakpoints');
+  } else {
 
-  console.log('Breakpoints:');
+    const maxWidth = addrs
+          .reduce((prevMax, a) => 
+                  Math.max(prevMax, displayableAddress(a, 'c').length), 0);
 
-  console.log(
-    addrs
-      .sort((a, b) => parseInt(a, 16) - parseInt(b, 16))
-      .map(b => displayableAddress(b, 'c').padStart(maxWidth) + ": " + stopReasons[b])
-      .join('\n'));
+    console.log('Breakpoints:');
+
+    console.log(
+      addrs
+        .sort((a, b) => parseInt(a, 16) - parseInt(b, 16))
+        .map(b => 
+             displayableAddress(b, 'c').padStart(maxWidth) + ": " + stopReasons[b])
+        .join('\n'));
+  }
 }
 
 
@@ -2115,8 +2146,12 @@ function doStep(words) {
 }
 
 
+const stepOverRange = 0x10;
+
 function doOver(words) {
-  _.range(1, 0x10).forEach(offs => stopReasons[cpu.pc + offs] = `skipped ${offs}`);
+  _.range(1, stepOverRange)
+    .forEach(offs => stopReasons[cpu.pc + offs] = `stepped over to $+${toHex2(offs)}H`);
+
   startOfLastStep = cpu.instructionsExecuted;
   run(cpu.pc);
 }
@@ -2262,15 +2297,14 @@ function sbufKeypressHandler(ch, key) {
 }
 
 
-// Pass maxCount=null for infinite run.
-function run(pc, maxCount) {
+function run(pc, maxCount = Number.POSITIVE_INFINITY) {
   const startCount = cpu.instructionsExecuted;
   const startTime = process.hrtime();
 
   cpu.pc = pc;
   cpu.running = true;
 
-  if (maxCount === null) maxCount = Number.POSITIVE_INFINITY;
+  let skipBreakIfTrue = true;
 
   stopCLI();
   setImmediate(runAsync);
@@ -2279,9 +2313,21 @@ function run(pc, maxCount) {
 
     for (let n = insnsPerTick; cpu.running && n; --n) {
 
-      if (stopReasons[cpu.pc]) {
+      if (!skipBreakIfTrue && stopReasons[cpu.pc]) {
 	console.log(`[${stopReasons[cpu.pc]}]`); // Say why we stopped
         cpu.running = false;
+
+        const match = stopReasons[cpu.pc].match(/^stepped over to \$\+([0-9A-F]+)H/);
+
+        // If we stepped over to, say, "stepped over to $+5" then we
+        // have to delete breakpoints before this point as well.
+        if (match) {
+          const atOffset = parseInt(match[1], 16);
+          _.range(-atOffset, stepOverRange-atOffset)
+            .forEach(offs => delete stopReasons[cpu.pc+offs]);
+        } else {
+          delete stopReasons[cpu.pc];
+        }
       } else {
 	let beforePC = cpu.pc;
         let insnVals = cpu.run1(cpu.pc);
@@ -2291,6 +2337,8 @@ function run(pc, maxCount) {
       }
 
       if (cpu.tracing || !cpu.running) cpu.dumpState();
+
+      skipBreakIfTrue = false;
     }
 
     if (cpu.running) {
@@ -2355,9 +2403,7 @@ node ${argv[0]} hex-file-name sym-file-name`);
   if (sym) {
     if (sym.match(/[A-Z_0-9]+( \.)*\s+[BCD]?\s+[A-Z]+\s+[0-9A-F]+H\s+[A-Z]\s*/)) {
       // Type #1: "ACC . . . .  D ADDR    00E0H   A       "
-      // D can B,C,D or missing
-      console.log('Type #1 symbol table file');
-
+      // D shown here can be B,C,D or missing.
       sym.split(/\n/)
         .forEach(line => {
           const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
@@ -2392,11 +2438,10 @@ node ${argv[0]} hex-file-name sym-file-name`);
         });
     } else if (sym.match(/^\w+\s+\w+\s+[0-9A-F]+\s+\d+\s*\n/)) {
       // Type #2: "AABS         CODE      139C    4795"
-      console.log('Type #2 symbol table file');
-
+      // The last field is source line number in decimal and it is optional.
       sym.split(/\n/)
         .forEach(line => {
-          const match = line.match(/(\w+)\s+(\w+)\s+(\w+)(?:\s+(\d+)\s*)?/);
+          const match = line.match(/(\w+)\s+(\w+)\s+([0-9A-F]+)(?:\s+(\d+)\s*)?/);
 
           if (!match) return;
 
@@ -2413,25 +2458,29 @@ node ${argv[0]} hex-file-name sym-file-name`);
             addrSpace = 'd';
             break;
 
+          case 'XDATA':
+            addrSpace = 'x';
+            break;
+
           case 'BIT':
             addrSpace = 'b';
             addr = parseInt(addr, 16);
             bit = addr & 7;
-            addr &= ~7;
             break;
 
           default:
             addr = null;
+            console.log(`Unrecognized .sym file content: "${line}"`);
             break;
           }
           
           if (addr !== null) {
-            if (addrSpace !== 'B') addr = parseInt(addr, 16);
+            if (addrSpace !== 'b') addr = parseInt(addr, 16);
             syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
           }
         });
     } else {
-      console.log(`Unrecognized .sym file content: "${line}"`);
+      console.log(`Unrecognized .sym file type: "${sym.slice(0, 100)}..."`);
     }
   }
 }
