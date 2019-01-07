@@ -690,8 +690,7 @@ ${displayableAddress(pc, 'c')}: ${disassembly}  ${ope.name} ${operands}`;
 
   dumpState() {
     console.log(`\
- a=${toHex2(this.SFR[ACC])}   b=${toHex2(this.SFR[B])} \
- cy=${+this.getCY()} ov=${+this.getOV()}  \
+ a=${toHex2(this.SFR[ACC])}   b=${toHex2(this.SFR[B])}  cy=${+this.getCY()} ov=${+this.getOV()} ac=${this.getAC()}  \
 sp=${toHex2(this.SFR[SP])} psw=${toHex2(this.SFR[PSW])}  dptr=${toHex4(this.getDPTR())}  \
 pc=${toHex4(this.pc)}
 ${_.range(0, 8)
@@ -700,11 +699,26 @@ ${_.range(0, 8)
 }`);
   },
 
+  dumpCount: 50,
+
   run1(pc) {
     this.pc = pc;
     const op = this.fetch();
     ++this.instructionsExecuted;
     let rela, ira, imm, bit, a, b, c, r;
+
+    if (1 && pc === 0x1F06) {
+      if (this.dumpCount-- === 0) this.running = false;
+      console.log(`RSUB1: in=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
+    }
+
+    if (1 && pc === 0x1F2C) {
+      console.log(`1F2C:        R2,R0=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
+    }
+
+    if (1 && pc === 0x1F3C) {
+      console.log(`1F3C:                   RETURN`);
+    }
 
     switch (op) {
 
