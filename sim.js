@@ -644,7 +644,7 @@ acShift=${pswBits.acShift} acMask=${toHex2(pswBits.acMask)}`);
 
     for (let k = 1; k <= this.fetchHistoryMask; ++k) {
       const x = (this.fetchHistoryX - k) & this.fetchHistoryMask;
-      console.log(`${toHex2(k)}: ${toHex4(this.fetchHistory[x])}`);
+      console.log(`${toHex2(k)}: ${displayableAddress(this.fetchHistory[x], 'c')}`);
     }
   },
   
@@ -2320,8 +2320,9 @@ node ${argv[0]} hex-file-name sym-file-name`);
   hexParsed.data.copy(cpu.pmem, hexParsed.lowestAddress);
 
   if (sym) {
-    if (sym.match(/[A-Z_0-9]+( \.)*\s+[A-Z]\s+[A-Z]+\s+[0-9A-F]+H\s+[A-Z]\s*/)) {
+    if (sym.match(/[A-Z_0-9]+( \.)*\s+[BCD]?\s+[A-Z]+\s+[0-9A-F]+H\s+[A-Z]\s*/)) {
       // Type #1: "ACC . . . .  D ADDR    00E0H   A       "
+      // D can B,C,D or missing
       console.log('Type #1 symbol table file');
 
       sym.split(/\n/)
@@ -2356,30 +2357,34 @@ node ${argv[0]} hex-file-name sym-file-name`);
           
           syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
         });
-    } else if (sym.match(/[A-Z_0-9]+\s+[A-Z]+\s+([0-9A-F])<4>\s+[0-9]+\s*/)) {
+    } else if (sym.match(/^\w+\s+\w+\s+[0-9A-F]+\s+\d+\s*\n/)) {
       // Type #2: "AABS         CODE      139C    4795"
       console.log('Type #2 symbol table file');
 
       sym.split(/\n/)
         .forEach(line => {
-          const [all, name, type, addr, num] = line.match(/(\w+)\s+(\w+)\s+(\w+)\s+(\w+)\s*/);
-          let bit = undefined;
+          const match = line.match(/(\w+)\s+(\w+)\s+(\w+)(?:\s+(\d+)\s*)?/);
+
+          if (!match) return;
+
+          let [all, name, type, addr, lNum] = match;
+          let addrSpace, bit;
 
           switch (type) {
-          case 'NUMB':
+          case 'CODE':
+            addrSpace = 'c';
+            break;
+
+          case 'NUMBER':
+          case 'DATA':
+            addrSpace = 'd';
+            break;
+
+          case 'BIT':
+            addrSpace = 'b';
             addr = +('0x' + addr);
-            break;
-
-          case 'ADDR':
-
-            if (addrSpace === 'B') {
-              [addr, bit] = addr.split(/\./);
-            }
-
-            addr = +addr.replace('H', '');
-            break;
-
-          case 'REG':
+            bit = addr & 7;
+            addr &= ~7;
             break;
 
           default:
@@ -2387,10 +2392,13 @@ node ${argv[0]} hex-file-name sym-file-name`);
             break;
           }
           
-          syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
+          if (addr !== null) {
+            if (addrSpace !== 'B') addr = +('0x' + addr);
+            syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
+          }
         });
     } else {
-      console.log("Unrecognized .sym file content");
+      console.log(`Unrecognized .sym file content: "${line}"`);
     }
   }
 }
