@@ -445,6 +445,14 @@ const cpu = {
   },
 
 
+  putOV(v) {
+    if (v)
+      this.SFR[PSW] |= pswBits.ovMask;
+    else
+      this.SFR[PSW] &= ~pswBits.ovMask;
+  },
+
+
   getDPTR() {
     return (this.SFR[DPH] << 8) | this.SFR[DPL];
   },
@@ -491,9 +499,6 @@ AC=${acValue} CY=${cyValue} OV=${ovValue}`);
       (ovValue << pswBits.ovShift) |
       (acValue << pswBits.acShift) |
       (cyValue << pswBits.cyShift);
-
-    if (debugADDC_DA) console.log(`                now PSW=${toHex2(this.SFR[PSW])} \
-acShift=${pswBits.acShift} acMask=${toHex2(pswBits.acMask)}`);
     this.SFR[ACC] = a + b + c;
   },
 
@@ -1013,12 +1018,12 @@ DA A=${toHex2(a)} CY=${c} AC=${this.getAC()}`);
 
       ////////// DIV
     case 0x84:                // DIV AB
-      this.SFR[PSW] &= ~pswBits.cyMask; // DIV always clears CY
+      // DIV always clears CY and AC and sets OV on divide by 0
+      this.SFR[PSW] &= ~mathMask;
 
       if (this.SFR[B] === 0) {
-        this.ov = 1;
+        this.putOV(1);
       } else {
-        this.ov = 0;
         a = Math.floor(this.SFR[ACC] / this.SFR[B]);
         b = this.SFR[ACC] % this.SFR[B];
         this.SFR[ACC] = a;
@@ -1362,12 +1367,9 @@ DA A=${toHex2(a)} CY=${c} AC=${this.getAC()}`);
 
       ////////// MUL
     case 0xA4:                // MUL AB
+      this.putCY(0);          // Always clears CY.
       a = this.SFR[ACC] * this.SFR[B];
-
-      // MUL always clears CY and sometimes OV.
-      this.SFR[PSW] &= ~(pswBits.cyMask | pswBits.ovMask);
-
-      if (a > 0xFF) this.SFR[PSW] |= pswBits.ovMask;
+      this.putOV(+(a > 0xFF));
       this.SFR[ACC] = a;
       this.SFR[B] = a >>> 8;
       break;
