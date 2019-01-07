@@ -410,8 +410,8 @@ const cpu = {
 
 
   // Trace of PC
-  fetchHistoryMask: 0x0F,
-  fetchHistory: new Array(16),
+  fetchHistoryMask: 0x1F,
+  fetchHistory: new Array(32),
   fetchHistoryX: 0,
 
 
@@ -644,7 +644,7 @@ acShift=${pswBits.acShift} acMask=${toHex2(pswBits.acMask)}`);
 
     for (let k = 1; k <= this.fetchHistoryMask; ++k) {
       const x = (this.fetchHistoryX - k) & this.fetchHistoryMask;
-      console.log(`${toHex2(k)}: ${displayableAddress(this.fetchHistory[x], 'c')}`);
+      console.log(`-${toHex2(k-1)}: ${displayableAddress(this.fetchHistory[x], 'c')}`);
     }
   },
   
@@ -1776,6 +1776,11 @@ const commands = [
    doFn: doCode,
   },
 
+  {name: 'history',
+   description: 'Display history of PC.',
+   doFn: () => cpu.dumpFetchHistory(),
+  },
+
   {name: 'sfr',
    description: 'Display SFR at specified address.',
    doFn: doSFR,
@@ -1914,6 +1919,7 @@ function doMem(words) {
       line = '';
     }
 
+    if (((n - 1) & 0x07) === 0) line += ' ';
     line += ' ' + toHex2(cpu.xram[x++]);
   }
 
