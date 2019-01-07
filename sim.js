@@ -950,7 +950,7 @@ ${_.range(0, 8)
       // Upper nybble
       if ((a & 0xF0) > 0x90 || c) {
         a += 0x60;
-        c |= +(a > 0xFF);
+        c |= +(a > 0xF0);
         a &= 0xFF;              // Not necessary
       }
 
