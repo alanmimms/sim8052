@@ -664,21 +664,23 @@ const cpu = {
 
     const nextPC = pc + ope.n;
     const bytes = this.pmem.slice(pc, nextPC);
+    const [, b0, b1] = bytes;
+
     const disassembly = bytes.toString('hex')
             .toUpperCase()
             .match(/.{2}/g)
             .join(' ');
     
     const handlers = {
-      bit: x => displayableBit(bytes[x]),
-      nbit: x => '/' + displayableBit(bytes[x]),
-      immed: x => '#' + toHex2(bytes[x]),
-      immed16: x => '#' + toHex4(bytes[x] << 8 | bytes[x + 1]),
-      addr16: x => displayableAddress(bytes[x] << 8 | bytes[x + 1], 'c'),
-      addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[x], 'c'),
+      bit: x => displayableBit(b0),
+      nbit: x => '/' + displayableBit(b0),
+      immed: x => '#' + toHex2(b0),
+      immed16: x => '#' + toHex4(b0 << 8 | b1),
+      addr16: x => displayableAddress(b0 << 8 | b1, 'c'),
+      addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | b0, 'c'),
       verbatum: x => x,
-      direct: x => displayableAddress(bytes[x], 'd'),
-      rela: x => displayableAddress(nextPC + this.toSigned(bytes[x]), 'c'),
+      direct: x => displayableAddress(b0, 'd'),
+      rela: x => displayableAddress(nextPC + this.toSigned(b0), 'c'),
     };
 
     const operands = ope.operands.split(/,/)
