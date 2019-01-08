@@ -664,23 +664,23 @@ const cpu = {
 
     const nextPC = pc + ope.n;
     const bytes = this.pmem.slice(pc, nextPC);
-    const [, b0, b1] = bytes;
 
     const disassembly = bytes.toString('hex')
-            .toUpperCase()
-            .match(/.{2}/g)
-            .join(' ');
+          .toUpperCase()
+          .match(/.{2}/g)
+          .join(' ')
+          .padEnd(10);
     
     const handlers = {
-      bit: x => displayableBit(b0),
-      nbit: x => '/' + displayableBit(b0),
-      immed: x => '#' + toHex2(b0),
-      immed16: x => '#' + toHex4(b0 << 8 | b1),
-      addr16: x => displayableAddress(b0 << 8 | b1, 'c'),
-      addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | b0, 'c'),
+      bit: x => displayableBit(bytes[x]),
+      nbit: x => '/' + displayableBit(bytes[x]),
+      immed: x => '#' + toHex2(bytes[x]),
+      immed16: x => '#' + toHex4(bytes[x] << 8 | bytes[x+1]),
+      addr16: x => displayableAddress(bytes[x] << 8 | bytes[x+1], 'c'),
+      addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[x], 'c'),
       verbatum: x => x,
-      direct: x => displayableAddress(b0, 'd'),
-      rela: x => displayableAddress(nextPC + this.toSigned(b0), 'c'),
+      direct: x => displayableAddress(bytes[x], 'd'),
+      rela: x => displayableAddress(nextPC + this.toSigned(bytes[x+1]), 'c'),
     };
 
     const operands = ope.operands.split(/,/)
@@ -693,7 +693,8 @@ const cpu = {
             .join(',');
 
     return `\
-${displayableAddress(pc, 'c')}: ${disassembly}  ${ope.name} ${operands}`;
+${displayableAddress(pc, 'c').padStart(28)}: \
+${disassembly}  ${ope.name.padEnd(6)} ${operands}`;
   },
 
 
@@ -889,7 +890,8 @@ ${_.range(0, 8)
     case 0xB6:                // CJNE @R0,#imm,rela
     case 0xB7:                // CJNE @R1,#imm,rela
       r = op & 1;
-      a = this.iram[this.getR(r)];
+      a = this.getR(r);
+      a = this.iram[a];
       imm = this.fetch();
       b = imm;
       rela = this.toSigned(this.fetch());
@@ -2032,7 +2034,7 @@ function doIRAM(words) {
 
 
 function doList(words) {
-  let x;
+  let x, n = 10;
 
   if (words.length < 2) {
     const op = cpu.pmem[lastX];
@@ -2040,9 +2042,10 @@ function doList(words) {
     x = lastX + ope.n;
   } else {
     x = getAddress(words);
+    if (words.length > 2) n = parseInt(words[1]);
   }
 
-  console.log(`${cpu.disassemble(x)}`);
+  for (; n; --n, ++x) console.log(`${cpu.disassemble(x).padStart(40)}`);
   lastX = x;
 }
 
