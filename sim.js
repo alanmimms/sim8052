@@ -395,6 +395,7 @@ const cpu = {
   // Simulator state and control
   tracing: false,
   running: true,
+  mayDelay: false,
 
   // Statistics
   instructionsExecuted: 0,
@@ -557,7 +558,8 @@ const cpu = {
       return this.SFR[P3];
 
     case SCON:
-//      if (this.debugSCON) console.log(`getDirect SCON=${toHex2(this.SFR[SCON])}`);
+      return this.SFR[SCON] | +(this.sbufQueue.length !== 0) << sconBits.riShift;
+      break;
 
     default:
       return this.SFR[ra];
@@ -606,8 +608,13 @@ const cpu = {
 
   getBit(bn) {
     const {ra, bm} = this.getBitAddrMask(bn);
-    const v = this.getDirect(ra);
-    return +!!(v & bm);
+    const v = +!!(this.getDirect(ra) & bm);
+
+    // If we are spinning waiting for SCON.RI to go high we can
+    // introduce a bit of delay.
+    if (bn === SCON && !v) cpu.mayDelay = true;
+
+    return v;
   },
 
 
@@ -2259,10 +2266,6 @@ function sbufRx(c) {
 
   cpu.sbufQueue.push(c);
 
-  // Character arrival indicated via SCON.RI
-  cpu.SFR[SCON] |= sconBits.riMask;
-  if (cpu.debugSCON) console.log(`sbufRx SCON now=${toHex2(cpu.SFR[SCON])}`);
-
   // TODO: Make this do RI interrupt
 }
 
@@ -2332,6 +2335,10 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
 	let beforePC = cpu.pc;
         let insnVals = cpu.run1(cpu.pc);
 
+        // If we are spinning in a loop waiting for RI, just introduce
+        // a bit of delay if we keep seeing RI=0.
+        if (cpu.mayDelay) break;
+
         if (maxCount && cpu.instructionsExecuted - startCount >= maxCount)
 	  cpu.running = false;
       }
@@ -2342,7 +2349,13 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
     }
 
     if (cpu.running) {
-      setImmediate(runAsync);
+
+      if (cpu.mayDelay) {
+        cpu.mayDelay = false;
+        setTimeout(runAsync, 100);
+      } else {
+        setImmediate(runAsync);
+      }
     } else {
 
       if (!maxCount || stopReasons[cpu.pc]) {
