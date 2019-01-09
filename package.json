@@ -5,6 +5,11 @@
   "repository": "ssh://alan@git.thefuture.place:/home/alan/alan-git/mcs8051",
   "author": "Alan Mimms <alanmimms@gmail.com>",
   "license": "MIT",
+  "main": "sim.js",
+  "engines": {
+    "node": ">=8.0.0",
+    "yarn": ">= 1.12"
+  },
   "dependencies": {
     "lodash": "^4.5.1"
   },
