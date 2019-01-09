@@ -407,15 +407,20 @@ const cpu = {
   debugDirect: false,
 
 
-  // Trace of PC
-  fetchHistoryMask: 0x1F,
-  fetchHistory: new Array(32),
-  fetchHistoryX: 0,
+  // Trace of PC instruction fetches
+  fetchHistoryMask: 63,
+  fetchHistory: new Array(64),
+  fetchHistoryX: -1,            // Always points to most recent entry
+
+
+  // Trace of PC changes via jump and call instructions. Each element
+  // is an object {from, to} containing the PC values involved.
+  branchHistoryMask: 63,
+  branchHistory: new Array(64),
+  branchHistoryX: -1,           // Always points to most recent entry
 
 
   fetch() {
-    this.fetchHistory[this.fetchHistoryX++] = this.pc;
-    this.fetchHistoryX &= this.fetchHistoryMask;
     return this.pmem[this.pc++];
   },
 
@@ -653,11 +658,34 @@ const cpu = {
 
 
   dumpFetchHistory() {
-    console.log(`Fetch history:`);
+    console.log(`Fetch history (oldest first):`);
 
-    for (let k = 1; k <= this.fetchHistoryMask; ++k) {
+    for (let k = this.fetchHistoryMask; k; --k) {
       const x = (this.fetchHistoryX - k) & this.fetchHistoryMask;
-      console.log(`-${toHex2(k-1)}: ${displayableAddress(this.fetchHistory[x], 'c')}`);
+      console.log(`-${toHex2(k+1)}: ${displayableAddress(this.fetchHistory[x], 'c')}`);
+    }
+  },
+  
+
+  dumpBranchHistory() {
+    console.log(`Branch history (oldest first):`);
+
+    // To enable padding for readability, find maximum width of all of
+    // the `from` values we will display.
+    const width = this.branchHistory
+          .filter(bh => bh)
+          .reduce((prevMax, cur) =>
+                  Math.max(prevMax, displayableAddress(cur.from, 'c').length), 0);
+
+    for (let k = this.branchHistoryMask; k >= 0; --k) {
+      const x = (this.branchHistoryX - k) & this.branchHistoryMask;
+      const bh = this.branchHistory[x];
+      if (!bh) continue;
+      console.log(`\
+-${toHex2(k+1)}: \
+${displayableAddress(bh.from, 'c').padStart(width)}: \
+${('[' + bh.opName + ']').padStart(8)} \
+${displayableAddress(bh.to, 'c')}`);
     }
   },
   
@@ -720,23 +748,37 @@ ${_.range(0, 8)
 
   dumpCount: 50,
 
-  run1(pc) {
-    this.pc = pc;
+
+  // Called whenever we change the PC via instruction or command. `opName`
+  // is the opcode/command that caused the change.
+  saveBranchHistory(from, to, opName) {
+    this.branchHistoryX = (this.branchHistoryX + 1) & this.branchHistoryMask;
+    this.branchHistory[this.branchHistoryX] = {from, to, opName};
+  },
+  
+
+  run1(insnPC) {
+    this.pc = insnPC;
+
+    this.fetchHistoryX = (this.fetchHistoryX + 1) & this.fetchHistoryMask;
+    this.fetchHistory[this.fetchHistoryX] = this.pc;
+
     const op = this.fetch();
     ++this.instructionsExecuted;
+
     let rela, ira, imm, bit, a, b, c, r;
 
-    if (1 && pc === 0x1F04) {
+    if (1 && this.pc === 0x1F04) {
       if (this.dumpCount-- === 0) this.running = false;
-      console.log(`RSUB1: in=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
+      console.log(`RSUB1-2=1F04H: in=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
       console.log(`    called from ${toHex2(this.iram[this.SFR[SP]])}${toHex2(this.iram[this.SFR[SP]-1])}`);
     }
 
-    if (1 && pc === 0x1F2C) {
+    if (1 && this.pc === 0x1F2C) {
       console.log(`1F2C:        R2,R0=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
     }
 
-    if (1 && pc === 0x1F3C) {
+    if (1 && this.pc === 0x1F3C) {
       console.log(`1F3C:                   RETURN`);
     }
 
@@ -759,6 +801,7 @@ ${_.range(0, 8)
       b = this.fetch();
       this.push2(this.pc);
       this.pc = (this.pc & 0xF800) | ((op & 0xE0) << 3) | b;
+      this.saveBranchHistory(insnPC, this.pc, 'ACALL');
       break;
 
 
@@ -815,6 +858,7 @@ ${_.range(0, 8)
     case 0xE1:                // AJMP page7
       b = this.fetch();
       this.pc = (this.pc & 0xF800) | ((op & 0xE0) << 3) | b;
+      this.saveBranchHistory(insnPC, this.pc, 'AJMP');
       break;
 
 
@@ -1112,6 +1156,7 @@ ${_.range(0, 8)
       ////////// JMP
     case 0x73:                // JMP @A+DPTR
       this.pc = (this.SFR[ACC] + this.getDPTR()) & 0xFFFF;
+      this.saveBranchHistory(insnPC, this.pc, 'JMP');
       break;
 
 
@@ -1150,6 +1195,7 @@ ${_.range(0, 8)
       b = this.fetch();
       this.push2(this.pc);
       this.pc = (a << 8) | b;
+      this.saveBranchHistory(insnPC, this.pc, 'LCALL');
       break;
 
 
@@ -1158,6 +1204,7 @@ ${_.range(0, 8)
       a = this.fetch();
       b = this.fetch();
       this.pc = (a << 8) | b;
+      this.saveBranchHistory(insnPC, this.pc, 'LJMP');
       break;
 
 
@@ -1439,6 +1486,7 @@ ${_.range(0, 8)
       a = this.pop();
       b = this.pop();
       this.pc = (a << 8) | b;
+      this.saveBranchHistory(insnPC, this.pc, 'RET');
       break;
 
 
@@ -1449,6 +1497,7 @@ ${_.range(0, 8)
       this.pc = (a << 8) | b;
       this.ipl = this.ipl - 1;
       if (this.ipl < -1) this.ipl = -1;
+      this.saveBranchHistory(insnPC, this.pc, 'IRET');
       break;
 
 
@@ -1500,6 +1549,7 @@ ${_.range(0, 8)
     case 0x80:                // SJMP rela
       rela = this.toSigned(this.fetch());
       this.pc = this.pc + rela;
+      this.saveBranchHistory(insnPC, this.pc, 'SJMP');
       break;
 
 
@@ -1720,6 +1770,11 @@ var lastX = 0;
 var lastLine = "";
 
 let startOfLastStep = 0;
+
+// Keys of this are addresses for PC fetches that should cause a
+// breakpoint stop. The value is an object:
+// * msg = Message to print when stopping at this point
+// * transient = Boolean to indicate breakpoint is self-clearing
 let stopReasons = {};
 
 
@@ -1778,6 +1833,11 @@ const commands = [
    doFn: () => cpu.dumpFetchHistory(),
   },
 
+  {name: 'bhistory',
+   description: 'Display history of branches.',
+   doFn: () => cpu.dumpBranchHistory(),
+  },
+
   {name: 'sfr',
    description: 'Display SFR at specified address.',
    doFn: doSFR,
@@ -1791,13 +1851,6 @@ const commands = [
   {name: 'list',
    description: 'Disassemble memory at specified address.',
    doFn: doList,
-  },
-
-  {name: 'pc',
-   description: 'Set PC to specified value',
-   doFn: (words) => {
-     cpu.setPC(getAddress(words));
-   },
   },
 
   {name: 'over',
@@ -2082,8 +2135,15 @@ function doDump(words) {
 
 
 function doGo(words) {
+  const b = words.length >= 2 ? getAddress(words) : cpu.pc;
+
+  if (b !== cpu.pc) {
+    cpu.saveBranchHistory(cpu.pc, b, 'go');
+    cpu.pc = b;
+  }
+
   startOfLastStep = cpu.instructionsExecuted;
-  run(cpu.pc);
+  run(b);
 }
 
 
@@ -2092,12 +2152,17 @@ function doTil(words) {
   if (words.length !== 2) {
     console.log("Must specify an address to go Til");
   } else {
-    let b = getAddress(words);
-    stopReasons[b] = 'now at ' + toHex4(b);
-    console.log(`[Running until ${toHex4(b)}]`);
+    const b = getAddress(words);
+    const bAsHex = toHex4(b);
+
+    stopReasons[b] = {
+      msg: 'now at ' + bAsHex,
+      transient: true,
+    };
+
+    console.log(`[Running until ${bAsHex}]`);
     startOfLastStep = cpu.instructionsExecuted;
     run(cpu.pc);
-    if (cpu.pc === b) delete stopReasons[b];
   }
 }
 
@@ -2107,8 +2172,13 @@ function doBreak(words) {
   if (words.length !== 2) {
     console.log("Must specify an address for breakpoint");
   } else {
-    let b = getAddress(words);
-    stopReasons[b] = 'breakpoint at ' + toHex4(b);
+    const b = getAddress(words);
+    const bAsHex = toHex4(b);
+
+    stopReasons[b] = {
+      msg: 'breakpoint at ' + bAsHex,
+      transient: false,
+    };
   }
 }
 
@@ -2124,14 +2194,15 @@ function doBreakList(words) {
           .reduce((prevMax, a) => 
                   Math.max(prevMax, displayableAddress(a, 'c').length), 0);
 
-    console.log('Breakpoints:');
-
-    console.log(
-      addrs
-        .sort((a, b) => parseInt(a, 16) - parseInt(b, 16))
-        .map(b => 
-             displayableAddress(b, 'c').padStart(maxWidth) + ": " + stopReasons[b])
-        .join('\n'));
+    console.log('Current Breakpoints:\n',
+                addrs
+                .sort((a, b) => parseInt(a, 16) - parseInt(b, 16))
+                .map((b, bn) => `\
+${('[' + (bn+1)).padStart(3) + ']'} \
+${displayableAddress(b, 'c').padStart(maxWidth)}: \
+${stopReasons[b].msg}\
+${stopReasons[b].transient ? ' [transient]' : ''}`)
+                .join('\n'), '\n');
   }
 }
 
@@ -2141,7 +2212,7 @@ function doUnbreak(words) {
   if (words.length !== 2) {
     console.log("Must specify an address to clear breakpoint");
   } else {
-    let b = getAddress(words);
+    const b = getAddress(words);
     delete stopReasons[b];
   }
 }
@@ -2158,7 +2229,10 @@ const stepOverRange = 0x10;
 
 function doOver(words) {
   _.range(1, stepOverRange)
-    .forEach(offs => stopReasons[cpu.pc + offs] = `stepped over to $+${toHex2(offs)}H`);
+    .forEach(offs => stopReasons[cpu.pc + offs] = ({
+      msg: `stepped over to $+${toHex2(offs)}H`,
+      transient: true,
+    }));
 
   startOfLastStep = cpu.instructionsExecuted;
   run(cpu.pc);
@@ -2318,10 +2392,11 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
     for (let n = insnsPerTick; cpu.running && n; --n) {
 
       if (!skipBreakIfTrue && stopReasons[cpu.pc]) {
-	console.log(`[${stopReasons[cpu.pc]}]`); // Say why we stopped
+	console.log(`[${stopReasons[cpu.pc].msg}]`); // Say why we stopped
         cpu.running = false;
 
-        const match = stopReasons[cpu.pc].match(/^stepped over to \$\+([0-9A-F]+)H/);
+        const match = stopReasons[cpu.pc].msg
+              .match(/^stepped over to \$\+([0-9A-F]+)H/);
 
         // If we stepped over to, say, "stepped over to $+5" then we
         // have to delete breakpoints before this point as well.
@@ -2330,7 +2405,7 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
           _.range(-atOffset, stepOverRange-atOffset)
             .forEach(offs => delete stopReasons[cpu.pc+offs]);
         } else {
-          delete stopReasons[cpu.pc];
+          if (stopReasons[cpu.pc].transient) delete stopReasons[cpu.pc];
         }
       } else {
 	let beforePC = cpu.pc;
@@ -2392,7 +2467,7 @@ node ${argv[0]} hex-file-name lst-file-name`);
   if (argv.length < 2 || argv.length > 3) usageExit('[missing parameter]');
 
   const hexName = argv[1];
-  const lstName = argv[2] || (hexName.split(/\./).slice(0, -1).join('.') + '.lst');
+  const lstName = argv[2] || (hexName.split(/\./).slice(0, -1).join('.') + '.LST');
   let hex, sym;
 
   try {
