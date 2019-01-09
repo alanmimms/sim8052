@@ -681,15 +681,15 @@ const cpu = {
           .padEnd(10);
     
     const handlers = {
-      bit: x => displayableBit(bytes[x]),
-      nbit: x => '/' + displayableBit(bytes[x]),
-      immed: x => '#' + toHex2(bytes[x]),
-      immed16: x => '#' + toHex4(bytes[x] << 8 | bytes[x+1]),
-      addr16: x => displayableAddress(bytes[x] << 8 | bytes[x+1], 'c'),
-      addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[x], 'c'),
+      bit: x => displayableBit(bytes[+x]),
+      nbit: x => '/' + displayableBit(bytes[+x]),
+      immed: x => '#' + toHex2(bytes[+x]),
+      immed16: x => '#' + toHex4(bytes[+x] << 8 | bytes[+x+1]),
+      addr16: x => displayableAddress(bytes[+x] << 8 | bytes[+x+1], 'c'),
+      addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[+x], 'c'),
       verbatum: x => x,
-      direct: x => displayableAddress(bytes[x], 'd'),
-      rela: x => displayableAddress(nextPC + this.toSigned(bytes[x+1]), 'c'),
+      direct: x => displayableAddress(bytes[+x], 'd'),
+      rela: x => displayableAddress(nextPC + this.toSigned(bytes[+x]), 'c'),
     };
 
     const operands = ope.operands.split(/,/)
@@ -2385,14 +2385,14 @@ function setupMain() {
   function usageExit(msg) {
     console.error(`${msg}
 Usage:
-node ${argv[0]} hex-file-name sym-or-lst-file-name`);
+node ${argv[0]} hex-file-name lst-file-name`);
     process.exit(1);
   }
 
   if (argv.length < 2 || argv.length > 3) usageExit('[missing parameter]');
 
   const hexName = argv[1];
-  const symName = argv[2] || (hexName.split(/\./).slice(0, -1).join('.') + '.sym');
+  const lstName = argv[2] || (hexName.split(/\./).slice(0, -1).join('.') + '.lst');
   let hex, sym;
 
   try {
@@ -2402,7 +2402,7 @@ node ${argv[0]} hex-file-name sym-or-lst-file-name`);
   }
 
   try {
-    sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'})
+    sym = fs.existsSync(lstName) && fs.readFileSync(lstName, {encoding: 'utf-8'})
       .replace(/\r\n/g, '\n') // DOS to UNIX
       .replace(/\r/g, '\n');   // MACOS to UNIX
   } catch(e) {
@@ -2422,18 +2422,22 @@ node ${argv[0]} hex-file-name sym-or-lst-file-name`);
     let m;
     
     // /[A-Z_0-9]+( \.)*\s+[BCD]?\s+[A-Z]+\s+[0-9A-F]+H\s+[A-Z]\s*/
-    if ((m = sym.match(/^SYMBOL\s+TYPE\s+VALUE\s+LINE\n-+\n/))) {
+    if ((m = sym.match(/^N A M E      T Y P E   V A L U E       A T T R I B U T E S\n\n/m))) {
       // Type #1: "ACC . . . .  D ADDR    00E0H   A       "
       // D shown here can be B,C,D or missing.
-      sym.slice(m.index + m[0].length)
-        // Delete page headers
-        .replace(/(.*\n)+SYMBOL\s+TYPE\s+VALUE\s+LINE\n-+\n/g, '')
+
+      // Get to just symbol table portion and remove page headings
+      sym = sym
+        .slice(m.index + m[0].length)
+        .replace(/\f.*\n+N A M E      T Y P E   V A L U E       A T T R I B U T E S\n\n/mg, '');
+
+      sym
         .split(/\n/)
         .forEach(line => {
           const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
           const addrSpace = line.slice(13, 14).trim().toLowerCase() || 'n';
           const type = line.slice(15, 22).trim();
-          let addr = parseInt(line.slice(23, 30).trim(), 16);
+          let addr = line.slice(23, 30).trim();
           let bit = undefined;
 
           switch (type) {
@@ -2445,17 +2449,15 @@ node ${argv[0]} hex-file-name sym-or-lst-file-name`);
 
             if (addrSpace === 'B') {
               [addr, bit] = addr.split(/\./);
+              bit = +bit;
             }
 
-            addr = +addr.replace('H', '');
+            addr = parseInt(addr.replace('H', ''), 16);
             break;
 
           case 'REG':
-            break;
-
           default:
-            addr = null;
-            break;
+            return;
           }
           
           syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
