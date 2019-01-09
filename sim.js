@@ -2385,7 +2385,7 @@ function setupMain() {
   function usageExit(msg) {
     console.error(`${msg}
 Usage:
-node ${argv[0]} hex-file-name sym-file-name`);
+node ${argv[0]} hex-file-name sym-or-lst-file-name`);
     process.exit(1);
   }
 
@@ -2402,7 +2402,9 @@ node ${argv[0]} hex-file-name sym-file-name`);
   }
 
   try {
-    sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'});
+    sym = fs.existsSync(symName) && fs.readFileSync(symName, {encoding: 'utf-8'})
+      .replace(/\r\n/g, '\n') // DOS to UNIX
+      .replace(/\r/g, '\n');   // MACOS to UNIX
   } catch(e) {
     if (argv[2]) usageExit(`Unable to open ${e.path}: ${e.code}`);
   }
@@ -2415,10 +2417,18 @@ node ${argv[0]} hex-file-name sym-file-name`);
   hexParsed.data.copy(cpu.pmem, hexParsed.lowestAddress);
 
   if (sym) {
-    if (sym.match(/[A-Z_0-9]+( \.)*\s+[BCD]?\s+[A-Z]+\s+[0-9A-F]+H\s+[A-Z]\s*/)) {
+    // We capture the match result so we can slice off the LST file
+    // prefix before the symbols section.
+    let m;
+    
+    // /[A-Z_0-9]+( \.)*\s+[BCD]?\s+[A-Z]+\s+[0-9A-F]+H\s+[A-Z]\s*/
+    if ((m = sym.match(/^SYMBOL\s+TYPE\s+VALUE\s+LINE\n-+\n/))) {
       // Type #1: "ACC . . . .  D ADDR    00E0H   A       "
       // D shown here can be B,C,D or missing.
-      sym.split(/\n/)
+      sym.slice(m.index + m[0].length)
+        // Delete page headers
+        .replace(/(.*\n)+SYMBOL\s+TYPE\s+VALUE\s+LINE\n-+\n/g, '')
+        .split(/\n/)
         .forEach(line => {
           const name = line.slice(0, 12).trim().replace(/[\.\s]+/, '');
           const addrSpace = line.slice(13, 14).trim().toLowerCase() || 'n';
@@ -2450,10 +2460,21 @@ node ${argv[0]} hex-file-name sym-file-name`);
           
           syms[addrSpace][name] = {name, addrSpace, type, addr, bit};
         });
-    } else if (sym.match(/^\w+\s+\w+\s+[0-9A-F]+\s+\d+\s*\n/)) {
+    } else if ((m = sym.match(/SYMBOL\s+TYPE\s+VALUE\s+LINE\n-+\n/))) {
+      // SYMBOL				  TYPE     VALUE	LINE
+      // ------------------------------------------------------------
       // Type #2: "AABS         CODE      139C    4795"
-      // The last field is source line number in decimal and it is optional.
-      sym.split(/\n/)
+      //
+      // The last field is source line number in decimal and not
+      // present for assembler-defined symbols like ACC.
+
+      // Get to just symbol table portion and remove page headings
+      sym = sym
+        .slice(m.index + m[0].length)
+        .replace(/\f\n.*\n+SYMBOL\s+TYPE\s+VALUE\s+LINE\n-+\n/g, '');
+
+      sym
+        .split(/\n/)
         .forEach(line => {
           const match = line.match(/(\w+)\s+(\w+)\s+([0-9A-F]+)(?:\s+(\d+)\s*)?/);
 
