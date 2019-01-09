@@ -726,9 +726,10 @@ ${_.range(0, 8)
     ++this.instructionsExecuted;
     let rela, ira, imm, bit, a, b, c, r;
 
-    if (1 && pc === 0x1F06) {
+    if (1 && pc === 0x1F04) {
       if (this.dumpCount-- === 0) this.running = false;
       console.log(`RSUB1: in=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
+      console.log(`    called from ${toHex2(this.iram[this.SFR[SP]])}${toHex2(this.iram[this.SFR[SP]-1])}`);
     }
 
     if (1 && pc === 0x1F2C) {
