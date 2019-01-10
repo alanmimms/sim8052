@@ -8,10 +8,26 @@ const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
 
+
 const insnsPerTick = 100;
 
 const PMEMSize = 65536;
 const XRAMSize = 65536;
+
+
+function toHex1(v) {
+  return (v & 0x0F).toString(16).toUpperCase();
+}
+
+function toHex2(v) {
+  return (v | 0x100).toString(16).toUpperCase().slice(-2);
+}
+
+function toHex4(v) {
+  return toHex2(v >>> 8) + toHex2(v & 0xFF);
+}
+
+
 
 // These constants simplify accesses to SFRs.
 const SFRs = {
@@ -671,22 +687,27 @@ const cpu = {
     console.log(`Branch history (oldest first):`);
 
     // To enable padding for readability, find maximum width of all of
-    // the `from` values we will display.
-    const width = this.branchHistory
-          .filter(bh => bh)
+    // the `from` and `to` values we will display.
+    const entries = this.branchHistory.filter(bh => bh);
+    const fWidth = entries
           .reduce((prevMax, cur) =>
                   Math.max(prevMax, displayableAddress(cur.from, 'c').length), 0);
+    const tWidth = entries
+          .reduce((prevMax, cur) =>
+                  Math.max(prevMax, displayableAddress(cur.to, 'c').length), 0);
 
     for (let k = this.branchHistoryMask; k >= 0; --k) {
       const x = (this.branchHistoryX - k) & this.branchHistoryMask;
       const bh = this.branchHistory[x];
       if (!bh) continue;
       console.log(`\
--${toHex2(k+1)}: \
-${displayableAddress(bh.from, 'c').padStart(width)}: \
+${displayableAddress(bh.from, 'c').padStart(fWidth)}: \
 ${('[' + bh.opName + ']').padStart(8)} \
-${displayableAddress(bh.to, 'c')}`);
+${displayableAddress(bh.to, 'c').padEnd(tWidth)}  \
+${briefState(bh.state)}`);
     }
+
+    console.log('');
   },
   
 
@@ -749,11 +770,29 @@ ${_.range(0, 8)
   dumpCount: 50,
 
 
+  captureState() {
+    const rBase = this.SFR[PSW] & rsMask;
+    const state = {
+      a: this.SFR[ACC],
+      b: this.SFR[B],
+      cy: this.getCY(),
+      ov: this.getOV(),
+      ac: this.getAC(),
+      sp: this.SFR[SP],
+      psw: this.SFR[PSW],
+      dptr: this.getDPTR(),
+      regs: [...this.iram.slice(rBase, rBase+8)],
+    };
+
+    return state;
+  },
+
+
   // Called whenever we change the PC via instruction or command. `opName`
   // is the opcode/command that caused the change.
   saveBranchHistory(from, to, opName) {
     this.branchHistoryX = (this.branchHistoryX + 1) & this.branchHistoryMask;
-    this.branchHistory[this.branchHistoryX] = {from, to, opName};
+    this.branchHistory[this.branchHistoryX] = {from, to, opName, state: this.captureState()};
   },
   
 
@@ -926,7 +965,12 @@ ${_.range(0, 8)
       imm = this.fetch();
       b = imm;
       rela = this.toSigned(this.fetch());
-      if (a !== b) this.pc += rela;
+
+      if (a !== b) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'CJNE');
+      }
+
       this.putCY(+(a < b));
       break;
 
@@ -935,7 +979,12 @@ ${_.range(0, 8)
       ira = this.fetch();
       b = this.getDirect(ira);
       rela = this.toSigned(this.fetch());
-      if (a !== b) this.pc += rela;
+
+      if (a !== b) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'CJNE');
+      }
+
       this.putCY(+(a < b));
       break;
 
@@ -946,7 +995,12 @@ ${_.range(0, 8)
       imm = this.fetch();
       b = imm;
       rela = this.toSigned(this.fetch());
-      if (a !== b) this.pc += rela;
+
+      if (a !== b) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'CJNE');
+      }
+
       this.putCY(+(a < b));
       break;
 
@@ -963,7 +1017,12 @@ ${_.range(0, 8)
       imm = this.fetch();
       b = imm;
       rela = this.toSigned(this.fetch());
-      if (a !== b) this.pc += rela;
+
+      if (a !== b) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'CJNE');
+      }
+
       this.putCY(+(a < b));
       break;
 
@@ -1072,7 +1131,12 @@ ${_.range(0, 8)
       ira = this.fetch();
       a = this.getDirect(ira) - 1;
       rela = this.toSigned(this.fetch());
-      if (a !== 0) this.pc += rela;
+
+      if (a !== 0) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'DJNZ');
+      }
+      
       this.putDirect(ira, a);
       break;
 
@@ -1087,7 +1151,12 @@ ${_.range(0, 8)
       r = op & 0x07;
       a = this.getR(r) - 1;
       rela = this.toSigned(this.fetch());
-      if (a !== 0) this.pc += rela;
+
+      if (a !== 0) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'DJNZ');
+      }
+
       this.putR(r, a);
       break;
 
@@ -1129,7 +1198,12 @@ ${_.range(0, 8)
     case 0x20:                // JB bit,rela
       bit = this.fetch();
       rela = this.toSigned(this.fetch());
-      if (this.getBit(bit)) this.pc += rela;
+
+      if (this.getBit(bit)) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'JB');
+      }
+
       break;
 
 
@@ -1139,8 +1213,9 @@ ${_.range(0, 8)
       rela = this.toSigned(this.fetch());
 
       if (this.getBit(bit)) {
-        this.pc += rela;
         this.putBit(bit, 0);
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'JBC');
       }
 
       break;
@@ -1149,7 +1224,12 @@ ${_.range(0, 8)
       ////////// JC
     case 0x40:                // JC rela
       rela = this.toSigned(this.fetch());
-      if (this.getCY()) this.pc += rela;
+
+      if (this.getCY()) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'JC');
+      }
+
       break;
 
 
@@ -1164,28 +1244,48 @@ ${_.range(0, 8)
     case 0x30:                // JNB bit,rela
       bit = this.fetch();
       rela = this.toSigned(this.fetch());
-      if (!this.getBit(bit)) this.pc += rela;
+
+      if (!this.getBit(bit)) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'JNB');
+      }
+
       break;
 
 
       ////////// JNC
     case 0x50:                // JNC rela
       rela = this.toSigned(this.fetch());
-      if (!this.getCY()) this.pc += rela;
+
+      if (!this.getCY()) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'JNC');
+      }
+
       break;
 
 
       ////////// JNZ
     case 0x70:                // JNZ rela
       rela = this.toSigned(this.fetch());
-      if (this.SFR[ACC] !== 0) this.pc += rela;
+
+      if (this.SFR[ACC] !== 0) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'JNZ');
+      }
+
       break;
 
 
       ////////// JZ
     case 0x60:                // JZ rela
       rela = this.toSigned(this.fetch());
-      if (this.SFR[ACC] === 0) this.pc += rela;
+
+      if (this.SFR[ACC] === 0) {
+        this.pc += rela;
+        this.saveBranchHistory(insnPC, this.pc, 'JZ');
+      }
+
       break;
 
 
@@ -1548,7 +1648,7 @@ ${_.range(0, 8)
       ////////// SJMP
     case 0x80:                // SJMP rela
       rela = this.toSigned(this.fetch());
-      this.pc = this.pc + rela;
+      this.pc += rela;
       this.saveBranchHistory(insnPC, this.pc, 'SJMP');
       break;
 
@@ -1699,27 +1799,14 @@ Unimplmented opcode=0x${toHex2(op)} at 0x${toHex4(this.pc-1)}`);
 };
 
 
-function toHex1(v) {
-  return (v & 0x0F).toString(16).toUpperCase() + '';
-}
-
-function toHex2(v) {
-  return (v | 0x100000).toString(16).toUpperCase().slice(-2) + '';
-}
-
-function toHex4(v) {
-  return `${toHex2(v >>> 8)}${toHex2(v & 0xFF)}`;
-}
-
-
 // Take a string and return a bit field object containing xShift and
 // xMask values for each bit. The string is a space separated list of
-// fields left to right where the leftmost is bit #7 and rightmost is
+// fields left to right where the leftmost is bit #n and rightmost is
 // bit #0 and '.' is used for a reserved bit.
-function makeBits(bitDescriptiorString) {
+function makeBits(bitDescriptorString) {
   const o = {};
 
-  bitDescriptiorString.split(/\s+/)
+  bitDescriptorString.split(/\s+/)
     .reverse()
     .map((name, index) => {
 
@@ -1933,6 +2020,21 @@ function findClosestSymbol(x, space) {
   } else {
     return [];
   }
+}
+
+
+// Return a compact display strong for the state captured by
+// cpu.captureState().
+// A=XX B=XX SP=XX PSW=XX CoA DPTR=XXXX R:XX XX XX XX  XX XX XX XX
+function briefState(s) {
+  return `\
+A=${toHex2(s.a)} \
+B=${toHex2(s.b)} \
+SP=${toHex2(s.sp)} \
+PSW=${toHex2(s.psw)} \
+${s.cy ? 'C' : 'c'}${s.ov ? 'O' : 'o'}${s.ac ? 'A' : 'a'} \
+DPTR=${toHex4(s.dptr)} \
+R:${s.regs.map((v, x) => toHex2(v) + (x === 3 ? ' ' : '')).join(' ')}`;
 }
 
 
