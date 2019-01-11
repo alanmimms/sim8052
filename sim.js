@@ -11,7 +11,7 @@ const readline = require('readline');
 
 const insnsPerTick = 100;
 
-const PMEMSize = 65536;
+const CODESize = 65536;
 const XRAMSize = 65536;
 
 
@@ -394,7 +394,7 @@ const cpu = {
   SFR: Buffer.alloc(0x100, 0x00, 'binary'),
 
   // Code (program) memory.
-  pmem: Buffer.alloc(PMEMSize, 0x00, 'binary'),
+  code: Buffer.alloc(CODESize, 0x00, 'binary'),
 
   // External (data) memory.
   xram: Buffer.alloc(XRAMSize, 0x00, 'binary'),
@@ -437,7 +437,7 @@ const cpu = {
 
 
   fetch() {
-    return this.pmem[this.pc++];
+    return this.code[this.pc++];
   },
 
 
@@ -684,6 +684,11 @@ const cpu = {
   },
 
 
+  getCode(ca) {
+    return this.code[ca];
+  },
+
+
   getXData(xa) {
     return this.xram[xa];
   },
@@ -744,7 +749,7 @@ ${briefState(bh.state)}`);
   
 
   disassemble(pc) {
-    const op = this.pmem[pc];
+    const op = this.code[pc];
     const ope = opTable[op];
 
     if (!ope) {
@@ -753,7 +758,7 @@ ${briefState(bh.state)}`);
     }
 
     const nextPC = pc + ope.n;
-    const bytes = this.pmem.slice(pc, nextPC);
+    const bytes = this.code.slice(pc, nextPC);
 
     const disassembly = bytes.toString('hex')
           .toUpperCase()
@@ -1513,12 +1518,12 @@ ${_.range(0, 8)
       ////////// MOVC
     case 0x93:                // MOVC A,@A+DPTR
       a = (this.getSFR(ACC) + this.getDPTR()) & 0xFFFF;
-      this.putSFR(ACC, this.pmem[a]);
+      this.putSFR(ACC, this.getCode(a));
       break;
 
     case 0x83:                // MOVC A,@A+PC
       a = (this.getSFR(ACC) + this.pc) & 0xFFFF;
-      this.putSFR(ACC, this.pmem[a]);
+      this.putSFR(ACC, this.getCode(a));
       break;
 
 
@@ -2197,7 +2202,7 @@ function doCode(words) {
   }
 
   const addr = displayableAddress(x, 'c');
-  console.log(`${addr}: ${toHex2(cpu.pmem[x])}`);
+  console.log(`${addr}: ${toHex2(cpu.code[x])}`);
   lastX = x;
 }
 
@@ -2268,7 +2273,7 @@ function doList(words) {
   let x, n = 10;
 
   if (words.length < 2) {
-    const op = cpu.pmem[lastX];
+    const op = cpu.code[lastX];
     const ope = opTable[op];
     x = lastX + ope.n;
   } else {
@@ -2376,7 +2381,7 @@ function doBreakList(words) {
           .reduce((prevMax, a) => 
                   Math.max(prevMax, displayableAddress(a, 'c').length), 0);
 
-    console.log('Current Breakpoints:\n',
+    console.log('Current Breakpoints:\n' +
                 addrs
                 .sort((a, b) => parseInt(a, 16) - parseInt(b, 16))
                 .map((b, bn) => `\
@@ -2667,11 +2672,11 @@ node ${argv[0]} hex-file-name lst-file-name`);
   }
 
   const IntelHex = require('./intel-hex');
-  const hexParsed = IntelHex.parse(hex, PMEMSize);
+  const hexParsed = IntelHex.parse(hex, CODESize);
   const hexLength = hexParsed.highestAddress - hexParsed.lowestAddress;
 
   console.log(`Loaded ${toHex4(hexParsed.lowestAddress)}: ${hexLength.toString(16)} bytes`);
-  hexParsed.data.copy(cpu.pmem, hexParsed.lowestAddress);
+  hexParsed.data.copy(cpu.code, hexParsed.lowestAddress);
 
   if (sym) {
     // We capture the match result so we can slice off the LST file
