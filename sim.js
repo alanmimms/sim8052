@@ -424,15 +424,15 @@ const cpu = {
 
 
   // Trace of PC instruction fetches
-  fetchHistoryMask: 63,
-  fetchHistory: new Array(64),
+  fetchHistoryMask: 255,
+  fetchHistory: new Array(256),
   fetchHistoryX: -1,            // Always points to most recent entry
 
 
   // Trace of PC changes via jump and call instructions. Each element
   // is an object {from, to} containing the PC values involved.
-  branchHistoryMask: 63,
-  branchHistory: new Array(64),
+  branchHistoryMask: 255,
+  branchHistory: new Array(256),
   branchHistoryX: -1,           // Always points to most recent entry
 
 
@@ -441,86 +441,103 @@ const cpu = {
   },
 
 
+  getSFR(sfr) {
+    return this.SFR[sfr];
+  },
+
+
+  putSFR(sfr, v) {
+    this.SFR[sfr] = v;
+  },
+
+
   getOV() {
-    return +!!(this.SFR[PSW] & pswBits.ovMask);
+    return +!!(this.getSFR(PSW) & pswBits.ovMask);
   },
 
 
   getCY() {
-    return +!!(this.SFR[PSW] & pswBits.cyMask);
+    return +!!(this.getSFR(PSW) & pswBits.cyMask);
   },
 
 
   getAC() {
-    return +!!(this.SFR[PSW] & pswBits.acMask);
+    return +!!(this.getSFR(PSW) & pswBits.acMask);
   },
 
 
   putCY(v) {
     if (v)
-      this.SFR[PSW] |= pswBits.cyMask;
+      this.putSFR(PSW, this.getSFR(PSW) | pswBits.cyMask);
     else
-      this.SFR[PSW] &= ~pswBits.cyMask;
+      this.putSFR(PSW, this.getSFR(PSW) & ~pswBits.cyMask);
   },
 
 
   putOV(v) {
     if (v)
-      this.SFR[PSW] |= pswBits.ovMask;
+      this.putSFR(PSW, this.getSFR(PSW) | pswBits.ovMask);
     else
-      this.SFR[PSW] &= ~pswBits.ovMask;
+      this.putSFR(PSW, this.getSFR(PSW) & ~pswBits.ovMask);
   },
 
 
   getDPTR() {
-    return (this.SFR[DPH] << 8) | this.SFR[DPL];
+    return this.getSFR(DPH) << 8 | this.getSFR(DPL);
   },
 
 
   putDPTR(v) {
-    this.SFR[DPL] = v;
-    this.SFR[DPH] = v >>> 8;
+    v &= 0xFFFF;
+    this.putSFR(DPL, v);
+    this.putSFR(DPH, v >>> 8);
   },
 
 
   push1(v) {
-    this.iram[++this.SFR[SP]] = v;
+    const newSP = this.getSFR(SP) + 1;
+    this.putDirect(newSP, v);
+    this.putSFR(SP, newSP);
   },
 
 
   push2(v) {
-    this.iram[++this.SFR[SP]] = v;
-    this.iram[++this.SFR[SP]] = v >>> 8;
+    const newSP = this.getSFR(SP) + 2;
+    this.putDirect(newSP - 1, v);
+    this.putDirect(newSP,     v >>> 8);
+    this.putSFR(SP, newSP);
   },
 
 
   pop() {
-    const a = this.iram[this.SFR[SP]--];
+    const curSP = this.getSFR(SP);
+    const a = this.getDirect(curSP);
+    this.putSFR(SP, curSP - 1);
     return a;
   },
 
 
   doADD(op, b) {
     const c = (op & 0x10) ? this.getCY() : 0;
-    const a = this.SFR[ACC]
+    const a = this.getSFR(ACC)
 
     const acValue = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
     const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
     const cyValue = +(a + b + c > 0xFF);
     const ovValue = cyValue ^ c6Value;
 
-    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) |
-      (ovValue << pswBits.ovShift) |
-      (acValue << pswBits.acShift) |
-      (cyValue << pswBits.cyShift);
-    this.SFR[ACC] = a + b + c;
+    this.putSFR(PSW, (this.getSFR(PSW) & ~mathMask) |
+                (ovValue << pswBits.ovShift) |
+                (acValue << pswBits.acShift) |
+                (cyValue << pswBits.cyShift));
+    this.putSFR(ACC, a + b + c);
   },
 
 
   doSUBB(op, b) {
     const c = this.getCY();
     const toSub = b + c;
-    const a = this.SFR[ACC];
+    const a = this.getSFR(ACC);
     const result = (a - toSub) & 0xFF;
 
     const cyValue = +(a < toSub);
@@ -529,12 +546,12 @@ const cpu = {
     const ovValue = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
                       (a > 0x7F && b < 0x80 && result < 0x80));
 
-    this.SFR[PSW] = (this.SFR[PSW] & ~mathMask) |
-      ovValue << pswBits.ovShift |
-      acValue << pswBits.acShift |
-      cyValue << pswBits.cyShift;
+    this.putSFR(PSW, (this.getSFR(PSW) & ~mathMask) |
+                ovValue << pswBits.ovShift |
+                acValue << pswBits.acShift |
+                cyValue << pswBits.cyShift);
 
-    this.SFR[ACC] = a - toSub;
+    this.putSFR(ACC, a - toSub);
   },
 
 
@@ -544,13 +561,13 @@ const cpu = {
 
 
   getR(r) {
-    const ra = (this.SFR[PSW] & rsMask) + r;
+    const ra = (this.getSFR(PSW) & rsMask) + r;
     return this.iram[ra];
   },
 
 
   putR(r, v) {
-    const ra = (this.SFR[PSW] & rsMask) + r;
+    const ra = (this.getSFR(PSW) & rsMask) + r;
     this.iram[ra] = v;
   },
 
@@ -565,25 +582,29 @@ const cpu = {
       return this.sbufQueue.length ? this.sbufQueue.shift() : 0x00;
 
     case PSW:
+      let psw = this.getSFR(PSW);
 
       // Update parity before returning PSW
-      if (parityTable[this.SFR[ACC]] << pswBits.pShift)
-        this.SFR[PSW] |= pswBits.pMask;
+      if (parityTable[this.getSFR(ACC)] << pswBits.pShift)
+        psw |= pswBits.pMask;
       else
-        this.SFR[PSW] &= ~pswBits.pMask;
+        psw &= ~pswBits.pMask;
 
-      return this.SFR[PSW];
+      this.putSFR(PSW, psw);
+      return psw;
 
     case P3:
-      this.SFR[P3] ^= 1;          // Fake RxD toggling
-      return this.SFR[P3];
+      let p3 = this.getSFR(P3);
+      p3 ^= 1;
+      this.putSFR(P3, p3);          // Fake RxD toggling
+      return p3;
 
     case SCON:
-      return this.SFR[SCON] | +(this.sbufQueue.length !== 0) << sconBits.riShift;
+      return this.getSFR(SCON) | +(this.sbufQueue.length !== 0) << sconBits.riShift;
       break;
 
     default:
-      return this.SFR[ra];
+      return this.getSFR(ra);
     }
   },
 
@@ -611,7 +632,7 @@ const cpu = {
         if (this.debugSCON) console.log(`putDirect SCON now=${toHex2(v)}`);
 
       default:
-        this.SFR[ra] = v;
+        this.putSFR(ra, v);
         break;
       }
     }
@@ -628,6 +649,7 @@ const cpu = {
   putIndirect(r, v) {
     this.iram[this.getR(r)] = v;
   },
+
 
   getBitAddrMask(bn) {
     const bm = 1 << (bn & 0x07);
@@ -659,6 +681,16 @@ const cpu = {
     }
 
     this.putDirect(ra, v);
+  },
+
+
+  getXData(xa) {
+    return this.xram[xa];
+  },
+
+
+  putXData(xa, v) {
+    this.xram[xa] = v;
   },
 
 
@@ -702,8 +734,8 @@ const cpu = {
       if (!bh) continue;
       console.log(`\
 ${displayableAddress(bh.from, 'c').padStart(fWidth)}: \
-${('[' + bh.opName + ']').padStart(8)} \
-${displayableAddress(bh.to, 'c').padEnd(tWidth)}  \
+${bh.opName.padEnd(5)} \
+${displayableAddress(bh.to, 'c').padEnd(tWidth)} \
 ${briefState(bh.state)}`);
     }
 
@@ -904,35 +936,34 @@ ${_.range(0, 8)
       ////////// ANL
     case 0x52:                // ANL dir,A
       ira = this.fetch();
-      a = this.getDirect(ira);
-      a &= this.SFR[ACC];
+      a = this.getDirect(ira) & this.getSFR(ACC);
       this.putDirect(ira, a);
       break;
 
     case 0x53:                // ANL dir,#imm
       ira = this.fetch();
       imm = this.fetch();
-      a = this.getDirect(ira);
-      a &= imm;
+      a = this.getDirect(ira) & imm;
       this.putDirect(ira, a);
       break;
 
     case 0x54:                // ANL A,#imm
       imm = this.fetch();
-      this.SFR[ACC] &= imm;
+      a = this.getSFR(ACC) & imm;
+      this.putSFR(ACC, a);
       break;
 
     case 0x55:                // ANL A,dir
       ira = this.fetch();
-      a = this.getDirect(ira);
-      this.SFR[ACC] &= a;
+      a = this.getSFR(ACC) & this.getDirect(ira);
+      this.putSFR(ACC, a);
       break;
 
     case 0x56:                // ANL A,@R0
     case 0x57:                // ANL A,@R1
       r = op & 1;
-      a = this.getIndirect(r);
-      this.SFR[ACC] &= a;
+      a = this.getSFR(ACC) & this.getIndirect(r);
+      this.putSFR(ACC, a);
       break;
 
     case 0x58:                // ANL A,R0
@@ -944,7 +975,8 @@ ${_.range(0, 8)
     case 0x5E:                // ANL A,R6
     case 0x5F:                // ANL A,R7
       r = op & 0x07;
-      this.SFR[ACC] &= this.getR(r);
+      a = this.getSFR(ACC) & this.getR(r);
+      this.putSFR(ACC, a);
       break;
 
     case 0x82:                // ANL C,bit
@@ -961,7 +993,7 @@ ${_.range(0, 8)
 
       ////////// CJNE
     case 0xB4:                // CJNE A,#imm,rela
-      a = this.SFR[ACC];
+      a = this.getSFR(ACC);
       imm = this.fetch();
       b = imm;
       rela = this.toSigned(this.fetch());
@@ -975,7 +1007,7 @@ ${_.range(0, 8)
       break;
 
     case 0xB5:                // CJNE A,dir,rela
-      a = this.SFR[ACC];
+      a = this.getSFR(ACC);
       ira = this.fetch();
       b = this.getDirect(ira);
       rela = this.toSigned(this.fetch());
@@ -1037,28 +1069,31 @@ ${_.range(0, 8)
       break;
       
     case 0xE4:                // CLR A
-      this.SFR[ACC] = 0;
+      this.putSFR(ACC, 0);
       break;
       
 
       ////////// CPL
     case 0xB2:                // CPL bit
       bit = this.fetch();
-      this.putBit(bit, +!this.getBit(bit));
+      b = +!this.getBit(bit);
+      this.putBit(bit, b);
       break;
       
     case 0xB3:                // CPL C
-      this.putCY(+!this.getCY());
+      c = +!this.getCY();
+      this.putCY(c);
       break;
       
     case 0xF4:                // CPL A
-      this.SFR[ACC] ^= 0xFF;
+      a = this.getSFR(ACC) ^ 0xFF;
+      this.putSFR(ACC, a);
       break;
       
 
       ////////// DA
     case 0xD4:                // DA A
-      a = this.SFR[ACC];
+      a = this.getSFR(ACC);
       c = this.getCY();
 
       // Lower nybble
@@ -1075,25 +1110,28 @@ ${_.range(0, 8)
         a &= 0xFF;              // Not necessary
       }
 
-      this.SFR[ACC] = a;
+      this.putSFR(ACC, a);
       this.putCY(c);
       break;
       
 
       ////////// DEC
     case 0x14:                // DEC A
-      this.SFR[ACC] = (this.SFR[ACC] - 1) & 0xFF;
+      a = this.getSFR(ACC) - 1;
+      this.putSFR(ACC, a);
       break;
 
     case 0x15:                // DEC dir
       ira = this.fetch();
-      this.putDirect(ira, this.getDirect(ira) - 1);
+      a = this.getDirect(ira) - 1;
+      this.putDirect(ira, a);
       break;
 
     case 0x16:                // DEC @R0
     case 0x17:                // DEC @R1
       r = op & 1;
-      this.putIndirect(r, this.getIndirect(r) - 1);
+      a = this.getIndirect(r) - 1;
+      this.putIndirect(r, a);
       break;
 
     case 0x18:                // DEC R0
@@ -1105,22 +1143,24 @@ ${_.range(0, 8)
     case 0x1E:                // DEC R6
     case 0x1F:                // DEC R7
       r = op & 0x07;
-      this.putR(r, this.getR(r) - 1);
+      a = this.getR(r) - 1;
+      this.putR(r, a);
       break;
 
 
       ////////// DIV
     case 0x84:                // DIV AB
       // DIV always clears CY and AC and sets OV on divide by 0
-      this.SFR[PSW] &= ~mathMask;
+      b = this.getSFR(B);
 
-      if (this.SFR[B] === 0) {
+      if (b === 0) {
         this.putOV(1);
       } else {
-        a = Math.floor(this.SFR[ACC] / this.SFR[B]);
-        b = this.SFR[ACC] % this.SFR[B];
-        this.SFR[ACC] = a;
-        this.SFR[B] = b;
+        const curACC = this.getSFR(ACC);
+        a = Math.floor(curACC / b);
+        b = curACC % b;
+        this.putSFR(ACC, a);
+        this.putSFR(B, b);
       }
 
       break;
@@ -1163,18 +1203,21 @@ ${_.range(0, 8)
 
       ////////// INC
     case 0x04:                // INC A
-      this.SFR[ACC] = (this.SFR[ACC] + 1) & 0xFF;
+      a = this.getSFR(ACC) + 1;
+      this.putSFR(ACC, a);
       break;
 
     case 0x05:                // INC dir
       ira = this.fetch();
-      this.putDirect(ira, this.getDirect(ira) + 1);
+      a = this.getDirect(ira) + 1;
+      this.putDirect(ira, a);
       break;
 
     case 0x06:                // INC @R0
     case 0x07:                // INC @R1
       r = op & 1;
-      this.putIndirect(r, this.getIndirect(r) + 1);
+      a = this.getIndirect(r) + 1;
+      this.putIndirect(r, a);
       break;
 
     case 0x08:                // INC R0
@@ -1186,11 +1229,13 @@ ${_.range(0, 8)
     case 0x0E:                // INC R6
     case 0x0F:                // INC R7
       r = op & 0x07;
-      this.putR(r, this.getR(r) + 1);
+      a = this.getR(r) + 1;
+      this.putR(r, a);
       break;
 
     case 0xA3:                // INC DPTR
-      this.putDPTR((this.getDPTR() + 1) & 0xFFFF);
+      a = this.getDPTR() + 1;
+      this.putDPTR(a);
       break;
 
 
@@ -1235,7 +1280,8 @@ ${_.range(0, 8)
 
       ////////// JMP
     case 0x73:                // JMP @A+DPTR
-      this.pc = (this.SFR[ACC] + this.getDPTR()) & 0xFFFF;
+      a = this.getSFR(ACC) + this.getDPTR();
+      this.pc = a & 0xFFFF;
       this.saveBranchHistory(insnPC, this.pc, 'JMP');
       break;
 
@@ -1268,8 +1314,9 @@ ${_.range(0, 8)
       ////////// JNZ
     case 0x70:                // JNZ rela
       rela = this.toSigned(this.fetch());
+      a = this.getSFR(ACC);
 
-      if (this.SFR[ACC] !== 0) {
+      if (a !== 0) {
         this.pc += rela;
         this.saveBranchHistory(insnPC, this.pc, 'JNZ');
       }
@@ -1280,8 +1327,9 @@ ${_.range(0, 8)
       ////////// JZ
     case 0x60:                // JZ rela
       rela = this.toSigned(this.fetch());
+      a = this.getSFR(ACC);
 
-      if (this.SFR[ACC] === 0) {
+      if (a === 0) {
         this.pc += rela;
         this.saveBranchHistory(insnPC, this.pc, 'JZ');
       }
@@ -1319,7 +1367,8 @@ ${_.range(0, 8)
     case 0xF6:                // MOV @R0,A
     case 0xF7:                // MOV @R1,A
       r = op & 1;
-      this.putIndirect(r, this.SFR[ACC]);
+      a = this.getSFR(ACC);
+      this.putIndirect(r, a);
       break;
 
     case 0xA6:                // MOV @R0,dir
@@ -1331,13 +1380,15 @@ ${_.range(0, 8)
       break;
 
     case 0x74:                // MOV A,#imm
-      this.SFR[ACC] = this.fetch();
+      imm = this.fetch();
+      this.putSFR(ACC, imm);
       break;
 
     case 0xE6:                // MOV A,@R0
     case 0xE7:                // MOV A,@R1
       r = op & 1;
-      this.SFR[ACC] = this.getIndirect(r);
+      a = this.getIndirect(r);
+      this.putSFR(ACC, a);
       break;
 
     case 0xE8:                // MOV A,R0
@@ -1349,17 +1400,20 @@ ${_.range(0, 8)
     case 0xEE:                // MOV A,R6
     case 0xEF:                // MOV A,R7
       r = op & 0x07;
-      this.SFR[ACC] = this.getR(r);
+      a = this.getR(r);
+      this.putSFR(ACC, a);
       break;
 
     case 0xE5:                // MOV A,dir
       ira = this.fetch();
-      this.SFR[ACC] = this.getDirect(ira);
+      a = this.getDirect(ira);
+      this.putSFR(ACC, a);
       break;
 
     case 0xA2:                // MOV C,bit
       bit = this.fetch();
-      this.putCY(this.getBit(bit));
+      b = this.getBit(bit);
+      this.putCY(b);
       break;
 
     case 0x90:                // MOV DPTR,#immed16
@@ -1390,7 +1444,8 @@ ${_.range(0, 8)
     case 0xFE:                // MOV R6,A
     case 0xFF:                // MOV R7,A
       r = op & 0x07;
-      this.putR(r, this.SFR[ACC]);
+      a = this.getSFR(ACC);
+      this.putR(r, a);
       break;
 
     case 0xA8:                // MOV R0,dir
@@ -1403,12 +1458,14 @@ ${_.range(0, 8)
     case 0xAF:                // MOV R7,dir
       r = op & 0x07;
       ira = this.fetch();
-      this.putR(r, this.getDirect(ira));
+      a = this.getDirect(ira);
+      this.putR(r, a);
       break;
 
     case 0x92:                // MOV bit,C
       bit = this.fetch();
-      this.putBit(bit, this.getCY());
+      b = this.getCY();
+      this.putBit(bit, b);
       break;
 
     case 0x75:                // MOV dir,#imm
@@ -1421,7 +1478,8 @@ ${_.range(0, 8)
     case 0x87:                // MOV dir,@R1
       r = op & 1;
       ira = this.fetch();
-      this.putDirect(ira, this.getIndirect(r));
+      a = this.getIndirect(r);
+      this.putDirect(ira, a);
       break;
 
     case 0x88:                // MOV dir,R0
@@ -1433,19 +1491,20 @@ ${_.range(0, 8)
     case 0x8E:                // MOV dir,R6
     case 0x8F:                // MOV dir,R7
       r = op & 0x07;
-      a = this.getR(r);
       ira = this.fetch();
+      a = this.getR(r);
       this.putDirect(ira, a);
       break;
 
     case 0xF5:                // MOV dir,A
       ira = this.fetch();
-      this.putDirect(ira, this.SFR[ACC]);
+      a = this.getSFR(ACC);
+      this.putDirect(ira, a);
       break;
 
     case 0x85:                // MOV dir,dir
-      ira = this.fetch();
-      a = this.getDirect(ira);
+      b = this.fetch();
+      a = this.getDirect(b);
       ira = this.fetch();
       this.putDirect(ira, a);
       break;
@@ -1453,55 +1512,61 @@ ${_.range(0, 8)
 
       ////////// MOVC
     case 0x93:                // MOVC A,@A+DPTR
-      a = (this.SFR[ACC] + this.getDPTR()) & 0xFFFF;
-      this.SFR[ACC] = this.pmem[a];
+      a = (this.getSFR(ACC) + this.getDPTR()) & 0xFFFF;
+      this.putSFR(ACC, this.pmem[a]);
       break;
 
     case 0x83:                // MOVC A,@A+PC
-      a = (this.SFR[ACC] + this.pc) & 0xFFFF;
-      this.SFR[ACC] = this.pmem[a];
+      a = (this.getSFR(ACC) + this.pc) & 0xFFFF;
+      this.putSFR(ACC, this.pmem[a]);
       break;
 
 
       ////////// MOVX
     case 0xF0:                // MOVX @DPTR,A
-      a = this.getDPTR();
-      this.SFR[P1] = a & 0xFF;
-      this.SFR[P2] = a >>> 8;
-      this.xram[a] = this.SFR[ACC];
+      ira = this.getDPTR();
+      this.putSFR(P1, ira);
+      this.putSFR(P2, ira >>> 8);
+      a = this.getSFR(ACC);
+      this.putXData(ira, a);
       break;
 
     case 0xF2:                // MOVX @R0,A
     case 0xF3:                // MOVX @R1,A
       r = op & 1;
-      this.SFR[P1] = this.getR(r);
-      a = (this.SFR[P2] << 8) | this.SFR[P1];
-      this.xram[a] = this.SFR[ACC];
+      ira = this.getR(r);
+      this.putSFR(P1, ira);
+      ira |= this.getSFR(P2) << 8;
+      a = this.getSFR(ACC);
+      this.putXData(ira, a);
       break;
 
     case 0xE0:                // MOVX A,@DPTR
-      a = this.getDPTR();
-      this.SFR[P1] = a & 0xFF;
-      this.SFR[P2] = a >>> 8;
-      this.SFR[ACC] = this.xram[a];
+      ira = this.getDPTR();
+      this.putSFR(P1, ira);
+      this.putSFR(P2, ira >>> 8);
+      a = this.getXData(ira);
+      this.putSFR(ACC, a);
       break;
 
     case 0xE2:                // MOVX A,@R0
     case 0xE3:                // MOVX A,@R1
       r = op & 1;
-      this.SFR[P1] = this.getR(r);
-      a = (this.SFR[P2] << 8) | this.SFR[P1];
-      this.SFR[ACC] = this.xram[a];
+      ira = this.getR(r);
+      this.putSFR(P1, ira);
+      ira |= this.getSFR(P2) << 8;
+      a = this.getXData(ira);
+      this.putSFR(ACC, a);
       break;
 
 
       ////////// MUL
     case 0xA4:                // MUL AB
       this.putCY(0);          // Always clears CY.
-      a = this.SFR[ACC] * this.SFR[B];
+      a = this.getSFR(ACC) * this.getSFR(B);
       this.putOV(+(a > 0xFF));
-      this.SFR[ACC] = a;
-      this.SFR[B] = a >>> 8;
+      this.putSFR(ACC, a);
+      this.putSFR(B, a >>> 8);
       break;
 
 
@@ -1509,7 +1574,7 @@ ${_.range(0, 8)
     case 0x42:                // ORL dir,A
       ira = this.fetch();
       a = this.getDirect(ira);
-      a |= this.SFR[ACC];
+      a |= this.getSFR(ACC);
       this.putDirect(ira, a);
       break;
 
@@ -1523,20 +1588,21 @@ ${_.range(0, 8)
 
     case 0x44:                // ORL A,#imm
       imm = this.fetch();
-      this.SFR[ACC] |= imm;
+      a = this.getSFR(ACC) | imm;
+      this.putSFR(ACC, a);
       break;
 
     case 0x45:                // ORL A,dir
       ira = this.fetch();
-      a = this.getDirect(ira);
-      this.SFR[ACC] |= a;
+      a = this.getSFR(ACC) | this.getDirect(ira);
+      this.putSFR(ACC, a);
       break;
 
     case 0x46:                // ORL A,@R0
     case 0x47:                // ORL A,@R1
       r = op & 1;
-      a = this.getIndirect(r);
-      this.SFR[ACC] |= a;
+      a = this.getSFR(ACC) | this.getIndirect(r);
+      this.putSFR(ACC, a);
       break;
 
     case 0x48:                // ORL A,R0
@@ -1548,7 +1614,8 @@ ${_.range(0, 8)
     case 0x4E:                // ORL A,R6
     case 0x4F:                // ORL A,R7
       r = op & 0x07;
-      this.SFR[ACC] |= this.getR(r);
+      a = this.getSFR(ACC) | this.getR(r);
+      this.putSFR(ACC, a);
       break;
 
     case 0x72:                // ORL C,bit
@@ -1603,34 +1670,38 @@ ${_.range(0, 8)
 
       ////////// RL
     case 0x23:                // RL A
-      this.SFR[ACC] = this.SFR[ACC] << 1;
-      this.SFR[ACC] = (this.SFR[ACC] & 0xFF) | (this.SFR[ACC] >>> 8);
+      a = this.getSFR(ACC);
+      a <<= 1;
+      a = a & 0xFF | a >>> 8;
+      this.putSFR(ACC, a); 
       break;
 
 
       ////////// RLC
     case 0x33:                // RLC A
-      a = this.SFR[ACC];
+      a = this.getSFR(ACC);
       c = this.getCY();
-      this.putCY(this.SFR[ACC] >>> 7);
-      this.SFR[ACC] <<= 1;
-      this.SFR[ACC] |= c;
+      this.putCY(a >>> 7);
+      a <<= 1;
+      this.putSFR(ACC, a | c);
       break;
 
 
       ////////// RR
     case 0x03:                // RR A
-      a = this.SFR[ACC] << 7;
-      this.SFR[ACC] = (this.SFR[ACC] >>> 1) | a;
+      a = this.getSFR(ACC);
+      this.putSFR(ACC, a >>> 1 | a << 7);
       break;
 
 
       ////////// RRC
     case 0x13:                // RRC A
+      a = this.getSFR(ACC);
       c = this.getCY();
-      this.putCY(this.SFR[ACC] & 1);
-      this.SFR[ACC] >>>= 1;
-      this.SFR[ACC] |= c << 7;
+      this.putCY(a & 1);
+      a >>>= 1;
+      a |= c << 7;
+      this.putSFR(ACC, a);
       break;
 
 
@@ -1686,11 +1757,11 @@ ${_.range(0, 8)
 
       ////////// SWAP
     case 0xC4:                // SWAP A
-      a = this.SFR[ACC];
+      a = this.getSFR(ACC);
       b = a >>> 4;
       a &= 0x0f;
       a <<= 4;
-      this.SFR[ACC] = a | b;
+      this.putSFR(ACC, a | b);
       break;
 
 
@@ -1704,16 +1775,16 @@ ${_.range(0, 8)
     case 0xC5:                // XCH A,dir
       ira = this.fetch();
       b = this.getDirect(ira);
-      this.putDirect(ira, this.SFR[ACC]);
-      this.SFR[ACC] = b;
+      this.putDirect(ira, this.getSFR(ACC));
+      this.putSFR(B, b);
       break;
 
     case 0xC6:                // XCH A,@R0
     case 0xC7:                // XCH A,@R1
       r = op & 1;
       b = this.getIndirect(r);
-      this.putDirect(r, this.SFR[ACC]);
-      this.SFR[ACC] = b;
+      this.putDirect(r, this.getSFR(ACC));
+      this.putSFR(ACC,  b);
       break;
 
     case 0xC8:                // XCH A,R0
@@ -1726,8 +1797,8 @@ ${_.range(0, 8)
     case 0xCF:                // XCH A,R7
       r = op & 0x07;
       b = this.getR(r);
-      this.putR(r, this.SFR[ACC]);
-      this.SFR[ACC] = b;
+      this.putR(r, this.getSFR(ACC));
+      this.putSFR(ACC, b);
       break;
 
       
@@ -1735,9 +1806,9 @@ ${_.range(0, 8)
     case 0xD6:                // XCHD A,@R0
     case 0xD7:                // XCHD A,@R1
       r = op & 1;
-      a = this.SFR[ACC];
+      a = this.getSFR(ACC);
       b = this.getIndirect(r);
-      this.SFR[ACC] = (a & 0xF0) | (b & 0x0F);
+      this.putSFR(ACC,    (a & 0xF0) | (b & 0x0F));
       this.putIndirect(r, (b & 0xF0) | (a & 0x0F));
       break;
 
@@ -1745,8 +1816,7 @@ ${_.range(0, 8)
       ////////// XRL
     case 0x62:                // XRL dir,A
       ira = this.fetch();
-      a = this.getDirect(ira);
-      a ^= this.SFR[ACC];
+      a = this.getDirect(ira) ^ this.getSFR(ACC);
       this.putDirect(ira, a);
       break;
 
@@ -1760,20 +1830,21 @@ ${_.range(0, 8)
 
     case 0x64:                // XRL A,#imm
       imm = this.fetch();
-      this.SFR[ACC] ^= imm;
+      a = this.getSFR(ACC) ^ imm;
+      this.putSFR(ACC, a);
       break;
 
     case 0x65:                // XRL A,dir
       ira = this.fetch();
-      a = this.getDirect(ira);
-      this.SFR[ACC] ^= a;
+      a = this.getSFR(ACC) ^ this.getDirect(ira);
+      this.putSFR(ACC, a);
       break;
 
     case 0x66:                // XRL A,@R0
     case 0x67:                // XRL A,@R1
       r = op & 1;
-      a = this.getIndirect(r);
-      this.SFR[ACC] ^= a;
+      a = this.getSFR(ACC) ^ this.getIndirect(r);
+      this.putSFR(ACC, a);
       break;
 
     case 0x68:                // XRL A,R0
@@ -1785,7 +1856,8 @@ ${_.range(0, 8)
     case 0x6E:                // XRL A,R6
     case 0x6F:                // XRL A,R7
       r = op & 0x07;
-      this.SFR[ACC] ^= this.getR(r);
+      a = this.getSFR(ACC) ^ this.getR(r);
+      this.putSFR(ACC, a);
       break;
 
 
@@ -1858,11 +1930,19 @@ var lastLine = "";
 
 let startOfLastStep = 0;
 
-// Keys of this are addresses for PC fetches that should cause a
-// breakpoint stop. The value is an object:
+// Keys of this are addresses for the specified type of access
+// that should cause a breakpoint stop. The value is an object:
 // * msg = Message to print when stopping at this point
 // * transient = Boolean to indicate breakpoint is self-clearing
-let stopReasons = {};
+let stopReasons = {
+  code: {},                     // PC code fetch
+  iramR: {},                    // Internal RAM read
+  iramW: {},                    // Internal RAM write
+  sfrR: {},                     // SFR read
+  sfrW: {},                     // SFR write
+  xdataR: {},                   // External data read
+  xdataW: {},                   // External data write
+};
 
 
 // User can enter short substrings, and it's not the unambiguous match
@@ -2257,7 +2337,7 @@ function doTil(words) {
     const b = getAddress(words);
     const bAsHex = toHex4(b);
 
-    stopReasons[b] = {
+    stopReasons.code[b] = {
       msg: 'now at ' + bAsHex,
       transient: true,
     };
@@ -2277,7 +2357,7 @@ function doBreak(words) {
     const b = getAddress(words);
     const bAsHex = toHex4(b);
 
-    stopReasons[b] = {
+    stopReasons.code[b] = {
       msg: 'breakpoint at ' + bAsHex,
       transient: false,
     };
@@ -2286,7 +2366,7 @@ function doBreak(words) {
 
 
 function doBreakList(words) {
-  const addrs = Object.keys(stopReasons);
+  const addrs = Object.keys(stopReasons.code);
 
   if (addrs.length === 0) {
     console.log('No breakpoints');
@@ -2302,8 +2382,8 @@ function doBreakList(words) {
                 .map((b, bn) => `\
 ${('[' + (bn+1)).padStart(3) + ']'} \
 ${displayableAddress(b, 'c').padStart(maxWidth)}: \
-${stopReasons[b].msg}\
-${stopReasons[b].transient ? ' [transient]' : ''}`)
+${stopReasons.code[b].msg}\
+${stopReasons.code[b].transient ? ' [transient]' : ''}`)
                 .join('\n'), '\n');
   }
 }
@@ -2315,7 +2395,7 @@ function doUnbreak(words) {
     console.log("Must specify an address to clear breakpoint");
   } else {
     const b = getAddress(words);
-    delete stopReasons[b];
+    delete stopReasons.code[b];
   }
 }
 
@@ -2331,7 +2411,7 @@ const stepOverRange = 0x10;
 
 function doOver(words) {
   _.range(1, stepOverRange)
-    .forEach(offs => stopReasons[cpu.pc + offs] = ({
+    .forEach(offs => stopReasons.code[cpu.pc + offs] = ({
       msg: `stepped over to $+${toHex2(offs)}H`,
       transient: true,
     }));
@@ -2493,11 +2573,11 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
 
     for (let n = insnsPerTick; cpu.running && n; --n) {
 
-      if (!skipBreakIfTrue && stopReasons[cpu.pc]) {
-	console.log(`[${stopReasons[cpu.pc].msg}]`); // Say why we stopped
+      if (!skipBreakIfTrue && stopReasons.code[cpu.pc]) {
+	console.log(`[${stopReasons.code[cpu.pc].msg}]`); // Say why we stopped
         cpu.running = false;
 
-        const match = stopReasons[cpu.pc].msg
+        const match = stopReasons.code[cpu.pc].msg
               .match(/^stepped over to \$\+([0-9A-F]+)H/);
 
         // If we stepped over to, say, "stepped over to $+5" then we
@@ -2505,9 +2585,9 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
         if (match) {
           const atOffset = parseInt(match[1], 16);
           _.range(-atOffset, stepOverRange-atOffset)
-            .forEach(offs => delete stopReasons[cpu.pc+offs]);
+            .forEach(offs => delete stopReasons.code[cpu.pc+offs]);
         } else {
-          if (stopReasons[cpu.pc].transient) delete stopReasons[cpu.pc];
+          if (stopReasons.code[cpu.pc].transient) delete stopReasons.code[cpu.pc];
         }
       } else {
 	let beforePC = cpu.pc;
@@ -2536,7 +2616,7 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
       }
     } else {
 
-      if (!maxCount || stopReasons[cpu.pc]) {
+      if (!maxCount || stopReasons.code[cpu.pc]) {
 	const stopTime = process.hrtime();
 	const nSec = (stopTime[0] - startTime[0]) + (stopTime[1] - startTime[1]) / 1e9;
 	cpu.executionTime += nSec;
