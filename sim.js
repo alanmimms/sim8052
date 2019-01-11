@@ -1695,7 +1695,8 @@ ${_.range(0, 8)
       ////////// RR
     case 0x03:                // RR A
       a = this.getSFR(ACC);
-      this.putSFR(ACC, a >>> 1 | a << 7);
+      a = a >>> 1 | a << 7;
+      this.putSFR(ACC, a);
       break;
 
 
