@@ -1,0 +1,256 @@
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=4E B=00 SP=4F PSW=21 coa DPTR=0350 R:0B 08 0D 0D  00 0B 00 F4
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=54 B=00 SP=4F PSW=21 coa DPTR=0351 R:0B 08 0D 0D  00 0B 00 F4
+                PPL4+0003=1605: JB    PPL41=160B                          A=F5 B=00 SP=4F PSW=21 coa DPTR=0352 R:0B 08 0D 0D  00 0B 00 F4
+               PPL41+0002=160D: CJNE  PPL1=15DF                           A=F5 B=00 SP=4F PSW=21 coa DPTR=0352 R:0B 08 0D 0D  00 0B 00 F4
+                PPL2+0002=15E6: CJNE  PPL21=15E9                          A=0D B=00 SP=4F PSW=A1 Coa DPTR=0352 R:0B 08 0D 0D  00 0B 00 F5
+                    PPL21=15E9: JC    PPX=15F2                            A=0D B=00 SP=4F PSW=A1 Coa DPTR=0352 R:0B 08 0D 0D  00 0B 00 F5
+                 PPX+0005=15F7: CJNE  PPL3=15FD                           A=50 B=00 SP=4F PSW=A1 Coa DPTR=0353 R:0B 08 0D 0D  00 0B 00 F5
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=52 B=00 SP=4F PSW=21 coa DPTR=0354 R:0B 08 0D 0D  00 0B 00 F5
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=4F B=00 SP=4F PSW=21 coa DPTR=0355 R:0B 08 0D 0D  00 0B 00 F5
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=47 B=00 SP=4F PSW=21 coa DPTR=0356 R:0B 08 0D 0D  00 0B 00 F5
+                PPL4+0003=1605: JB    PPL41=160B                          A=F6 B=00 SP=4F PSW=21 coa DPTR=0357 R:0B 08 0D 0D  00 0B 00 F5
+               PPL41+0002=160D: CJNE  PPL1=15DF                           A=F6 B=00 SP=4F PSW=21 coa DPTR=0357 R:0B 08 0D 0D  00 0B 00 F5
+                PPL2+0002=15E6: CJNE  PPL21=15E9                          A=0D B=00 SP=4F PSW=A1 Coa DPTR=0357 R:0B 08 0D 0D  00 0B 00 F6
+                    PPL21=15E9: JC    PPX=15F2                            A=0D B=00 SP=4F PSW=A1 Coa DPTR=0357 R:0B 08 0D 0D  00 0B 00 F6
+                 PPX+0005=15F7: CJNE  PPL3=15FD                           A=58 B=00 SP=4F PSW=A1 Coa DPTR=0358 R:0B 08 0D 0D  00 0B 00 F6
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=46 B=00 SP=4F PSW=21 coa DPTR=0359 R:0B 08 0D 0D  00 0B 00 F6
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=45 B=00 SP=4F PSW=21 coa DPTR=035A R:0B 08 0D 0D  00 0B 00 F6
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=52 B=00 SP=4F PSW=21 coa DPTR=035B R:0B 08 0D 0D  00 0B 00 F6
+                PPL4+0003=1605: JB    PPL41=160B                          A=F7 B=00 SP=4F PSW=21 coa DPTR=035C R:0B 08 0D 0D  00 0B 00 F6
+               PPL41+0002=160D: CJNE  PPL1=15DF                           A=F7 B=00 SP=4F PSW=21 coa DPTR=035C R:0B 08 0D 0D  00 0B 00 F6
+                PPL2+0002=15E6: CJNE  PPL21=15E9                          A=0D B=00 SP=4F PSW=A1 Coa DPTR=035C R:0B 08 0D 0D  00 0B 00 F7
+                    PPL21=15E9: JC    PPX=15F2                            A=0D B=00 SP=4F PSW=A1 Coa DPTR=035C R:0B 08 0D 0D  00 0B 00 F7
+                 PPX+0005=15F7: CJNE  PPL3=15FD                           A=52 B=00 SP=4F PSW=A1 Coa DPTR=035D R:0B 08 0D 0D  00 0B 00 F7
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=41 B=00 SP=4F PSW=21 coa DPTR=035E R:0B 08 0D 0D  00 0B 00 F7
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=4D B=00 SP=4F PSW=21 coa DPTR=035F R:0B 08 0D 0D  00 0B 00 F7
+                PPL4+0003=1605: JB    PPL41=160B                          A=F8 B=00 SP=4F PSW=21 coa DPTR=0360 R:0B 08 0D 0D  00 0B 00 F7
+               PPL41+0002=160D: CJNE  PPL1=15DF                           A=F8 B=00 SP=4F PSW=21 coa DPTR=0360 R:0B 08 0D 0D  00 0B 00 F7
+                PPL2+0002=15E6: CJNE  PPL21=15E9                          A=0D B=00 SP=4F PSW=A1 Coa DPTR=0360 R:0B 08 0D 0D  00 0B 00 F8
+                    PPL21=15E9: JC    PPX=15F2                            A=0D B=00 SP=4F PSW=A1 Coa DPTR=0360 R:0B 08 0D 0D  00 0B 00 F8
+                 PPX+0005=15F7: CJNE  PPL3=15FD                           A=52 B=00 SP=4F PSW=A1 Coa DPTR=0361 R:0B 08 0D 0D  00 0B 00 F8
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=4F B=00 SP=4F PSW=21 coa DPTR=0362 R:0B 08 0D 0D  00 0B 00 F8
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=4D B=00 SP=4F PSW=21 coa DPTR=0363 R:0B 08 0D 0D  00 0B 00 F8
+                PPL4+0003=1605: JB    PPL41=160B                          A=F9 B=00 SP=4F PSW=21 coa DPTR=0364 R:0B 08 0D 0D  00 0B 00 F8
+               PPL41+0002=160D: CJNE  PPL1=15DF                           A=F9 B=00 SP=4F PSW=21 coa DPTR=0364 R:0B 08 0D 0D  00 0B 00 F8
+                PPL2+0002=15E6: CJNE  PPL21=15E9                          A=0D B=00 SP=4F PSW=A1 Coa DPTR=0364 R:0B 08 0D 0D  00 0B 00 F9
+                    PPL21=15E9: JC    PPX=15F2                            A=0D B=00 SP=4F PSW=A1 Coa DPTR=0364 R:0B 08 0D 0D  00 0B 00 F9
+                 PPX+0005=15F7: CJNE  PPL3=15FD                           A=45 B=00 SP=4F PSW=A1 Coa DPTR=0365 R:0B 08 0D 0D  00 0B 00 F9
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=52 B=00 SP=4F PSW=21 coa DPTR=0366 R:0B 08 0D 0D  00 0B 00 F9
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=41 B=00 SP=4F PSW=21 coa DPTR=0367 R:0B 08 0D 0D  00 0B 00 F9
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=53 B=00 SP=4F PSW=21 coa DPTR=0368 R:0B 08 0D 0D  00 0B 00 F9
+                PPL4+0006=1608: JNZ   PPL4=1602                           A=45 B=00 SP=4F PSW=21 coa DPTR=0369 R:0B 08 0D 0D  00 0B 00 F9
+                PPL4+0003=1605: JB    PPL41=160B                          A=FE B=00 SP=4F PSW=21 coa DPTR=036A R:0B 08 0D 0D  00 0B 00 F9
+               PPL41+0002=160D: CJNE  PPL1=15DF                           A=FE B=00 SP=4F PSW=21 coa DPTR=036A R:0B 08 0D 0D  00 0B 00 F9
+                PPL2+0002=15E6: CJNE  PPL21=15E9                          A=0D B=00 SP=4F PSW=A1 Coa DPTR=036A R:0B 08 0D 0D  00 0B 00 FE
+                    PPL21=15E9: JC    PPX=15F2                            A=0D B=00 SP=4F PSW=A1 Coa DPTR=036A R:0B 08 0D 0D  00 0B 00 FE
+                 PPX+0005=15F7: CJNE  PPL3=15FD                           A=7F B=00 SP=4F PSW=A1 Coa DPTR=036B R:0B 08 0D 0D  00 0B 00 FE
+                PPL4+0003=1605: JB    PPL41=160B                          A=FF B=00 SP=4F PSW=21 coa DPTR=036C R:0B 08 0D 0D  00 0B 00 FE
+               PPL41+0005=1610: CJNE  PPLX=1616                           A=FF B=00 SP=4F PSW=21 coa DPTR=036C R:0B 08 0D 0D  00 0B 00 FE
+                     PPLX=1616: JNB   PPLY=1623                           A=FF B=00 SP=4F PSW=A1 Coa DPTR=036C R:0B 08 0D 0D  00 0B 00 FE
+                     PPLY=1623: ACALL PPL7=163C                           A=FF B=00 SP=51 PSW=A1 Coa DPTR=036C R:0B 08 0D 0D  00 0B 00 FE
+               PPL91+0002=1653: RET   CMNX1+000A=17BF                     A=05 B=00 SP=4D PSW=21 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+               CMNX1+000A=17BF: JB    CMND3=17D1                          A=05 B=00 SP=4D PSW=20 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+                    CMND3=17D1: ACALL T_BUF=1779                          A=05 B=00 SP=4F PSW=20 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+               T_BUF+0006=177F: RET   CMND3+0002=17D3                     A=05 B=00 SP=4D PSW=20 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+               CMND3+0002=17D3: LCALL DELTST=0EEC                         A=05 B=00 SP=4F PSW=20 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+                   DELTST=0EEC: ACALL GC=0ED8                             A=05 B=00 SP=51 PSW=20 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+                  GC+0007=0EDF: RET   DELTST1=0EEE                        A=F1 B=00 SP=4F PSW=21 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+                  DELTST1=0EEE: CJNE  DT1=0EF3                            A=F1 B=00 SP=4F PSW=21 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+                      DT1=0EF3: CJNE  NOPASS=0F2C                         A=F1 B=00 SP=4F PSW=21 coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+              NOPASS+0001=0F2D: RET   CMND3+0005=17D6                     A=F1 B=00 SP=4D PSW=A1 Coa DPTR=036C R:26 05 0D 0D  00 0B 00 FE
+               CMND3+000A=17DB: CJNE  CMND31=17DE                         A=F1 B=00 SP=4D PSW=A1 Coa DPTR=010F R:26 05 0D 0D  00 0B 00 FE
+              CMND31+0002=17E0: LCALL GCI1=0EE2                           A=F1 B=00 SP=4F PSW=21 coa DPTR=010F R:26 05 0D 0D  00 0B 00 FE
+                GCI1+0003=0EE5: CJNE  GCI11=0EE9                          A=F1 B=00 SP=4F PSW=29 coa DPTR=010F R:08 FE 00 00  00 05 0B 02
+               GCI11+0002=0EEB: RET   CMND31+0005=17E3                    A=F1 B=00 SP=4D PSW=21 coa DPTR=010F R:26 05 0D 0D  00 0B 00 FE
+              CMND31+0007=17E5: LCALL ISTA1=0966                          A=01 B=00 SP=4F PSW=21 coa DPTR=010F R:26 05 0D 0D  00 0B 00 FE
+                 AC1+0001=0977: JMP   CLIST=105B                          A=00 B=00 SP=4F PSW=61 coA DPTR=105B R:26 05 0D 0D  00 0B 00 FE
+                    CLIST=105B: LCALL NUMC=0C23                           A=00 B=00 SP=51 PSW=61 coA DPTR=105B R:26 05 0D 0D  00 0B 00 FE
+                     NUMC=0C23: ACALL GC=0ED8                             A=00 B=00 SP=53 PSW=61 coA DPTR=105B R:26 05 0D 0D  00 0B 00 FE
+                  GC+0007=0EDF: RET   NUMC+0002=0C25                      A=0D B=00 SP=51 PSW=61 coA DPTR=105B R:26 05 0D 0D  00 0B 00 FE
+                NUMC+0002=0C25: CJNE  NUMC1=0C2C                          A=0D B=00 SP=51 PSW=61 coA DPTR=105B R:26 05 0D 0D  00 0B 00 FE
+                    NUMC1=0C2C: CJNE  SRD21=0C08                          A=0D B=00 SP=51 PSW=E1 CoA DPTR=105B R:26 05 0D 0D  00 0B 00 FE
+                    SRD21=0C08: RET   CLIST+0003=105E                     A=0D B=00 SP=4F PSW=E1 CoA DPTR=105B R:26 05 0D 0D  00 0B 00 FE
+               CLIST+0003=105E: ACALL FSTK=13D8                           A=0D B=00 SP=51 PSW=E1 CoA DPTR=105B R:26 05 0D 0D  00 0B 00 FE
+                FSTK+0003=13DB: AJMP  PUSHC=1440                          A=0D B=00 SP=51 PSW=E1 CoA DPTR=13DD R:26 05 0D 0D  00 0B 00 FE
+                    PUSHC=1440: ACALL DEC_ASTKA=1218                      A=0D B=00 SP=53 PSW=E1 CoA DPTR=13DD R:26 05 0D 0D  00 0B 00 FE
+           DEC_ASTKA+0004=121C: CJNE  DEC_ASTKA1=121F                     A=F8 B=00 SP=53 PSW=E1 CoA DPTR=13DD R:26 05 0D 0D  00 0B 00 FE
+                      SRT=1226: RET   PUSHC+0002=1442                     A=F8 B=00 SP=51 PSW=61 coA DPTR=13DD R:26 F8 0D 01  00 0B 00 FE
+                 PCL+0005=144B: DJNZ  PCL=1446                            A=85 B=00 SP=51 PSW=61 coA DPTR=13DE R:26 F7 0D 06  00 0B 00 FE
+                 PCL+0005=144B: DJNZ  PCL=1446                            A=00 B=00 SP=51 PSW=61 coA DPTR=13DF R:26 F6 0D 05  00 0B 00 FE
+                 PCL+0005=144B: DJNZ  PCL=1446                            A=00 B=00 SP=51 PSW=61 coA DPTR=13E0 R:26 F5 0D 04  00 0B 00 FE
+                 PCL+0005=144B: DJNZ  PCL=1446                            A=50 B=00 SP=51 PSW=61 coA DPTR=13E1 R:26 F4 0D 03  00 0B 00 FE
+                 PCL+0005=144B: DJNZ  PCL=1446                            A=53 B=00 SP=51 PSW=61 coA DPTR=13E2 R:26 F3 0D 02  00 0B 00 FE
+                 PCL+0009=144F: RET   CLIST+0005=1060                     A=65 B=00 SP=4F PSW=61 coA DPTR=13E3 R:26 F2 0D 00  00 0B 00 FE
+               CLIST+0005=1060: LCALL INTGER=0F40                         A=65 B=00 SP=51 PSW=61 coA DPTR=13E3 R:26 F2 0D 00  00 0B 00 FE
+                   INTGER=0F40: ACALL DP_T=0EAD                           A=65 B=00 SP=53 PSW=61 coA DPTR=13E3 R:26 F2 0D 00  00 0B 00 FE
+                DP_T+0006=0EB3: RET   INTGER+0002=0F42                    A=65 B=00 SP=51 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+              INTGER+0002=0F42: LCALL FP_BASE9=198E                       A=65 B=00 SP=53 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                 FP_BASE9=198E: AJMP  CASB=1EAB                           A=65 B=00 SP=53 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                     CASB=1EAB: ACALL HEXSCAN=1C96                        A=65 B=00 SP=55 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                  HEXSCAN=1C96: ACALL GET_DPTR_CHARACTER=1D6C             A=65 B=00 SP=57 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+  GET_DPTR_CHARACTER+0001=1D6D: CJNE  PMT1=1D86                           A=0D B=00 SP=57 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                     PMT1=1D86: RET   HEXSCAN+0002=1C98                   A=0D B=00 SP=55 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+              HEXSC1+0001=1C9D: ACALL DIGIT_CHECK=1FED                    A=0D B=00 SP=59 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+              DIGIT_CHECK=1FED: CJNE  DC10=1FF0                           A=0D B=00 SP=59 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                     DC10=1FF0: JC    DC1=1FF3                            A=0D B=00 SP=59 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                      DC1=1FF3: CJNE  DC11=1FF6                           A=0D B=00 SP=59 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                DC11+0001=1FF7: RET   HEXSC1+0003=1C9F                    A=0D B=00 SP=57 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+              HEXSC1+0005=1CA1: ACALL HEX_CHECK=1CB6                      A=0D B=00 SP=59 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+           HEX_CHECK+0002=1CB8: CJNE  HEX_CHECK1=1CBB                     A=0D B=00 SP=59 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+               HEX_CHECK1=1CBB: JC    HC1=1CBE                            A=0D B=00 SP=59 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                      HC1=1CBE: CJNE  HC11=1CC1                           A=0D B=00 SP=59 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                HC11+0001=1CC2: RET   HEXSC1+0007=1CA3                    A=0D B=00 SP=57 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+              HEXSC1+000B=1CA7: CJNE  HEXDON=1CAD                         A=0D B=00 SP=57 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+              HEXDO1+0004=1CB2: RET   CASB+0002=1EAD                      A=0D B=00 SP=53 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                CASB+0004=1EAF: ACALL GET_DIGIT_CHECK=1FEB                A=0D B=00 SP=55 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+          GET_DIGIT_CHECK=1FEB: ACALL GET_DPTR_CHARACTER=1D6C             A=0D B=00 SP=57 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+  GET_DPTR_CHARACTER+0001=1D6D: CJNE  PMT1=1D86                           A=0D B=00 SP=57 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                     PMT1=1D86: RET   DIGIT_CHECK=1FED                    A=0D B=00 SP=55 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+              DIGIT_CHECK=1FED: CJNE  DC10=1FF0                           A=0D B=00 SP=55 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                     DC10=1FF0: JC    DC1=1FF3                            A=0D B=00 SP=55 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                      DC1=1FF3: CJNE  DC11=1FF6                           A=0D B=00 SP=55 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                DC11+0001=1FF7: RET   CASB+0006=1EB1                      A=0D B=00 SP=53 PSW=61 coA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                CASB+0007=1EB2: JC    RCASB=1EDC                          A=0D B=00 SP=53 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+               RCASB+0003=1EDF: RET   INTGER+0005=0F45                    A=02 B=00 SP=51 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+              INTGER+0005=0F45: ACALL T_DP=0EC3                           A=02 B=00 SP=53 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                T_DP+0006=0EC9: RET   INTGER+0007=0F47                    A=02 B=00 SP=51 PSW=E1 CoA DPTR=0008 R:26 F2 0D 00  00 0B 00 FE
+                    ITRET=0F4B: RET   CLIST+0008=1063                     A=02 B=00 SP=4F PSW=E1 CoA DPTR=0D26 R:26 F2 0D 00  00 0B 00 FE
+               CLIST+000B=1066: JC    CL1=107C                            A=00 B=00 SP=4F PSW=E1 CoA DPTR=0D26 R:26 00 0D 00  00 0B 00 FE
+                      CL1=107C: LCALL GETLIN=0596                         A=00 B=00 SP=51 PSW=E1 CoA DPTR=0D26 R:26 00 0D 00  00 0B 00 FE
+                   GETLIN=0596: LCALL DP_B=0EA6                           A=00 B=00 SP=53 PSW=E1 CoA DPTR=0D26 R:26 00 0D 00  00 0B 00 FE
+                DP_B+0006=0EAC: RET   G1=0599                             A=00 B=00 SP=51 PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE
+                       G1=0599: LCALL B_C=0AAE                            A=00 B=00 SP=53 PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE
+                 B_C+0005=0AB3: RET   G1+0003=059C                        A=05 B=00 SP=51 PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE
+                  G1+0009=05A2: ACALL DCMPX=05D6                          A=05 B=00 SP=53 PSW=E1 CoA DPTR=0201 R:26 00 0D 00  00 0B 00 FE
+               DCMPX+0008=05DE: ACALL DECDP=05CC                          A=7B B=00 SP=55 PSW=61 coA DPTR=0202 R:26 00 0D 00  00 0B 00 FE
+               DECDP+0002=05CE: JNZ   DECDP1=05D2                         A=02 B=00 SP=55 PSW=61 coA DPTR=027B R:26 00 0D 00  00 0B 00 FE
+              DECDP1+0003=05D5: RET   DCMPX+000A=05E0                     A=7B B=00 SP=53 PSW=61 coA DPTR=0201 R:26 00 0D 00  00 0B 00 FE
+               DCMPX+000A=05E0: CJNE  D1=05E6                             A=7B B=00 SP=53 PSW=61 coA DPTR=0201 R:26 00 0D 00  00 0B 00 FE
+                  D1+0001=05E7: RET   G1+000B=05A4                        A=7B B=00 SP=51 PSW=E1 CoA DPTR=0201 R:26 00 0D 00  00 0B 00 FE
+                  G1+000B=05A4: ACALL DECDP=05CC                          A=7B B=00 SP=53 PSW=E1 CoA DPTR=0201 R:26 00 0D 00  00 0B 00 FE
+               DECDP+0002=05CE: JNZ   DECDP1=05D2                         A=01 B=00 SP=53 PSW=E1 CoA DPTR=027B R:26 00 0D 00  00 0B 00 FE
+              DECDP1+0003=05D5: RET   G1+000D=05A6                        A=7B B=00 SP=51 PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE
+                  G1+0011=05AA: JC    G3=05B0                             A=06 B=00 SP=51 PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE
+                  G3+0002=05B2: RET   CL1+0003=107F                       A=06 B=00 SP=4F PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE
+                      CL2=1081: ACALL C3C=1042                            A=06 B=00 SP=51 PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE
+                      C3C=1042: LJMP  T_DP=0EC3                           A=06 B=00 SP=51 PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE
+                T_DP+0006=0EC9: RET   CL2+0002=1083                       A=06 B=00 SP=4F PSW=E1 CoA DPTR=0200 R:26 00 0D 00  00 0B 00 FE ]
+!!!              CL2+0003=1084: ACALL PMTOP1=165F                         A=06 B=00 SP=51 PSW=E1 CoA DPTR=0201 R:26 00 0D 00  00 0B 00 FE [
+                   PMTOP1=165F: LCALL L20DPI=057D                         A=06 B=00 SP=53 PSW=E1 CoA DPTR=0201 R:26 00 0D 00  00 0B 00 FE [
+              L20DPI+0005=0582: RET   PMTOP1+0003=1662                    A=7B B=00 SP=51 PSW=E1 CoA DPTR=0202 R:7B 00 00 00  00 0B 00 FE ]
+              PMTOP1+0003=1662: AJMP  TWO_EY=14C1                         A=7B B=00 SP=51 PSW=E1 CoA DPTR=0202 R:7B 00 00 00  00 0B 00 FE
+              TWO_EY+0002=14C3: LJMP  FP_BASE12=1994                      A=7B B=00 SP=51 PSW=E1 CoA DPTR=0202 R:7B 00 00 00  00 0B 00 FE
+                FP_BASE12=1994: AJMP  PUSHR2R0=1CC3                       A=7B B=00 SP=51 PSW=E1 CoA DPTR=0202 R:7B 00 00 00  00 0B 00 FE
+            PUSHR2R0+0004=1CC7: ACALL CONVERT_BINARY_TO_ASCII_STRING=1F04 A=7B B=00 SP=53 PSW=E1 CoA DPTR=0202 R:7B 58 00 00  00 0B 00 FE [
+               RSUB1+0028=1F2E: JNZ   RSUB1=1F06                          A=0C B=03 SP=54 PSW=21 coa DPTR=0202 R:0C 58 00 00  00 01 00 FE
+               RSUB1+0028=1F2E: JNZ   RSUB1=1F06                          A=01 B=02 SP=55 PSW=21 coa DPTR=0202 R:01 58 00 00  00 02 00 FE
+               RSUB2+0006=1F36: CJNE  RSUB3=1F3A                          A=31 B=01 SP=55 PSW=21 coa DPTR=0202 R:00 59 00 00  00 03 00 FE
+                    RSUB3=1F3A: DJNZ  RSUB2=1F30                          A=31 B=01 SP=55 PSW=21 coa DPTR=0202 R:00 59 00 00  00 03 00 FE
+               RSUB2+0006=1F36: CJNE  RSUB3=1F3A                          A=32 B=01 SP=54 PSW=21 coa DPTR=0202 R:00 5A 00 00  00 02 00 FE
+                    RSUB3=1F3A: DJNZ  RSUB2=1F30                          A=32 B=01 SP=54 PSW=21 coa DPTR=0202 R:00 5A 00 00  00 02 00 FE
+               RSUB2+0006=1F36: CJNE  RSUB3=1F3A                          A=33 B=01 SP=53 PSW=21 coa DPTR=0202 R:00 5B 00 00  00 01 00 FE
+               RSUB3+0002=1F3C: RET   PUSHR2R0+0006=1CC9                  A=33 B=01 SP=51 PSW=21 coa DPTR=0202 R:00 5B 00 00  00 00 00 FE ]
+     FLOATING_POINT_INPUT=1CCF: ACALL FP_CLEAR=1BBF                       A=0D B=01 SP=53 PSW=21 coa DPTR=0058 R:00 5B 00 00  00 00 00 FE [
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:3C 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:3B 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:3A 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:39 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:38 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:37 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:36 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:35 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:34 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:33 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:32 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:31 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:30 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:2F 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:2E 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:2D 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:2C 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:2B 5B 00 00  00 00 00 FE
+                FPC1+0002=1BC4: CJNE  FPC1=1BC2                           A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:2A 5B 00 00  00 00 00 FE
+                FPC1+0005=1BC7: RET   FLOATING_POINT_INPUT+0002=1CD1      A=00 B=01 SP=51 PSW=21 coa DPTR=0058 R:29 5B 00 00  00 00 00 FE ]
+FLOATING_POINT_INPUT+0002=1CD1: ACALL GET_DPTR_CHARACTER=1D6C             A=00 B=01 SP=53 PSW=21 coa DPTR=0058 R:29 5B 00 00  00 00 00 FE [
+  GET_DPTR_CHARACTER+0001=1D6D: CJNE  PMT1=1D86                           A=31 B=01 SP=53 PSW=21 coa DPTR=0058 R:29 5B 00 00  00 00 00 FE
+                     PMT1=1D86: RET   FLOATING_POINT_INPUT+0004=1CD3      A=31 B=01 SP=51 PSW=21 coa DPTR=0058 R:29 5B 00 00  00 00 00 FE ]
+FLOATING_POINT_INPUT+0004=1CD3: ACALL PLUS_MINUS_TEST=1D72                A=31 B=01 SP=53 PSW=21 coa DPTR=0058 R:29 5B 00 00  00 00 00 FE [
+          PLUS_MINUS_TEST=1D72: CJNE  PMT11=1D77                          A=31 B=01 SP=53 PSW=21 coa DPTR=0058 R:29 5B 00 00  00 00 00 FE
+                    PMT11=1D77: CJNE  PMT12=1D7C                          A=31 B=01 SP=53 PSW=A1 Coa DPTR=0058 R:29 5B 00 00  00 00 00 FE
+                    PMT12=1D7C: CJNE  PMT13=1D81                          A=31 B=01 SP=53 PSW=21 coa DPTR=0058 R:29 5B 00 00  00 00 00 FE
+                    PMT13=1D81: CJNE  PMT1=1D86                           A=31 B=01 SP=53 PSW=A1 Coa DPTR=0058 R:29 5B 00 00  00 00 00 FE
+                     PMT1=1D86: RET   FLOATING_POINT_INPUT+0006=1CD5      A=31 B=01 SP=51 PSW=21 coa DPTR=0058 R:29 5B 00 00  00 00 00 FE ]
+                   INLOOP=1CDD: ACALL GET_DIGIT_CHECK=1FEB                A=31 B=01 SP=53 PSW=21 coa DPTR=0058 R:34 5B 00 00  00 00 7F FE [
+          GET_DIGIT_CHECK=1FEB: ACALL GET_DPTR_CHARACTER=1D6C             A=31 B=01 SP=55 PSW=21 coa DPTR=0058 R:34 5B 00 00  00 00 7F FE [
+  GET_DPTR_CHARACTER+0001=1D6D: CJNE  PMT1=1D86                           A=31 B=01 SP=55 PSW=21 coa DPTR=0058 R:34 5B 00 00  00 00 7F FE
+                     PMT1=1D86: RET   DIGIT_CHECK=1FED                    A=31 B=01 SP=53 PSW=21 coa DPTR=0058 R:34 5B 00 00  00 00 7F FE ]
+              DIGIT_CHECK=1FED: CJNE  DC10=1FF0                           A=31 B=01 SP=53 PSW=21 coa DPTR=0058 R:34 5B 00 00  00 00 7F FE
+                     DC10=1FF0: JC    DC1=1FF3                            A=31 B=01 SP=53 PSW=A1 Coa DPTR=0058 R:34 5B 00 00  00 00 7F FE
+                      DC1=1FF3: CJNE  DC11=1FF6                           A=31 B=01 SP=53 PSW=A1 Coa DPTR=0058 R:34 5B 00 00  00 00 7F FE
+                DC11+0001=1FF7: RET   INLOOP+0002=1CDF                    A=31 B=01 SP=51 PSW=A1 Coa DPTR=0058 R:34 5B 00 00  00 00 7F FE ]
+              INLOOP+0006=1CE3: ACALL STDIG=1D45                          A=01 B=01 SP=53 PSW=A1 Coa DPTR=0058 R:34 5B 00 00  00 00 7F FE [
+               STDIG+0002=1D47: JNZ   STDIG1=1D54                         A=01 B=01 SP=53 PSW=81 Coa DPTR=0058 R:34 5B 00 00  00 00 7F FE
+                   FDTEST=1D5C: JB    FDT1=1D60                           A=01 B=01 SP=53 PSW=81 Coa DPTR=0058 R:34 5B 00 00  00 00 7F FE
+                FDT1+0003=1D63: CJNE  FDT2=1D68                           A=01 B=01 SP=53 PSW=81 Coa DPTR=0058 R:34 5B 00 00  00 00 7F FE
+                FDT2+0002=1D6A: RET   INLPIK=1CE5                         A=01 B=01 SP=51 PSW=81 Coa DPTR=0058 R:35 5B 00 00  00 00 7F FE ]
+              INLPIK+0001=1CE6: SJMP  INLOOP=1CDD                         A=01 B=01 SP=51 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE
+                   INLOOP=1CDD: ACALL GET_DIGIT_CHECK=1FEB                A=01 B=01 SP=53 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE [
+          GET_DIGIT_CHECK=1FEB: ACALL GET_DPTR_CHARACTER=1D6C             A=01 B=01 SP=55 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE [
+  GET_DPTR_CHARACTER+0001=1D6D: CJNE  PMT1=1D86                           A=32 B=01 SP=55 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE
+                     PMT1=1D86: RET   DIGIT_CHECK=1FED                    A=32 B=01 SP=53 PSW=01 coa DPTR=0059 R:35 5B 00 00  00 00 7F FE ]
+              DIGIT_CHECK=1FED: CJNE  DC10=1FF0                           A=32 B=01 SP=53 PSW=01 coa DPTR=0059 R:35 5B 00 00  00 00 7F FE
+                     DC10=1FF0: JC    DC1=1FF3                            A=32 B=01 SP=53 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE
+                      DC1=1FF3: CJNE  DC11=1FF6                           A=32 B=01 SP=53 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE
+                DC11+0001=1FF7: RET   INLOOP+0002=1CDF                    A=32 B=01 SP=51 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE ]
+              INLOOP+0006=1CE3: ACALL STDIG=1D45                          A=02 B=01 SP=53 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE [
+               STDIG+0002=1D47: JNZ   STDIG1=1D54                         A=02 B=01 SP=53 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE
+                   FDTEST=1D5C: JB    FDT1=1D60                           A=02 B=01 SP=53 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE
+                FDT1+0003=1D63: CJNE  FDT2=1D68                           A=02 B=01 SP=53 PSW=81 Coa DPTR=0059 R:35 5B 00 00  00 00 7F FE
+                FDT2+0002=1D6A: RET   INLPIK=1CE5                         A=02 B=01 SP=51 PSW=81 Coa DPTR=0059 R:36 5B 00 00  00 00 7F FE ]
+              INLPIK+0001=1CE6: SJMP  INLOOP=1CDD                         A=02 B=01 SP=51 PSW=81 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE
+                   INLOOP=1CDD: ACALL GET_DIGIT_CHECK=1FEB                A=02 B=01 SP=53 PSW=81 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE [
+          GET_DIGIT_CHECK=1FEB: ACALL GET_DPTR_CHARACTER=1D6C             A=02 B=01 SP=55 PSW=81 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE [
+  GET_DPTR_CHARACTER+0001=1D6D: CJNE  PMT1=1D86                           A=33 B=01 SP=55 PSW=81 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE
+                     PMT1=1D86: RET   DIGIT_CHECK=1FED                    A=33 B=01 SP=53 PSW=01 coa DPTR=005A R:36 5B 00 00  00 00 7F FE ]
+              DIGIT_CHECK=1FED: CJNE  DC10=1FF0                           A=33 B=01 SP=53 PSW=01 coa DPTR=005A R:36 5B 00 00  00 00 7F FE
+                     DC10=1FF0: JC    DC1=1FF3                            A=33 B=01 SP=53 PSW=81 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE
+                      DC1=1FF3: CJNE  DC11=1FF6                           A=33 B=01 SP=53 PSW=81 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE
+                DC11+0001=1FF7: RET   INLOOP+0002=1CDF                    A=33 B=01 SP=51 PSW=81 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE ]
+              INLOOP+0006=1CE3: ACALL STDIG=1D45                          A=03 B=01 SP=53 PSW=81 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE [
+               STDIG+0002=1D47: JNZ   STDIG1=1D54                         A=03 B=01 SP=53 PSW=80 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE
+                   FDTEST=1D5C: JB    FDT1=1D60                           A=03 B=01 SP=53 PSW=80 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE
+                FDT1+0003=1D63: CJNE  FDT2=1D68                           A=03 B=01 SP=53 PSW=80 Coa DPTR=005A R:36 5B 00 00  00 00 7F FE
+                FDT2+0002=1D6A: RET   INLPIK=1CE5                         A=03 B=01 SP=51 PSW=80 Coa DPTR=005A R:37 5B 00 00  00 00 7F FE ]
+              INLPIK+0001=1CE6: SJMP  INLOOP=1CDD                         A=03 B=01 SP=51 PSW=80 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+                   INLOOP=1CDD: ACALL GET_DIGIT_CHECK=1FEB                A=03 B=01 SP=53 PSW=80 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE [
+          GET_DIGIT_CHECK=1FEB: ACALL GET_DPTR_CHARACTER=1D6C             A=03 B=01 SP=55 PSW=80 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE [
+  GET_DPTR_CHARACTER+0001=1D6D: CJNE  PMT1=1D86                           A=0D B=01 SP=55 PSW=80 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+                     PMT1=1D86: RET   DIGIT_CHECK=1FED                    A=0D B=01 SP=53 PSW=80 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE ]
+              DIGIT_CHECK=1FED: CJNE  DC10=1FF0                           A=0D B=01 SP=53 PSW=80 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+                     DC10=1FF0: JC    DC1=1FF3                            A=0D B=01 SP=53 PSW=80 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+                      DC1=1FF3: CJNE  DC11=1FF6                           A=0D B=01 SP=53 PSW=80 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+                DC11+0001=1FF7: RET   INLOOP+0002=1CDF                    A=0D B=01 SP=51 PSW=00 coa DPTR=005B R:37 5B 00 00  00 00 7F FE ]
+              INLOOP+0002=1CDF: JNC   GTEST=1CE8                          A=0D B=01 SP=51 PSW=00 coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+                    GTEST=1CE8: CJNE  GT1=1CF7                            A=0D B=01 SP=51 PSW=00 coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+                 GT1+0003=1CFA: CJNE  GT11=1CFF                           A=0D B=01 SP=51 PSW=81 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+                     GT11=1CFF: CJNE  FINISH_UP=1D35                      A=0D B=01 SP=51 PSW=81 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+           FINISH_UP+0002=1D37: CJNE  FINISH_UP1=1D3C                     A=0D B=01 SP=51 PSW=81 Coa DPTR=005B R:37 5B 00 00  00 00 7F FE
+          FINISH_UP1+0007=1D43: AJMP  PACK=1B1E                           A=EC B=01 SP=51 PSW=41 coA DPTR=005B R:37 5B 00 00  00 00 7F FE
+                PACK+0006=1B24: ACALL INC_FP_EXP=1B7F                     A=01 B=01 SP=53 PSW=41 coA DPTR=005B R:34 5B 00 00  00 00 01 FE [
+          INC_FP_EXP+0004=1B83: JNZ   PRET=1B7E                           A=80 B=01 SP=53 PSW=41 coA DPTR=005B R:34 5B 00 00  00 00 01 FE
+                     PRET=1B7E: RET   PACK+0008=1B26                      A=80 B=01 SP=51 PSW=41 coA DPTR=005B R:34 5B 00 00  00 00 01 FE ]
+               PACK1+0005=1B2D: CJNE  PACK11=1B30                         A=3C B=01 SP=51 PSW=01 coa DPTR=005B R:3C 08 00 00  00 00 01 FE
+                   PACK11=1B30: JC    PACK31=1B45                         A=3C B=01 SP=51 PSW=81 Coa DPTR=005B R:3C 08 00 00  00 00 01 FE ALREADY corrupted
+              PACK31+0005=1B4A: JNB   PACK4=1B5C                          A=34 B=01 SP=51 PSW=01 coa DPTR=005B R:34 08 00 00  00 00 01 FE
+               PLOOP+0009=1B67: CJNE  PLOOP=1B5E                          A=12 B=01 SP=51 PSW=01 coa DPTR=005B R:36 2C 00 00  00 00 13 FE
+               PLOOP+0009=1B67: CJNE  PLOOP=1B5E                          A=30 B=01 SP=51 PSW=81 Coa DPTR=005B R:38 2D 00 00  00 00 33 FE
+               PLOOP+0009=1B67: CJNE  PLOOP=1B5E                          A=00 B=01 SP=51 PSW=81 Coa DPTR=005B R:3A 2E 00 00  00 00 33 FE
+               PLOOP+000D=1B6B: JNZ   STORE_ALIGN_TEST_AND_EXIT=1B70      A=33 B=01 SP=51 PSW=01 coa DPTR=005B R:3C 2F 00 00  00 00 33 FE
+STORE_ALIGN_TEST_AND_EXIT=1B70: ACALL LOAD_POINTERS=1C6B                  A=33 B=01 SP=53 PSW=01 coa DPTR=005B R:3C 2F 00 00  00 00 33 FE [
+       LOAD_POINTERS+0009=1C74: RET   STORE_ALIGN_TEST_AND_EXIT+0002=1B72 A=F2 B=01 SP=51 PSW=41 coA DPTR=005B R:EC F2 00 00  00 00 33 FE ]
+              STORE2+0004=1B7A: CJNE  STORE2=1B76                         A=80 B=01 SP=51 PSW=41 coA DPTR=005B R:2F F1 00 00  00 00 33 FE
+              STORE2+0004=1B7A: CJNE  STORE2=1B76                         A=00 B=01 SP=51 PSW=41 coA DPTR=005B R:2E F0 00 00  00 00 33 FE
+              STORE2+0004=1B7A: CJNE  STORE2=1B76                         A=00 B=01 SP=51 PSW=41 coA DPTR=005B R:2D EF 00 00  00 00 33 FE
+              STORE2+0004=1B7A: CJNE  STORE2=1B76                         A=00 B=01 SP=51 PSW=41 coA DPTR=005B R:2C EE 00 00  00 00 33 FE
+              STORE2+0004=1B7A: CJNE  STORE2=1B76                         A=30 B=01 SP=51 PSW=41 coA DPTR=005B R:2B ED 00 00  00 00 33 FE
+                     PRET=1B7E: RET   CL2+0001=1082                       A=00 B=01 SP=4F PSW=41 coA DPTR=005B R:2A EC 00 00  00 00 33 FE ] RETURN is to random/wrong address
