@@ -9,6 +9,10 @@ const _ = require('lodash');
 const readline = require('readline');
 
 
+const debugBASIC2 = false;
+const debugTB51 = true;
+
+
 const insnsPerTick = 100;
 
 const CODESize = 65536;
@@ -442,12 +446,60 @@ const cpu = {
 
 
   getSFR(sfr) {
-    return this.SFR[sfr];
+
+    switch (sfr) {
+    case SBUF:
+      return this.sbufQueue.length ? this.sbufQueue.shift() : 0x00;
+
+    case PSW:
+      let psw = this.SFR[PSW];
+
+      // Update parity before returning PSW
+      if (parityTable[this.SFR[ACC]] << pswBits.pShift)
+        psw |= pswBits.pMask;
+      else
+        psw &= ~pswBits.pMask;
+
+      this.putSFR(PSW, psw);
+      return psw;
+
+    case P3:
+      let p3 = this.SFR[P3];
+      p3 ^= 1;
+      this.SFR[P3] = p3;          // Fake RxD toggling
+      return p3;
+
+    case SCON:
+      return this.SFR[SCON] | +(this.sbufQueue.length !== 0) << sconBits.riShift;
+      break;
+
+    default:
+      return this.SFR[sfr];
+    }
   },
 
 
   putSFR(sfr, v) {
-    this.SFR[sfr] = v;
+
+    switch (sfr) {
+    case SBUF:
+      process.stdout.write(String.fromCharCode(v));
+
+      // Transmitting a character immediately signals TI saying it is done.
+      this.putDirect(SCON, this.getDirect(SCON) | sconBits.tiMask);
+
+      // TODO: Make this do an interrupt
+      break;
+
+    case SCON:
+      if (this.debugSCON) console.log(`putDirect SCON now=${toHex2(v)}`);
+
+      // Fall through...
+      
+    default:
+      this.SFR[sfr] = v;
+      break;
+    }
   },
 
 
@@ -520,13 +572,14 @@ const cpu = {
   doADD(op, b) {
     const c = (op & 0x10) ? this.getCY() : 0;
     const a = this.getSFR(ACC)
+    const pswMathCleared = this.getSFR(PSW) & ~mathMask;
 
     const acValue = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
     const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
     const cyValue = +(a + b + c > 0xFF);
     const ovValue = cyValue ^ c6Value;
 
-    this.putSFR(PSW, (this.getSFR(PSW) & ~mathMask) |
+    this.putSFR(PSW, pswMathCleared |
                 (ovValue << pswBits.ovShift) |
                 (acValue << pswBits.acShift) |
                 (cyValue << pswBits.cyShift));
@@ -575,37 +628,10 @@ const cpu = {
   // Direct accesses in 0x00..0x7F are internal RAM.
   // Above that, direct accesses are to SFRs.
   getDirect(ra) {
-    if (ra < 0x80) return this.iram[ra];
-
-    switch (ra) {
-    case SBUF:
-      return this.sbufQueue.length ? this.sbufQueue.shift() : 0x00;
-
-    case PSW:
-      let psw = this.getSFR(PSW);
-
-      // Update parity before returning PSW
-      if (parityTable[this.getSFR(ACC)] << pswBits.pShift)
-        psw |= pswBits.pMask;
-      else
-        psw &= ~pswBits.pMask;
-
-      this.putSFR(PSW, psw);
-      return psw;
-
-    case P3:
-      let p3 = this.getSFR(P3);
-      p3 ^= 1;
-      this.putSFR(P3, p3);          // Fake RxD toggling
-      return p3;
-
-    case SCON:
-      return this.getSFR(SCON) | +(this.sbufQueue.length !== 0) << sconBits.riShift;
-      break;
-
-    default:
+    if (ra < 0x80)
+      return this.iram[ra];
+    else
       return this.getSFR(ra);
-    }
   },
 
 
@@ -616,25 +642,7 @@ const cpu = {
     if (ra < 0x80) {
       this.iram[ra] = v;
     } else {
-
-      switch (ra) {
-
-      case SBUF:
-        process.stdout.write(String.fromCharCode(v));
-
-        // Transmitting a character immediately signals TI saying it is done.
-        this.putDirect(SCON, this.getDirect(SCON) | sconBits.tiMask);
-
-        // TODO: Make this do an interrupt
-        break;
-
-      case SCON:
-        if (this.debugSCON) console.log(`putDirect SCON now=${toHex2(v)}`);
-
-      default:
-        this.putSFR(ra, v);
-        break;
-      }
+      this.putSFR(ra, v);
     }
 
     if (this.debugDirect) console.log(`${displayableAddress(ra, 'd')} is now ${toHex2(v)}`);
@@ -844,17 +852,17 @@ ${_.range(0, 8)
 
     let rela, ira, imm, bit, a, b, c, r;
 
-    if (1 && this.pc === 0x1F04) {
+    if (debugBASIC2 && this.pc === 0x1F04) {
       if (this.dumpCount-- === 0) this.running = false;
       console.log(`RSUB1-2=1F04H: in=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
       console.log(`    called from ${toHex2(this.iram[this.SFR[SP]])}${toHex2(this.iram[this.SFR[SP]-1])}`);
     }
 
-    if (1 && this.pc === 0x1F2C) {
+    if (debugBASIC2 && this.pc === 0x1F2C) {
       console.log(`1F2C:        R2,R0=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
     }
 
-    if (1 && this.pc === 0x1F3C) {
+    if (debugBASIC2 && this.pc === 0x1F3C) {
       console.log(`1F3C:                   RETURN`);
     }
 
