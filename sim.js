@@ -1790,7 +1790,7 @@ ${_.range(0, 8)
       ira = this.fetch();
       b = this.getDirect(ira);
       this.putDirect(ira, this.getSFR(ACC));
-      this.putSFR(B, b);
+      this.putSFR(ACC, b);
       break;
 
     case 0xC6:                // XCH A,@R0
