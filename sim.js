@@ -19,20 +19,6 @@ const CODESize = 65536;
 const XRAMSize = 65536;
 
 
-function toHex1(v) {
-  return (v & 0x0F).toString(16).toUpperCase();
-}
-
-function toHex2(v) {
-  return (v | 0x100).toString(16).toUpperCase().slice(-2);
-}
-
-function toHex4(v) {
-  return toHex2(v >>> 8) + toHex2(v & 0xFF);
-}
-
-
-
 // These constants simplify accesses to SFRs.
 const SFRs = {
   ACC: 0xE0,
@@ -360,14 +346,14 @@ const opTable = [
 ];
 
 
-const pswBits = makeBits('cy ac f0 rs1 rs0 ov ud p');
-const pconBits = makeBits('smod . . . gf1 gf0 pd idl');
-const sconBits = makeBits('sm0 sm1 sm2 ren tb8 rb8 ti ri');
-const ipBits = makeBits('. . pt2 ps pt1 px1 pt0 px0');
-const ieBits = makeBits('ea . et2 es et1 ex1 et0 ex0');
-const tmodBits = makeBits('gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0');
-const tconBits = makeBits('tf1 tr1 tf0 tr0 ie1 it1 ie0 it0');
-const t2conBits = makeBits('tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2');
+const pswBits = makeBits(PSW, 'cy ac f0 rs1 rs0 ov ud p');
+const pconBits = makeBits(PCON, 'smod . . . gf1 gf0 pd idl');
+const sconBits = makeBits(SCON, 'sm0 sm1 sm2 ren tb8 rb8 ti ri');
+const ipBits = makeBits(IP, '. . pt2 ps pt1 px1 pt0 px0');
+const ieBits = makeBits(IE, 'ea . et2 es et1 ex1 et0 ex0');
+const tmodBits = makeBits(TMOD, 'gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0');
+const tconBits = makeBits(TCON, 'tf1 tr1 tf0 tr0 ie1 it1 ie0 it0');
+const t2conBits = makeBits(T2CON, 'tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2');
 
 
 const mathMask = pswBits.ovMask | pswBits.acMask | pswBits.cyMask;
@@ -1885,11 +1871,24 @@ Unimplmented opcode=0x${toHex2(op)} at 0x${toHex4(this.pc-1)}`);
 };
 
 
-// Take a string and return a bit field object containing xShift and
-// xMask values for each bit. The string is a space separated list of
-// fields left to right where the leftmost is bit #n and rightmost is
-// bit #0 and '.' is used for a reserved bit.
-function makeBits(bitDescriptorString) {
+function toHex1(v) {
+  return (v & 0x0F).toString(16).toUpperCase();
+}
+
+function toHex2(v) {
+  return (v | 0x100).toString(16).toUpperCase().slice(-2);
+}
+
+function toHex4(v) {
+  return toHex2(v >>> 8) + toHex2(v & 0xFF);
+}
+
+
+// Take a string and return a bit field object containing xBit (bit
+// address), xShift, and xMask values for each bit. The string is a
+// space separated list of fields left to right where the leftmost is
+// bit #n and rightmost is bit #0 and '.' is used for a reserved bit.
+function makeBits(base, bitDescriptorString) {
   const o = {};
 
   bitDescriptorString.split(/\s+/)
@@ -1899,6 +1898,7 @@ function makeBits(bitDescriptorString) {
       if (name !== '.') {
         o[name + 'Shift'] = index;
         o[name + 'Mask'] = 1 << index;
+        o[name + 'Bit'] = base + index;
       }
     });
 
@@ -1910,10 +1910,10 @@ try {
   test_makeBits;
 
   const s1 = 'a7 b6 c5 d4 e3 f2 g1 h0';
-  console.log(`makeBits("${s1}") =`, makeBits(s1));
+  console.log(`makeBits(0x80, "${s1}") =`, makeBits(0x80, s1));
 
   const s2 = 'a7 b6 . d4 . f2 . h0';
-  console.log(`makeBits("${s2}") =`, makeBits(s2));
+  console.log(`makeBits(0x90, "${s2}") =`, makeBits(0x90, s2));
 } catch(e) {
 }
 
