@@ -850,7 +850,7 @@ ${_.range(0, 8)
     const op = this.fetch();
     ++this.instructionsExecuted;
 
-    let rela, ira, imm, bit, a, b, c, r;
+    let rela, ea, imm, bit, a, b, c, r;
 
     if (debugBASIC2 && this.pc === 0x1F04) {
       if (this.dumpCount-- === 0) this.running = false;
@@ -898,8 +898,8 @@ ${_.range(0, 8)
 
     case 0x25:                // ADD A,dir
     case 0x35:                // ADDC A,dir
-      ira = this.fetch();
-      this.doADD(op, this.getDirect(ira));
+      ea = this.fetch();
+      this.doADD(op, this.getDirect(ea));
       break;
 
     case 0x26:                // ADD A,@R0
@@ -948,16 +948,16 @@ ${_.range(0, 8)
 
       ////////// ANL
     case 0x52:                // ANL dir,A
-      ira = this.fetch();
-      a = this.getDirect(ira) & this.getSFR(ACC);
-      this.putDirect(ira, a);
+      ea = this.fetch();
+      a = this.getDirect(ea) & this.getSFR(ACC);
+      this.putDirect(ea, a);
       break;
 
     case 0x53:                // ANL dir,#imm
-      ira = this.fetch();
+      ea = this.fetch();
       imm = this.fetch();
-      a = this.getDirect(ira) & imm;
-      this.putDirect(ira, a);
+      a = this.getDirect(ea) & imm;
+      this.putDirect(ea, a);
       break;
 
     case 0x54:                // ANL A,#imm
@@ -967,8 +967,8 @@ ${_.range(0, 8)
       break;
 
     case 0x55:                // ANL A,dir
-      ira = this.fetch();
-      a = this.getSFR(ACC) & this.getDirect(ira);
+      ea = this.fetch();
+      a = this.getSFR(ACC) & this.getDirect(ea);
       this.putSFR(ACC, a);
       break;
 
@@ -1021,8 +1021,8 @@ ${_.range(0, 8)
 
     case 0xB5:                // CJNE A,dir,rela
       a = this.getSFR(ACC);
-      ira = this.fetch();
-      b = this.getDirect(ira);
+      ea = this.fetch();
+      b = this.getDirect(ea);
       rela = this.toSigned(this.fetch());
 
       if (a !== b) {
@@ -1135,9 +1135,9 @@ ${_.range(0, 8)
       break;
 
     case 0x15:                // DEC dir
-      ira = this.fetch();
-      a = this.getDirect(ira) - 1;
-      this.putDirect(ira, a);
+      ea = this.fetch();
+      a = this.getDirect(ea) - 1;
+      this.putDirect(ea, a);
       break;
 
     case 0x16:                // DEC @R0
@@ -1181,8 +1181,8 @@ ${_.range(0, 8)
 
       ////////// DJNZ
     case 0xD5:                // DJNZ dir,rela
-      ira = this.fetch();
-      a = this.getDirect(ira) - 1;
+      ea = this.fetch();
+      a = this.getDirect(ea) - 1;
       rela = this.toSigned(this.fetch());
 
       if (a !== 0) {
@@ -1190,7 +1190,7 @@ ${_.range(0, 8)
         this.saveBranchHistory(insnPC, this.pc, 'DJNZ');
       }
       
-      this.putDirect(ira, a);
+      this.putDirect(ea, a);
       break;
 
     case 0xD8:                // DJNZ R0,rela
@@ -1221,9 +1221,9 @@ ${_.range(0, 8)
       break;
 
     case 0x05:                // INC dir
-      ira = this.fetch();
-      a = this.getDirect(ira) + 1;
-      this.putDirect(ira, a);
+      ea = this.fetch();
+      a = this.getDirect(ea) + 1;
+      this.putDirect(ea, a);
       break;
 
     case 0x06:                // INC @R0
@@ -1387,8 +1387,8 @@ ${_.range(0, 8)
     case 0xA6:                // MOV @R0,dir
     case 0xA7:                // MOV @R1,dir
       r = op & 1;
-      ira = this.fetch();
-      a = this.getDirect(ira);
+      ea = this.fetch();
+      a = this.getDirect(ea);
       this.putIndirect(r, a);
       break;
 
@@ -1418,8 +1418,8 @@ ${_.range(0, 8)
       break;
 
     case 0xE5:                // MOV A,dir
-      ira = this.fetch();
-      a = this.getDirect(ira);
+      ea = this.fetch();
+      a = this.getDirect(ea);
       this.putSFR(ACC, a);
       break;
 
@@ -1470,8 +1470,8 @@ ${_.range(0, 8)
     case 0xAE:                // MOV R6,dir
     case 0xAF:                // MOV R7,dir
       r = op & 0x07;
-      ira = this.fetch();
-      a = this.getDirect(ira);
+      ea = this.fetch();
+      a = this.getDirect(ea);
       this.putR(r, a);
       break;
 
@@ -1482,17 +1482,17 @@ ${_.range(0, 8)
       break;
 
     case 0x75:                // MOV dir,#imm
-      ira = this.fetch();
+      ea = this.fetch();
       imm = this.fetch();
-      this.putDirect(ira, imm);
+      this.putDirect(ea, imm);
       break;
 
     case 0x86:                // MOV dir,@R0
     case 0x87:                // MOV dir,@R1
       r = op & 1;
-      ira = this.fetch();
+      ea = this.fetch();
       a = this.getIndirect(r);
-      this.putDirect(ira, a);
+      this.putDirect(ea, a);
       break;
 
     case 0x88:                // MOV dir,R0
@@ -1504,22 +1504,22 @@ ${_.range(0, 8)
     case 0x8E:                // MOV dir,R6
     case 0x8F:                // MOV dir,R7
       r = op & 0x07;
-      ira = this.fetch();
+      ea = this.fetch();
       a = this.getR(r);
-      this.putDirect(ira, a);
+      this.putDirect(ea, a);
       break;
 
     case 0xF5:                // MOV dir,A
-      ira = this.fetch();
+      ea = this.fetch();
       a = this.getSFR(ACC);
-      this.putDirect(ira, a);
+      this.putDirect(ea, a);
       break;
 
     case 0x85:                // MOV dir,dir
       b = this.fetch();
       a = this.getDirect(b);
-      ira = this.fetch();
-      this.putDirect(ira, a);
+      ea = this.fetch();
+      this.putDirect(ea, a);
       break;
 
 
@@ -1537,38 +1537,38 @@ ${_.range(0, 8)
 
       ////////// MOVX
     case 0xF0:                // MOVX @DPTR,A
-      ira = this.getDPTR();
-      this.putSFR(P1, ira);
-      this.putSFR(P2, ira >>> 8);
+      ea = this.getDPTR();
+      this.putSFR(P1, ea);
+      this.putSFR(P2, ea >>> 8);
       a = this.getSFR(ACC);
-      this.putXData(ira, a);
+      this.putXData(ea, a);
       break;
 
     case 0xF2:                // MOVX @R0,A
     case 0xF3:                // MOVX @R1,A
       r = op & 1;
-      ira = this.getR(r);
-      this.putSFR(P1, ira);
-      ira |= this.getSFR(P2) << 8;
+      ea = this.getR(r);
+      this.putSFR(P1, ea);
+      ea |= this.getSFR(P2) << 8;
       a = this.getSFR(ACC);
-      this.putXData(ira, a);
+      this.putXData(ea, a);
       break;
 
     case 0xE0:                // MOVX A,@DPTR
-      ira = this.getDPTR();
-      this.putSFR(P1, ira);
-      this.putSFR(P2, ira >>> 8);
-      a = this.getXData(ira);
+      ea = this.getDPTR();
+      this.putSFR(P1, ea);
+      this.putSFR(P2, ea >>> 8);
+      a = this.getXData(ea);
       this.putSFR(ACC, a);
       break;
 
     case 0xE2:                // MOVX A,@R0
     case 0xE3:                // MOVX A,@R1
       r = op & 1;
-      ira = this.getR(r);
-      this.putSFR(P1, ira);
-      ira |= this.getSFR(P2) << 8;
-      a = this.getXData(ira);
+      ea = this.getR(r);
+      this.putSFR(P1, ea);
+      ea |= this.getSFR(P2) << 8;
+      a = this.getXData(ea);
       this.putSFR(ACC, a);
       break;
 
@@ -1585,18 +1585,18 @@ ${_.range(0, 8)
 
       ////////// ORL
     case 0x42:                // ORL dir,A
-      ira = this.fetch();
-      a = this.getDirect(ira);
+      ea = this.fetch();
+      a = this.getDirect(ea);
       a |= this.getSFR(ACC);
-      this.putDirect(ira, a);
+      this.putDirect(ea, a);
       break;
 
     case 0x43:                // ORL dir,#imm
-      ira = this.fetch();
+      ea = this.fetch();
       imm = this.fetch();
-      a = this.getDirect(ira);
+      a = this.getDirect(ea);
       a |= imm;
-      this.putDirect(ira, a);
+      this.putDirect(ea, a);
       break;
 
     case 0x44:                // ORL A,#imm
@@ -1606,8 +1606,8 @@ ${_.range(0, 8)
       break;
 
     case 0x45:                // ORL A,dir
-      ira = this.fetch();
-      a = this.getSFR(ACC) | this.getDirect(ira);
+      ea = this.fetch();
+      a = this.getSFR(ACC) | this.getDirect(ea);
       this.putSFR(ACC, a);
       break;
 
@@ -1647,16 +1647,16 @@ ${_.range(0, 8)
 
       ////////// POP
     case 0xD0:                // POP dir
-      ira = this.fetch();
+      ea = this.fetch();
       a = this.pop();
-      this.putDirect(ira, a);
+      this.putDirect(ea, a);
       break;
 
 
       ////////// PUSH
     case 0xC0:                // PUSH dir
-      ira = this.fetch();
-      a = this.getDirect(ira);
+      ea = this.fetch();
+      a = this.getDirect(ea);
       this.push1(a);
       break;
 
@@ -1745,8 +1745,8 @@ ${_.range(0, 8)
       break;
 
     case 0x95:                // SUBB A,dir
-      ira = this.fetch();
-      this.doSUBB(op, this.getDirect(ira));
+      ea = this.fetch();
+      this.doSUBB(op, this.getDirect(ea));
       break;
 
     case 0x96:                // SUBB A,@R0
@@ -1787,9 +1787,9 @@ ${_.range(0, 8)
 
       ////////// XCH
     case 0xC5:                // XCH A,dir
-      ira = this.fetch();
-      b = this.getDirect(ira);
-      this.putDirect(ira, this.getSFR(ACC));
+      ea = this.fetch();
+      b = this.getDirect(ea);
+      this.putDirect(ea, this.getSFR(ACC));
       this.putSFR(ACC, b);
       break;
 
@@ -1829,17 +1829,17 @@ ${_.range(0, 8)
 
       ////////// XRL
     case 0x62:                // XRL dir,A
-      ira = this.fetch();
-      a = this.getDirect(ira) ^ this.getSFR(ACC);
-      this.putDirect(ira, a);
+      ea = this.fetch();
+      a = this.getDirect(ea) ^ this.getSFR(ACC);
+      this.putDirect(ea, a);
       break;
 
     case 0x63:                // XRL dir,#imm
-      ira = this.fetch();
+      ea = this.fetch();
       imm = this.fetch();
-      a = this.getDirect(ira);
+      a = this.getDirect(ea);
       a ^= imm;
-      this.putDirect(ira, a);
+      this.putDirect(ea, a);
       break;
 
     case 0x64:                // XRL A,#imm
@@ -1849,8 +1849,8 @@ ${_.range(0, 8)
       break;
 
     case 0x65:                // XRL A,dir
-      ira = this.fetch();
-      a = this.getSFR(ACC) ^ this.getDirect(ira);
+      ea = this.fetch();
+      a = this.getSFR(ACC) ^ this.getDirect(ea);
       this.putSFR(ACC, a);
       break;
 
