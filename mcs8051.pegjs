@@ -2,7 +2,7 @@
 }
 
 Start =
-        __ p:Instruction+ __            { return p; }
+        p:Instruction+                  { return p; }
 
 Instruction =
         mnemonic:SYMBOL ':' transfers:Transfer+
@@ -15,11 +15,12 @@ Instruction =
 ;
 
 Transfer =
-         target:Target '<--' e: expression
+         target:Target '<--' e:Expression
                                         { return {
                                             type: 'Transfer',
                                             target,
                                             e,
+                                          };
                                         }
 ;
 
@@ -32,13 +33,13 @@ Indirection =
                                             e,
                                           };
                                         }
-|       e:Variable                      { return e; }
+/       e:Variable                      { return e; }
 ;
 
 Variable =
-        var:SYMBOL field:BitField?      { return {
+        id:SYMBOL field:BitField?       { return {
                                             type: 'Variable',
-                                            var,
+                                            id,
                                             field,
                                           };
                                         }
@@ -51,6 +52,11 @@ BitField =
                                             l,
                                           };
                                         }
+;
+
+
+Expression =
+        INTEGER
 ;
 
 
