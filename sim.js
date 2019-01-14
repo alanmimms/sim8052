@@ -658,7 +658,7 @@ const cpu = {
 
     // If we are spinning waiting for SCON.RI to go high we can
     // introduce a bit of delay.
-    if (bn === SCON && !v) cpu.mayDelay = true;
+    if (bn === sconBits.riBit && !v) cpu.mayDelay = true;
 
     return v;
   },
