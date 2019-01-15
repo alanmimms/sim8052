@@ -3,33 +3,39 @@
 // * If PC is not assigned in insn, PC = PC + number of bytes in insn by default
 }
 
-Start =
-        p:Instruction+                  { return p; }
+Start = p:Instruction 
+        p2:( ParagraphDelimiter p2:Instruction {return p2} )+
+                                        { return p.concat(p2); }
 
 Instruction =
-        mnemonic:SYMBOL b1:OpSpec ( b2:OpSpec b3:OpSpec? )? COLON transfers:Transfer*
-                                        { return { 
+        mnemonic:SYMBOL EQ b1:OpSpec
+          bN:( b2:OpSpec b3:OpSpec? { return {b2, b3}; } )? COLON
+          transfers:Transfer*
+          ParagraphDelimiter            { return { 
                                             type: 'Instruction',
                                             mnemonic,
                                             b1,
-                                            b2: b2 || null,
-                                            b3: b3 || null,
+                                            b2: bN.b2 || null,
+                                            b3: bN.b3 || null,
                                             transfers,
                                           }; }
 
 Transfer =
-         target:Target (ARROW e:Expression)?
+         target:Target e:(ARROW e:Expression { return e; } )?
                                         { return {
                                             type: 'Transfer',
                                             target,
                                             e: e || null,
                                           }; }
-/       IF e:Expression THEN ifPart:Transfer+ ( ELSE et:Transfer+ )? ENDIF
+/       IF e:Expression THEN
+          thenPart:Transfer+
+          elsePart:( ELSE et:Transfer+ {return et})?
+          ENDIF
                                         { return {
                                             type: 'If',
                                             e,
-                                            ifPart,
-                                            elsePart: et || null,
+                                            thenPart,
+                                            elsePart,
                                           };
                                         }
 
@@ -62,7 +68,8 @@ Term =
 /       Variable
 
 Code =
-        LBRACE code:( !RBRACE .)* RBRACE { return {type: 'Code', code}; }
+        LBRACE code:$( !RBRACE .)* RBRACE
+                                        { return {type: 'Code', code}; }
 
 OpSpec =
         sym:SYMBOL                      { return {type: 'Symbol', sym}; }
@@ -77,13 +84,20 @@ INTEGER =
 /       WS '0' [bB] digits:[01]+        { return parseInt(digits, 2); }
 /       WS digits:[a-fA-F0-9]+ [hH]     { return parseInt(digits, 16); }
 
-SYMBOL = s:( [a-zA-Z_] [a-zA-Z_0-9]* )  { return s; }
+SYMBOL = WS s:( [a-zA-Z_] [a-zA-Z_0-9]* )  { return s; }
 
-WS = ( [ \n\r\t\x0B\x0C]                // Normal whitespace character set
-  /   '/*' (!'*/' .)* '*/'              // /* */ comments
+LWS = ( [\n\r\0B\x0C]                   // Line ending whitespace
   /   '//' (!'\n' .)*                   // // to end of line comments
-     )*
+     )
 
+INLINE_WS = [ \t]                       // Whitespace within a line
+  /   '/*' (!'*/' .)* '*/'              // /* */ comments
+
+// Arbitrary whitespace
+WS = ( INLINE_WS / LWS )*
+
+
+ParagraphDelimiter = INLINE_WS* LWS INLINE_WS* LWS
 
 COLON =  WS $':'
 LP =     WS $'('
