@@ -1,7 +1,9 @@
 {
   // NOTES:
   // * If PC is not assigned in insn, PC = PC + number of bytes in insn by default
+  const fs = require('fs');
   const util = require('util');
+  const DEBLOG = util.debuglog('parse');
 
   function locToString(loc) {
     const endLine = loc.start.line !== loc.end.line ? `${loc.end.line}.` : '';
@@ -9,7 +11,7 @@
   }
 
   function mk(type, props) {
-//    console.log(`${locToString(location())}: ${type}`, util.inspect(props, {depth: 99}));
+    DEBLOG(`${locToString(location())}: ${type}`, util.inspect(props, {depth: 99}));
     return Object.assign({type}, props);
   }
 
@@ -23,9 +25,23 @@
 
 Start = p:Instruction 
         pRest:( EOL p2:Instruction {return p2} )+
-                                        { p = [p, ...pRest];
-                                          console.log(`Result tree:`, 
-                                                       util.inspect(p, {depth: 99}));
+                                        {
+                                          p = [p, ...pRest];
+
+                                          const treeLog = util.inspect(p, {
+                                            depth: 999,
+                                            colors: false,
+                                            maxArrayLength: 9999,
+                                            breakLength: 100,
+                                            compact: true,
+                                          });
+
+                                          DEBLOG(`Result tree:`, treeLog);
+
+                                          fs.writeFileSync('ast.log', treeLog, {
+                                            mode: 0o664,
+                                          });
+
                                           return [p, ...pRest]; }
 
 Instruction = mnemonic:SYMBOL EQ b1:OpSpec
@@ -53,8 +69,8 @@ Transfer = target:Target e:(ARROW e:Expression { return e; } )? EOL
                                           });
                                         }
 
-Target = e:Indirection                  { console.log('Target Indir', e); return e }
-/       e:Code                          { console.log('Target Code', e); return e }
+Target = e:Indirection                  { return e }
+/       e:Code                          { return e }
 
 Indirection = LP e:Indirection RP       { return mk('Indirection', {e}); }
 /       Var
