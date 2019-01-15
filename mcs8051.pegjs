@@ -23,7 +23,7 @@
 
 Start = p:Instruction 
         pRest:( EOL p2:Instruction {return p2} )+
-                                        { return p.concat(pRest); }
+                                        { return [p, ...pRest]; }
 
 Instruction = mnemonic:SYMBOL EQ b1:OpSpec
         bN:( b2:OpSpec b3:OpSpec? { return {b2, b3}; } )? COLON
@@ -40,11 +40,10 @@ Transfer = target:Target e:(ARROW e:Expression { return e; } )? EOL
                                             target,
                                             e: e || null,
                                           }); }
-/       IF e:Expression EOL? THEN EOL?
+/       IF e:Expression EOL? THEN EOL
           thenPart:Transfer+
-          elsePart:( ELSE et:Transfer+ {return et})? EOL?
-          ENDIF
-                                        { return mk('If', {
+          elsePart:( ELSE EOL et:Transfer+ {return et})?
+          ENDIF EOL                     { return mk('If', {
                                             e,
                                             thenPart,
                                             elsePart,
@@ -68,7 +67,7 @@ Expression =
     type:(
         ANDAND  / OROR  / 
         AND     / OR    / XOR   /
-        EQ      / NE    / LT    /       GT /
+        EQ      / NE    / LT    / GT    /
         PLUS    / MINUS
     )
     r:Expression                        { return mk(type, {l, r}); }

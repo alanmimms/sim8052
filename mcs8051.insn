@@ -60,9 +60,7 @@ ANL = 0b10110000 BIT:
 
 CJNE = 0b10110101 DIR RELA:
     PC <- PC + 3
-
     CY <- A < DIR
-
     if A != DIR
     then
       pc <- pc + RELA
@@ -70,9 +68,7 @@ CJNE = 0b10110101 DIR RELA:
 
 CJNE = 0b10110100 IMM RELA:
     PC <- PC + 3
-
     CY <- A < IMM
-
     if A != IMM
     then
       pc <- pc + RELA
@@ -80,9 +76,7 @@ CJNE = 0b10110100 IMM RELA:
 
 CJNE = 0b10111RRR IMM RELA:
     PC <- PC + 3
-
     CY <- R < IMM
-
     if R != IMM
     then
       pc <- pc + RELA
@@ -90,9 +84,7 @@ CJNE = 0b10111RRR IMM RELA:
 
 CJNE = 0b1011011I IMM RELA:
     PC <- PC + 3
-
     CY <- I < IMM
-
     if I != IMM
     then
       pc <- pc + RELA
@@ -117,8 +109,12 @@ CPL = 0b10110011:
     CY <- ~CY
 
 DA = 0b11010100:
-    if A[3-0] > 9 || AC then A[3-0] <- A[3-0] + 6 endif
-    if A[7-4] > 9 || CY then A[7-4] <- A[7-4] + 6 endif
+    if A[3-0] > 9 || AC then
+      A[3-0] <- A[3-0] + 6
+    endif
+    if A[7-4] > 9 || CY then
+      A[7-4] <- A[7-4] + 6
+    endif
 
 DEC = 0b00010100:
     A <- A - 1
@@ -138,7 +134,6 @@ DIV = 0b10000100:
 DJNZ = 0b11011RRR RELA:
     PC <- PC + 2
     R <- R - 1
-
     if R > 0 || R < 0
     then
       PC <- PC + RELA
@@ -147,7 +142,6 @@ DJNZ = 0b11011RRR RELA:
 DJNZ = 0b11010101 DIR RELA:
     PC <- PC + 2
     DIR <- DIR - 1
-
     if DIR > 0 || DIR < 0
     then
       PC <- PC + RELA
