@@ -2847,7 +2847,9 @@ if (require.main === module) {
   try {
     parser.parse(insnSrc);
   } catch(e) {
-    console.error('Parsing error:', e);
+    console.error(`\
+Parsing error: ${e.message}
+  found='${e.found}' at ${util.inspect(e.location.start)}-${util.inspect(e.location.end)}`);
     process.exit(-1);
   }
 

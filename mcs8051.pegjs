@@ -50,8 +50,8 @@ Transfer = target:Target e:(ARROW e:Expression { return e; } )? EOL
                                           });
                                         }
 
-Target = Indirection
-/       Code
+Target = e:Indirection                  { console.log('Target Indir', e); return e }
+/       e:Code                          { console.log('Target Code', e); return e }
 
 Indirection = LP e:Indirection RP       { return mk('Indirection', {e}); }
 /       Var
