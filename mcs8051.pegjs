@@ -9,7 +9,7 @@
   }
 
   function mk(type, props) {
-    console.log(`${locToString(location())}: ${type}`, util.inspect(props, {depth: 99}));
+//    console.log(`${locToString(location())}: ${type}`, util.inspect(props, {depth: 99}));
     return Object.assign({type}, props);
   }
 
@@ -23,7 +23,10 @@
 
 Start = p:Instruction 
         pRest:( EOL p2:Instruction {return p2} )+
-                                        { return [p, ...pRest]; }
+                                        { p = [p, ...pRest];
+                                          console.log(`Result tree:`, 
+                                                       util.inspect(p, {depth: 99}));
+                                          return [p, ...pRest]; }
 
 Instruction = mnemonic:SYMBOL EQ b1:OpSpec
         bN:( b2:OpSpec b3:OpSpec? { return {b2, b3}; } )? COLON
