@@ -7,6 +7,7 @@ const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
+const PEG = require('pegjs');
 
 
 const debugBASIC2 = false;
@@ -2794,9 +2795,62 @@ node ${argv[0]} hex-file-name lst-file-name`);
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+// Build the parser from its PEGJS source file and return the
+// resulting parser object.
+const GRAMMAR_PATH = './mcs8051.pegjs'
+function buildParser() {
+  let grammar, parser;
+
+  try {
+    grammar = fs.readFileSync(require.resolve(GRAMMAR_PATH), 'utf8')
+  } catch(e) {
+    console.error(`FATAL error reading required '${GRAMMAR_PATH}' grammar:\n`, e);
+    process.exit(-1);
+  }
+
+  const buildParserOptions = {
+    output: 'parser',
+    allowedStartRules: ['Start'],
+    trace: true,
+  };
+
+  try {
+    parser = PEG.generate(grammar, buildParserOptions);
+  } catch(e) {
+    console.error(`INTERNAL ERROR Grammar '${GRAMMAR_PATH}' parse failed:\n`, e);
+    process.exit(-1);
+  }
+
+  return parser;
+}
+
+
+const INSN_PATH = './mcs8051.insn';
+
+
 // Only start the thing if we are not loaded via require.
 if (require.main === module) {
   setupMain();
+
+  const parser = buildParser();
+
+  let insnSrc;
+
+  try {
+    insnSrc = fs.readFileSync(INSN_PATH, {encoding: 'utf-8'});
+  } catch(e) {
+    console.error(`Unable to open ${INSN_PATH}: ${e.code}`);
+    process.exit(-1);
+  }
+
+  try {
+    parser.parse(insnSrc);
+  } catch(e) {
+    console.error('Parsing error:', e);
+    process.exit(-1);
+  }
+
   console.log('[Control-\\ will interrupt execution and return to prompt]');
 
   if (process.stdin.setRawMode)
@@ -2818,6 +2872,6 @@ if (require.main === module) {
   module.exports.tmodBits = tmodBits;
   module.exports.tconBits = tconBits;
   module.exports.t2conBits = t2conBits;
+
+  module.exports.buildParser = buildParser;
 }
-
-
