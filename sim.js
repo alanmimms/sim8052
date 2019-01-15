@@ -2847,9 +2847,14 @@ if (require.main === module) {
   try {
     parser.parse(insnSrc);
   } catch(e) {
+    const found = e.found ? `found "${e.found}"` : '';
+    const at = e.location ?
+          ` at ${util.inspect(e.location.start)}-${util.inspect(e.location.end)}` :
+          '';
     console.error(`\
-Parsing error: ${e.message}
-  found='${e.found}' at ${util.inspect(e.location.start)}-${util.inspect(e.location.end)}`);
+Parsing or runtime error:
+${util.inspect(e, {depth: 99})}
+  ${found}${at}`);
     process.exit(-1);
   }
 

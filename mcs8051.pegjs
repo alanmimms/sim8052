@@ -1,6 +1,7 @@
 {
-// NOTES:
-// * If PC is not assigned in insn, PC = PC + number of bytes in insn by default
+  // NOTES:
+  // * If PC is not assigned in insn, PC = PC + number of bytes in insn by default
+  const util = require('util');
 
   function locToString(loc) {
     const endLine = loc.start.line !== loc.end.line ? `${loc.end.line}.` : '';
@@ -8,7 +9,7 @@
   }
 
   function mk(type, props) {
-    console.log(`${locToString(location())}: ${type}`, props);
+    console.log(`${locToString(location())}: ${type}`, util.inspect(props, {depth: 99}));
     return Object.assign({type}, props);
   }
 
@@ -21,16 +22,16 @@
 ////////////////////////////////////////////////////////////////
 
 Start = p:Instruction 
-        p2:( EOL p2:Instruction {return p2} )+
-                                        { return p.concat(p2); }
+        pRest:( EOL p2:Instruction {return p2} )+
+                                        { return p.concat(pRest); }
 
 Instruction = mnemonic:SYMBOL EQ b1:OpSpec
-          bN:( b2:OpSpec b3:OpSpec? { return {b2, b3}; } )? COLON
-          transfers:Transfer*           { return mk('Instruction', { 
+        bN:( b2:OpSpec b3:OpSpec? { return {b2, b3}; } )? COLON
+        transfers:Transfer*             { return mk('Instruction', { 
                                             mnemonic,
                                             b1,
-                                            b2: bN.b2 || null,
-                                            b3: bN.b3 || null,
+                                            b2: bN ? bN.b2 : null,
+                                            b3: bN ? bN.b3 : null,
                                             transfers,
                                           }); }
 
@@ -57,18 +58,21 @@ Indirection = LP e:Indirection RP       { return mk('Indirection', {e}); }
 /       Var
 
 Var = id:SYMBOL field:BitField?         { return mk('Var', {id, field}); }
-/       NOT e:Var                       { return mk(type, {e}); }
+/       NOT e:Var                       { return mk('Not', {e}); }
 
 BitField = LBIT h:INTEGER MINUS l:INTEGER RBIT
                                         { return mk('BitField', {h, l}); }
 
-Expression = l:Term type:(
-        ANDAND / OROR / 
-        AND / OR / XOR /
-        EQ / NE / LT / GT /
-        PLUS / MINUS
+Expression =
+    l:Term
+    type:(
+        ANDAND  / OROR  / 
+        AND     / OR    / XOR   /
+        EQ      / NE    / LT    /       GT /
+        PLUS    / MINUS
     )
-    r: Expression                       { return mk(type, {l, r}); }
+    r:Expression                        { return mk(type, {l, r}); }
+/   Term
 
 Term =  INTEGER
 /       Code
