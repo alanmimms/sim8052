@@ -2844,8 +2844,11 @@ if (require.main === module) {
     process.exit(-1);
   }
 
+  const tracer = require('./tracer');
+  tracer.setSrc(insnSrc);
+
   try {
-    parser.parse(insnSrc);
+    parser.parse(insnSrc, {tracer});
   } catch(e) {
     const found = e.found ? `found "${e.found}"` : '';
     const at = e.location ?
