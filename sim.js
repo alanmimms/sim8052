@@ -2812,7 +2812,7 @@ function buildParser() {
   const buildParserOptions = {
     output: 'parser',
     allowedStartRules: ['Start'],
-    trace: true,
+    trace: false,
   };
 
   try {

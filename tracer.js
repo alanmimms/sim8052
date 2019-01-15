@@ -20,6 +20,7 @@ module.exports = {
   
   trace(event) {
     const log = logByStacking;
+//    const log = logByIndenting;
 
 
     function logByStacking(event, type) {

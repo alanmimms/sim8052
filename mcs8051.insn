@@ -256,7 +256,7 @@ MOV = 0b11110101 DIR:
 MOV = 0b10001RRR DIR:
     DIR <- R
 
-MOV = 0b10000101 DIRSRC DIRDST
+MOV = 0b10000101 DIRSRC DIRDST:
     DIRDST <- DIRSRC
 
 MOV = 0b1000011I DIR:
@@ -280,8 +280,8 @@ MOV = 0b10100010 BIT:
 MOV = 0b10010010 BIT:
     BIT <- CY
 
-MOV = 0b10010000 HI LO
-    DPTR = HILO
+MOV = 0b10010000 HI LO:
+    DPTR <- HILO
 
 MOVC = 0b10010011:
     A <- CODE_INDEXED_DPTR
@@ -364,7 +364,7 @@ RRC = 0b00010011:
     A <- { doRRC(A, CY) }
 
 SETB = 0b11010011:
-    CY <= 1
+    CY <- 1
 
 SETB = 0b11010010 BIT:
     BIT <- 1
@@ -387,8 +387,8 @@ SUBB = 0b10010100 IMM:
 
 SWAP = 0b11000100:
     TMP <- A
-    A[7-4] = TMP[3-0]
-    A[3-0] = TMP[7-4]
+    A[7-4] <- TMP[3-0]
+    A[3-0] <- TMP[7-4]
 
 XCH = 0b11001RRR:
     TMP <- A
@@ -407,8 +407,8 @@ XCH = 0b1100011I:
 
 XCHD = 0b1101011i:
     TMP <- A
-    A[3-0] = INDIRECT[3-0]
-    INDIRECT[3-0] = TMP[3-0]
+    A[3-0] <- INDIRECT[3-0]
+    INDIRECT[3-0] <- TMP[3-0]
 
 XRL = 0b01101RRR:
     A <- A ^ R

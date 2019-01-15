@@ -64,7 +64,7 @@ BitField = LBIT h:INTEGER MINUS l:INTEGER RBIT
 
 Expression =
     l:Term
-    type:(
+    type:$(
         ANDAND  / OROR  / 
         AND     / OR    / XOR   /
         EQ      / NE    / LT    / GT    /
@@ -76,6 +76,7 @@ Expression =
 Term =  INTEGER
 /       Code
 /       Var
+/       Indirection
 
 Code = LBRACE code:$( !RBRACE .)* RBRACE
                                         { return mk('Code', {code}); }
@@ -90,19 +91,18 @@ INTEGER = WS '0' [xX] d:$[a-fA-F0-9]+   { return parseInt(d, 16); }
 /       WS d:$[a-fA-F0-9]+ [hH]         { return parseInt(d, 16); }
 /       WS d:$[0-9]+                    { return parseInt(d); }
 
-SYMBOL = WS s:$( [a-zA-Z_] [a-zA-Z_0-9]* ) !{ isKeyword(s) }
+SYMBOL = WS
+         s:$( [a-zA-Z_] [a-zA-Z_0-9]* ) !{ return isKeyword(s) }
                                         { return s; }
 
 EOL = ( [\n\r\0B\x0C]                   // Line ending whitespace
-  /   '//' (!'\n' .)*                   // // to end of line comments
-     )
+      /   '//' (!'\n' .)* '\n'          // // to end of line comments
+      )
 
 INLINE_WS = [ \t]                       // Whitespace within a line
-  /   '/*' (!'*/' .)* '*/'              // /* */ comments
+      /   '/*' (!'*/' .)* '*/'          // /* */ comments
 
-// Arbitrary whitespace
-WS = ( INLINE_WS / EOL )*
-
+WS = ( INLINE_WS / EOL )*               // Arbitrary whitespace
 
 COLON =  WS $':'
 LP =     WS $'('
