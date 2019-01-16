@@ -174,33 +174,25 @@ ${h.handlerSource}
 
         if (xfr.target.type === 'Var') {
           return `\
-// ${xfr.target.id} = ${genGet(xfr.e)}`;
+// ${xfr.target.id} = ${genExpr(xfr.e)}`;
         } else {
           return `\
 // COMPLEX target type ${xfr.target.type}
-// get=${genGet(xfr.e)}`;
+// get=${genExpr(xfr.e)}`;
         }
       }
     }
 
 
     function genExpr(e) {
-      return '/* expr */';
-    }
-
-
-    function genGet(e) {
       if (typeof e === 'number') return e.toString(10);
 
-      if (!e) return '/* genGet(null) */';
+      if (!e) return '/* genExpr(null) */';
       if (!e.type) return '/* empty type */';
 
       switch (e.type) {
       case 'Code':
-        return `\
-{\
-    ${e.code};
-}`;
+        return `{ ${e.code}; }`;
 
       case 'Indirection':
         return `INDIRECT ${e.e.id}`;
@@ -224,13 +216,13 @@ ${h.handlerSource}
         return genBinary(e, '^');
 
       default:
-        return `/* UNKNOWN genGet(${e.type}) */`;
+        return `/* UNKNOWN genExpr(${e.type}) */`;
       }
     }
 
 
     function genBinary(e, operator) {
-      return `${genGet(e.l)} ${operator} ${genGet(e.r)}`;
+      return `${genExpr(e.l)} ${operator} ${genExpr(e.r)}`;
     }
   },
 };
