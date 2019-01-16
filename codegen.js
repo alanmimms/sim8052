@@ -93,14 +93,17 @@ ${util.inspect(e, {depth: 99})}
 
       // Build regular expression from the Bits entry (e.g., 11001001
       // or 1100110I or 11001RRR) by replacing each letter with "." to
-      // act as a dont-care bit.
+      // act as a dont-care bit. We then match this number against a
+      // binary representation of the opcode including all
+      // leading-zeroes in the `filter()` below. The set of matching
+      // elements is the set of opcodes we need this entry to apply to
+      // in handlers[].
       const toMatch = new RegExp('^' +
                                  insn.b1.bits
                                  .replace(/[A-Z]/g, '.')
                                  + '$');
-
       _.range(0, 0x100)
-        .filter(op => !!toBin8(op).match(toMatch))
+        .filter(op => !!(op | 0x1000).toString(2).slice(-8).match(toMatch))
         .forEach(op => {
           if (handlers[op]) 
             console.error(`\
@@ -111,18 +114,123 @@ already defined for ${op.toString(16)}H as ${handlers[op].mnemonic}`);
     });
 
     // Make sure we define all 256 handlers
-    if (0) {
     handlers
-      .map((h, op) => !!h ? op : -1)
-      .filter(op => op >= 0)
-      .forEach(op => console.error(`Handler not defined for ${op.toString(16)}H`));
-    }
+      .forEach((h, op) =>
+               h || console.error(`Handler not defined for ${op.toString(16)}H`));
+
+    // Generate the code for the simHandler(cpu, insnPC, op) function
+    // for each opcode.
+    handlers
+      .map((h, op) => {
+        h.pcIsAssigned = h.transfers.find(xfr => isVar(xfr.target, 'PC'));
+
+        // Insert auto-increment of PC if it is not explicitly
+        // assigned.
+        if (!h.pcIsAssigned) {
+          h.transfers.unshift({
+            type: 'Transfer',
+            target: {type: 'Var', id: 'PC'},
+            e: {type: 'PLUS', l: {type: 'Var', id: 'PC'}, r: h.n},
+          });
+        }
+
+        h.handlerSource = h.transfers
+          .map(xfr => genTransfer(xfr))
+          .join('\n');
+      });
+
+    const handlersLog = handlers.map((h, op) => `\
+${op.toString(16)}H: ${h.mnemonic} ${h.operands}
+${h.handlerSource}
+`).join('////////////////////////////////////////////////////////////////\n');
+
+    fs.writeFileSync('handlers.log', handlersLog, {mode: 0o664});
 
     return handlers;
 
 
-    function toBin8(b) {
-      return (b | 0x1000).toString(2).slice(-8)
+    ////////////////////////////////////////////////////////////////
+    // Return true if specified item is the named variable.
+    function isVar(item, id) {
+      if (!item) return '/* isVar(null) */';
+      return (item.type === 'Var' && item.id === id);
+    }
+
+
+    function genTransfer(xfr) {
+
+      if (xfr.type === 'If') {
+        const thenTransfers = xfr.thenPart.map(x => genTransfer(x)).join('\n');
+        const elseTransfers = (xfr.elsePart || []).map(x => genTransfer(x)).join('\n');
+        return `\
+// if ${genExpr(xfr.e)} then
+//   ${thenTransfers}
+// ${elseTransfers ? `\
+// else
+//   ${elseTransfers}\
+` : ''}\        
+// endif`;
+      } else {
+
+        if (xfr.target.type === 'Var') {
+          return `\
+// ${xfr.target.id} = ${genGet(xfr.e)}`;
+        } else {
+          return `\
+// COMPLEX target type ${xfr.target.type}
+// get=${genGet(xfr.e)}`;
+        }
+      }
+    }
+
+
+    function genExpr(e) {
+      return '/* expr */';
+    }
+
+
+    function genGet(e) {
+      if (typeof e === 'number') return e.toString(10);
+
+      if (!e) return '/* genGet(null) */';
+      if (!e.type) return '/* empty type */';
+
+      switch (e.type) {
+      case 'Code':
+        return `\
+{\
+    ${e.code};
+}`;
+
+      case 'Indirection':
+        return `INDIRECT ${e.e.id}`;
+
+      case 'Var':
+        return e.id;
+
+      case 'PLUS':
+        return genBinary(e, '+');
+
+      case 'MINUS':
+        return genBinary(e, '-');
+
+      case 'AND':
+        return genBinary(e, '&');
+
+      case 'OR':
+        return genBinary(e, '|');
+
+      case 'XOR':
+        return genBinary(e, '^');
+
+      default:
+        return `/* UNKNOWN genGet(${e.type}) */`;
+      }
+    }
+
+
+    function genBinary(e, operator) {
+      return `${genGet(e.l)} ${operator} ${genGet(e.r)}`;
     }
   },
 };

@@ -5,3 +5,4 @@ yarn-error.log
 debugout.txt
 mcs8051.js
 ast.log
+handlers.log
