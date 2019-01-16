@@ -84,7 +84,7 @@ BitField = LBIT h:INTEGER MINUS l:INTEGER RBIT
 
 Expression =
     l:Term
-    type:$(
+    type:(
         ANDAND  / OROR  / 
         AND     / OR    / XOR   /
         EQ      / NE    / LT    / GT    /
@@ -126,26 +126,26 @@ INLINE_WS = [ \t]                       // Whitespace within a line
 
 WS = ( INLINE_WS / EOL )*               // Arbitrary whitespace
 
-COLON =  WS $':'
-LP =     WS $'('
-RP =     WS $')'
-ARROW =  WS $'<-'
-LBIT =   WS $'['
-RBIT =   WS $']'
-LBRACE = WS $'{'
-RBRACE = WS $'}'
-ANDAND = WS $'&&'
-OROR =   WS $'||'
-NOT =    WS $'~'
-AND =    WS $'&'
-OR =     WS $'|' ![|]
-XOR =    WS $'^'
-EQ =     WS $'='
-NE =     WS $'!='
-LT =     WS $'<' ![-]
-GT =     WS $'>'
-PLUS =   WS $'+'
-MINUS =  WS $'-'
+COLON =  WS ':'         {return 'COLON'}
+LP =     WS '('         {return 'LP'}
+RP =     WS ')'         {return 'RP'}
+ARROW =  WS '<-'        {return 'ARROW'}
+LBIT =   WS '['         {return 'LBIT'}
+RBIT =   WS ']'         {return 'RBIT'}
+LBRACE = WS '{'         {return 'LBRACE'}
+RBRACE = WS '}'         {return 'RBRACE'}
+ANDAND = WS '&&'        {return 'ANDAND'}
+OROR =   WS '||'        {return 'OROR'}
+NOT =    WS '~'         {return 'NOT'}
+AND =    WS '&'         {return 'AND'}
+OR =     WS '|' ![|]    {return 'OR'}
+XOR =    WS '^'         {return 'XOR'}
+EQ =     WS '='         {return 'EQ'}
+NE =     WS '!='        {return 'NE'}
+LT =     WS '<' ![-]    {return 'LT'}
+GT =     WS '>'         {return 'GT'}
+PLUS =   WS '+'         {return 'PLUS'}
+MINUS =  WS '-'         {return 'MINUS'}
 IF =     WS $'if'       ![a-z0-9_]i
 THEN =   WS $'then'     ![a-z0-9_]i
 ELSE =   WS $'else'     ![a-z0-9_]i

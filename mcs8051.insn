@@ -7,28 +7,28 @@ ACALL = 0bAAA10001 LO "1:addr11":
     PC[10-0] <- { pageAddress(A, LO) }
 
 ADD = 0b00101RRR "A,Ri":
-    A <- { doADD(R, 0) }
+    A_AC_CY_OV <- { doADD(R, 0) }
 
 ADD = 0b00100101 DIR "A,1:direct":
-    A <- { doADD(DIR, 0) }
+    A_AC_CY_OV <- { doADD(DIR, 0) }
 
 ADD = 0b0010011I "A,1:@Ri":
-    A <- { doADD(INDIRECT, 0) }
+    A_AC_CY_OV <- { doADD(INDIRECT, 0) }
 
 ADD = 0b00100100 IMM "A,1:immed":
-    A <- { doADD(IMM, 0) }
+    A_AC_CY_OV <- { doADD(IMM, 0) }
 
 ADDC = 0b00111RRR "A,Ri":
-    A <- { doADD(R, CY) }
+    A_AC_CY_OV <- { doADD(R, CY) }
 
 ADDC = 0b00110101 DIR "A,1:direct":
-    A <- { doADD(DIR, CY) }
+    A_AC_CY_OV <- { doADD(DIR, CY) }
 
 ADDC = 0b0011011I "A,@Ri":
-    A <- { doADD(INDIRECT, CY) }
+    A_AC_CY_OV <- { doADD(INDIRECT, CY) }
 
 ADDC = 0b00110100 IMM "A,1:immed":
-    A <- { doADD(IMM, CY) }
+    A_AC_CY_OV <- { doADD(IMM, CY) }
 
 AJMP = 0bAAA00001 LO "1:addr11":
     PC <- PC + 2
@@ -371,16 +371,16 @@ SJMP = 0b10000000 RELA "1:rela":
     PC <- PC + RELA
 
 SUBB = 0b10011RRR "A,Ri":
-    A <- { doSUBB(A, R, CY) }
+    A_AC_CY_OV <- { doSUBB(A, R, CY) }
 
 SUBB = 0b10010101 DIR "A,1:direct":
-    A <- { doSUBB(A, DIR, CY) }
+    A_AC_CY_OV <- { doSUBB(A, DIR, CY) }
 
 SUBB = 0b1001011I "A,@Ri":
-    A <- { doSUBB(A, INDIRECT, CY) }
+    A_AC_CY_OV <- { doSUBB(A, INDIRECT, CY) }
 
 SUBB = 0b10010100 IMM "A,1:immed":
-    A <- { doSUBB(A, IMM, CY) }
+    A_AC_CY_OV <- { doSUBB(A, IMM, CY) }
 
 SWAP = 0b11000100 "A":
     TMP <- A
