@@ -7,8 +7,8 @@ const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
-const PEG = require('pegjs');
 
+const CODEGEN = require('./codegen');
 
 const debugBASIC2 = false;
 const debugTB51 = true;
@@ -18,6 +18,11 @@ const insnsPerTick = 100;
 
 const CODESize = 65536;
 const XRAMSize = 65536;
+
+
+// Table of opcode information and handlers for disassembly and
+// simulation of the instruction whose opcode is the index.
+var opcodes;
 
 
 // These constants simplify accesses to SFRs.
@@ -79,272 +84,6 @@ const DPL = SFRs.DPL;
 const DPH = SFRs.DPH;
 const SCON = SFRs.SCON;
 const SBUF = SFRs.SBUF;
-
-
-// Define opcodes. The `operands` string is a sequence of zero or more
-// comma-separated elements of the form <digit> ":" <addr-mode> are
-// replaced with the disassembly of the specified addressing mode at
-// offset <digit> in the instruction. All elements not of this form
-// are copied verbatim, as is the comma. See `disassemble()` and its
-// `handlers` for details.
-const opTable = [
-  /* 00 */ {n: 1, name: "NOP",   operands: ""},
-  /* 01 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
-  /* 02 */ {n: 3, name: "LJMP",  operands: "1:addr16"},
-  /* 03 */ {n: 1, name: "RR",    operands: "A"},
-  /* 04 */ {n: 1, name: "INC",   operands: "A"},
-  /* 05 */ {n: 2, name: "INC",   operands: "1:direct"},
-  /* 06 */ {n: 1, name: "INC",   operands: "@R0"},
-  /* 07 */ {n: 1, name: "INC",   operands: "@R1"},
-  /* 08 */ {n: 1, name: "INC",   operands: "R0"},
-  /* 09 */ {n: 1, name: "INC",   operands: "R1"},
-  /* 0A */ {n: 1, name: "INC",   operands: "R2"},
-  /* 0B */ {n: 1, name: "INC",   operands: "R3"},
-  /* 0C */ {n: 1, name: "INC",   operands: "R4"},
-  /* 0D */ {n: 1, name: "INC",   operands: "R5"},
-  /* 0E */ {n: 1, name: "INC",   operands: "R6"},
-  /* 0F */ {n: 1, name: "INC",   operands: "R7"},
-  /* 10 */ {n: 3, name: "JBC",   operands: "1:bit,2:rela"},
-  /* 11 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 12 */ {n: 3, name: "LCALL", operands: "1:addr16"},
-  /* 13 */ {n: 1, name: "RRC",   operands: "A"},
-  /* 14 */ {n: 1, name: "DEC",   operands: "A"},
-  /* 15 */ {n: 2, name: "DEC",   operands: "1:direct"},
-  /* 16 */ {n: 1, name: "DEC",   operands: "@R0"},
-  /* 17 */ {n: 1, name: "DEC",   operands: "@R1"},
-  /* 18 */ {n: 1, name: "DEC",   operands: "R0"},
-  /* 19 */ {n: 1, name: "DEC",   operands: "R1"},
-  /* 1A */ {n: 1, name: "DEC",   operands: "R2"},
-  /* 1B */ {n: 1, name: "DEC",   operands: "R3"},
-  /* 1C */ {n: 1, name: "DEC",   operands: "R4"},
-  /* 1D */ {n: 1, name: "DEC",   operands: "R5"},
-  /* 1E */ {n: 1, name: "DEC",   operands: "R6"},
-  /* 1F */ {n: 1, name: "DEC",   operands: "R7"},
-  /* 20 */ {n: 3, name: "JB",    operands: "1:bit,2:rela"},
-  /* 21 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
-  /* 22 */ {n: 1, name: "RET",   operands: ""},
-  /* 23 */ {n: 1, name: "RL",    operands: "A"},
-  /* 24 */ {n: 2, name: "ADD",   operands: "A,1:immed"},
-  /* 25 */ {n: 2, name: "ADD",   operands: "A,1:direct"},
-  /* 26 */ {n: 1, name: "ADD",   operands: "A,@R0"},
-  /* 27 */ {n: 1, name: "ADD",   operands: "A,@R1"},
-  /* 28 */ {n: 1, name: "ADD",   operands: "A,R0"},
-  /* 29 */ {n: 1, name: "ADD",   operands: "A,R1"},
-  /* 2A */ {n: 1, name: "ADD",   operands: "A,R2"},
-  /* 2B */ {n: 1, name: "ADD",   operands: "A,R3"},
-  /* 2C */ {n: 1, name: "ADD",   operands: "A,R4"},
-  /* 2D */ {n: 1, name: "ADD",   operands: "A,R5"},
-  /* 2E */ {n: 1, name: "ADD",   operands: "A,R6"},
-  /* 2F */ {n: 1, name: "ADD",   operands: "A,R7"},
-  /* 30 */ {n: 3, name: "JNB",   operands: "1:bit,2:rela"},
-  /* 31 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 32 */ {n: 1, name: "RETI",  operands: ""},
-  /* 33 */ {n: 1, name: "RLC",   operands: "A"},
-  /* 34 */ {n: 2, name: "ADDC",  operands: "A,1:immed"},
-  /* 35 */ {n: 2, name: "ADDC",  operands: "A,1:direct"},
-  /* 36 */ {n: 1, name: "ADDC",  operands: "A,@R0"},
-  /* 37 */ {n: 1, name: "ADDC",  operands: "A,@R1"},
-  /* 38 */ {n: 1, name: "ADDC",  operands: "A,R0"},
-  /* 39 */ {n: 1, name: "ADDC",  operands: "A,R1"},
-  /* 3A */ {n: 1, name: "ADDC",  operands: "A,R2"},
-  /* 3B */ {n: 1, name: "ADDC",  operands: "A,R3"},
-  /* 3C */ {n: 1, name: "ADDC",  operands: "A,R4"},
-  /* 3D */ {n: 1, name: "ADDC",  operands: "A,R5"},
-  /* 3E */ {n: 1, name: "ADDC",  operands: "A,R6"},
-  /* 3F */ {n: 1, name: "ADDC",  operands: "A,R7"},
-  /* 40 */ {n: 2, name: "JC",    operands: "1:rela"},
-  /* 41 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
-  /* 42 */ {n: 2, name: "ORL",   operands: "1:direct,A"},
-  /* 43 */ {n: 3, name: "ORL",   operands: "1:direct,2:immed"},
-  /* 44 */ {n: 2, name: "ORL",   operands: "A,1:immed"},
-  /* 45 */ {n: 2, name: "ORL",   operands: "A,1:direct"},
-  /* 46 */ {n: 1, name: "ORL",   operands: "A,@R0"},
-  /* 47 */ {n: 1, name: "ORL",   operands: "A,@R1"},
-  /* 48 */ {n: 1, name: "ORL",   operands: "A,R0"},
-  /* 49 */ {n: 1, name: "ORL",   operands: "A,R1"},
-  /* 4A */ {n: 1, name: "ORL",   operands: "A,R2"},
-  /* 4B */ {n: 1, name: "ORL",   operands: "A,R3"},
-  /* 4C */ {n: 1, name: "ORL",   operands: "A,R4"},
-  /* 4D */ {n: 1, name: "ORL",   operands: "A,R5"},
-  /* 4E */ {n: 1, name: "ORL",   operands: "A,R6"},
-  /* 4F */ {n: 1, name: "ORL",   operands: "A,R7"},
-  /* 50 */ {n: 2, name: "JNC",   operands: "1:rela"},
-  /* 51 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 52 */ {n: 2, name: "ANL",   operands: "1:direct,A"},
-  /* 53 */ {n: 3, name: "ANL",   operands: "1:direct,2:immed"},
-  /* 54 */ {n: 2, name: "ANL",   operands: "A,1:immed"},
-  /* 55 */ {n: 2, name: "ANL",   operands: "A,1:direct"},
-  /* 56 */ {n: 1, name: "ANL",   operands: "A,@R0"},
-  /* 57 */ {n: 1, name: "ANL",   operands: "A,@R1"},
-  /* 58 */ {n: 1, name: "ANL",   operands: "A,R0"},
-  /* 59 */ {n: 1, name: "ANL",   operands: "A,R1"},
-  /* 5A */ {n: 1, name: "ANL",   operands: "A,R2"},
-  /* 5B */ {n: 1, name: "ANL",   operands: "A,R3"},
-  /* 5C */ {n: 1, name: "ANL",   operands: "A,R4"},
-  /* 5D */ {n: 1, name: "ANL",   operands: "A,R5"},
-  /* 5E */ {n: 1, name: "ANL",   operands: "A,R6"},
-  /* 5F */ {n: 1, name: "ANL",   operands: "A,R7"},
-  /* 60 */ {n: 2, name: "JZ",    operands: "1:rela"},
-  /* 61 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
-  /* 62 */ {n: 2, name: "XRL",   operands: "1:direct,A"},
-  /* 63 */ {n: 3, name: "XRL",   operands: "1:direct,2:immed"},
-  /* 64 */ {n: 2, name: "XRL",   operands: "A,1:immed"},
-  /* 65 */ {n: 2, name: "XRL",   operands: "A,1:direct"},
-  /* 66 */ {n: 1, name: "XRL",   operands: "A,@R0"},
-  /* 67 */ {n: 1, name: "XRL",   operands: "A,@R1"},
-  /* 68 */ {n: 1, name: "XRL",   operands: "A,R0"},
-  /* 69 */ {n: 1, name: "XRL",   operands: "A,R1"},
-  /* 6A */ {n: 1, name: "XRL",   operands: "A,R2"},
-  /* 6B */ {n: 1, name: "XRL",   operands: "A,R3"},
-  /* 6C */ {n: 1, name: "XRL",   operands: "A,R4"},
-  /* 6D */ {n: 1, name: "XRL",   operands: "A,R5"},
-  /* 6E */ {n: 1, name: "XRL",   operands: "A,R6"},
-  /* 6F */ {n: 1, name: "XRL",   operands: "A,R7"},
-  /* 70 */ {n: 2, name: "JNZ",   operands: "1:rela"},
-  /* 71 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 72 */ {n: 2, name: "ORL",   operands: "C,1:bit"},
-  /* 73 */ {n: 1, name: "JMP",   operands: "@A+DPTR"},
-  /* 74 */ {n: 2, name: "MOV",   operands: "A,1:immed"},
-  /* 75 */ {n: 3, name: "MOV",   operands: "1:direct,2:immed"},
-  /* 76 */ {n: 2, name: "MOV",   operands: "@R0,1:immed"},
-  /* 77 */ {n: 2, name: "MOV",   operands: "@R1,1:immed"},
-  /* 78 */ {n: 2, name: "MOV",   operands: "R0,1:immed"},
-  /* 79 */ {n: 2, name: "MOV",   operands: "R1,1:immed"},
-  /* 7A */ {n: 2, name: "MOV",   operands: "R2,1:immed"},
-  /* 7B */ {n: 2, name: "MOV",   operands: "R3,1:immed"},
-  /* 7C */ {n: 2, name: "MOV",   operands: "R4,1:immed"},
-  /* 7D */ {n: 2, name: "MOV",   operands: "R5,1:immed"},
-  /* 7E */ {n: 2, name: "MOV",   operands: "R6,1:immed"},
-  /* 7F */ {n: 2, name: "MOV",   operands: "R7,1:immed"},
-  /* 80 */ {n: 2, name: "SJMP",  operands: "1:rela"},
-  /* 81 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
-  /* 82 */ {n: 2, name: "ANL",   operands: "C,1:bit"},
-  /* 83 */ {n: 1, name: "MOVC",  operands: "A,@A+PC"},
-  /* 84 */ {n: 1, name: "DIV",   operands: "AB"},
-  /* 85 */ {n: 3, name: "MOV",   operands: "2:direct,1:direct"},
-  /* 86 */ {n: 2, name: "MOV",   operands: "1:direct,@R0"},
-  /* 87 */ {n: 2, name: "MOV",   operands: "1:direct,@R1"},
-  /* 88 */ {n: 2, name: "MOV",   operands: "1:direct,R0"},
-  /* 89 */ {n: 2, name: "MOV",   operands: "1:direct,R1"},
-  /* 8A */ {n: 2, name: "MOV",   operands: "1:direct,R2"},
-  /* 8B */ {n: 2, name: "MOV",   operands: "1:direct,R3"},
-  /* 8C */ {n: 2, name: "MOV",   operands: "1:direct,R4"},
-  /* 8D */ {n: 2, name: "MOV",   operands: "1:direct,R5"},
-  /* 8E */ {n: 2, name: "MOV",   operands: "1:direct,R6"},
-  /* 8F */ {n: 2, name: "MOV",   operands: "1:direct,R7"},
-  /* 90 */ {n: 3, name: "MOV",   operands: "DPTR,1:immed16"},
-  /* 91 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* 92 */ {n: 2, name: "MOV",   operands: "1:bit,C"},
-  /* 93 */ {n: 1, name: "MOVC",  operands: "A,@A+DPTR"},
-  /* 94 */ {n: 2, name: "SUBB",  operands: "A,1:immed"},
-  /* 95 */ {n: 2, name: "SUBB",  operands: "A,1:direct"},
-  /* 96 */ {n: 1, name: "SUBB",  operands: "A,@R0"},
-  /* 97 */ {n: 1, name: "SUBB",  operands: "A,@R1"},
-  /* 98 */ {n: 1, name: "SUBB",  operands: "A,R0"},
-  /* 99 */ {n: 1, name: "SUBB",  operands: "A,R1"},
-  /* 9A */ {n: 1, name: "SUBB",  operands: "A,R2"},
-  /* 9B */ {n: 1, name: "SUBB",  operands: "A,R3"},
-  /* 9C */ {n: 1, name: "SUBB",  operands: "A,R4"},
-  /* 9D */ {n: 1, name: "SUBB",  operands: "A,R5"},
-  /* 9E */ {n: 1, name: "SUBB",  operands: "A,R6"},
-  /* 9F */ {n: 1, name: "SUBB",  operands: "A,R7"},
-  /* A0 */ {n: 2, name: "ORL",   operands: "C,1:nbit"},
-  /* A1 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
-  /* A2 */ {n: 2, name: "MOV",   operands: "C,1:bit"},
-  /* A3 */ {n: 1, name: "INC",   operands: "DPTR"},
-  /* A4 */ {n: 1, name: "MUL",   operands: "AB"},
-  /* A5 */ {n: 1, name: "???",   operands: ""},
-  /* A6 */ {n: 2, name: "MOV",   operands: "@R0,1:direct"},
-  /* A7 */ {n: 2, name: "MOV",   operands: "@R1,1:direct"},
-  /* A8 */ {n: 2, name: "MOV",   operands: "R0,1:direct"},
-  /* A9 */ {n: 2, name: "MOV",   operands: "R1,1:direct"},
-  /* AA */ {n: 2, name: "MOV",   operands: "R2,1:direct"},
-  /* AB */ {n: 2, name: "MOV",   operands: "R3,1:direct"},
-  /* AC */ {n: 2, name: "MOV",   operands: "R4,1:direct"},
-  /* AD */ {n: 2, name: "MOV",   operands: "R5,1:direct"},
-  /* AE */ {n: 2, name: "MOV",   operands: "R6,1:direct"},
-  /* AF */ {n: 2, name: "MOV",   operands: "R7,1:direct"},
-  /* B0 */ {n: 2, name: "ANL",   operands: "C,1:nbit"},
-  /* B1 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* B2 */ {n: 2, name: "CPL",   operands: "1:bit"},
-  /* B3 */ {n: 1, name: "CPL",   operands: "C"},
-  /* B4 */ {n: 3, name: "CJNE",  operands: "A,1:immed,2:rela"},
-  /* B5 */ {n: 3, name: "CJNE",  operands: "A,1:direct,2:rela"},
-  /* B6 */ {n: 3, name: "CJNE",  operands: "@R0,1:immed,2:rela"},
-  /* B7 */ {n: 3, name: "CJNE",  operands: "@R1,1:immed,2:rela"},
-  /* B8 */ {n: 3, name: "CJNE",  operands: "R0,1:immed,2:rela"},
-  /* B9 */ {n: 3, name: "CJNE",  operands: "R1,1:immed,2:rela"},
-  /* BA */ {n: 3, name: "CJNE",  operands: "R2,1:immed,2:rela"},
-  /* BB */ {n: 3, name: "CJNE",  operands: "R3,1:immed,2:rela"},
-  /* BC */ {n: 3, name: "CJNE",  operands: "R4,1:immed,2:rela"},
-  /* BD */ {n: 3, name: "CJNE",  operands: "R5,1:immed,2:rela"},
-  /* BE */ {n: 3, name: "CJNE",  operands: "R6,1:immed,2:rela"},
-  /* BF */ {n: 3, name: "CJNE",  operands: "R7,1:immed,2:rela"},
-  /* C0 */ {n: 2, name: "PUSH",  operands: "1:direct"},
-  /* C1 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
-  /* C2 */ {n: 2, name: "CLR",   operands: "1:bit"},
-  /* C3 */ {n: 1, name: "CLR",   operands: "C"},
-  /* C4 */ {n: 1, name: "SWAP",  operands: "A"},
-  /* C5 */ {n: 2, name: "XCH",   operands: "A,1:direct"},
-  /* C6 */ {n: 1, name: "XCH",   operands: "A,@R0"},
-  /* C7 */ {n: 1, name: "XCH",   operands: "A,@R1"},
-  /* C8 */ {n: 1, name: "XCH",   operands: "A,R0"},
-  /* C9 */ {n: 1, name: "XCH",   operands: "A,R1"},
-  /* CA */ {n: 1, name: "XCH",   operands: "A,R2"},
-  /* CB */ {n: 1, name: "XCH",   operands: "A,R3"},
-  /* CC */ {n: 1, name: "XCH",   operands: "A,R4"},
-  /* CD */ {n: 1, name: "XCH",   operands: "A,R5"},
-  /* CE */ {n: 1, name: "XCH",   operands: "A,R6"},
-  /* CF */ {n: 1, name: "XCH",   operands: "A,R7"},
-  /* D0 */ {n: 2, name: "POP",   operands: "1:direct"},
-  /* D1 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* D2 */ {n: 2, name: "SETB",  operands: "1:bit"},
-  /* D3 */ {n: 1, name: "SETB",  operands: "C"},
-  /* D4 */ {n: 1, name: "DA",    operands: "A"},
-  /* D5 */ {n: 3, name: "DJNZ",  operands: "1:direct,2:rela"},
-  /* D6 */ {n: 1, name: "XCHD",  operands: "A,@R0"},
-  /* D7 */ {n: 1, name: "XCHD",  operands: "A,@R1"},
-  /* D8 */ {n: 2, name: "DJNZ",  operands: "R0,1:rela"},
-  /* D9 */ {n: 2, name: "DJNZ",  operands: "R1,1:rela"},
-  /* DA */ {n: 2, name: "DJNZ",  operands: "R2,1:rela"},
-  /* DB */ {n: 2, name: "DJNZ",  operands: "R3,1:rela"},
-  /* DC */ {n: 2, name: "DJNZ",  operands: "R4,1:rela"},
-  /* DD */ {n: 2, name: "DJNZ",  operands: "R5,1:rela"},
-  /* DE */ {n: 2, name: "DJNZ",  operands: "R6,1:rela"},
-  /* DF */ {n: 2, name: "DJNZ",  operands: "R7,1:rela"},
-  /* E0 */ {n: 1, name: "MOVX",  operands: "A,@DPTR"},
-  /* E1 */ {n: 2, name: "AJMP",  operands: "1:addr11"},
-  /* E2 */ {n: 1, name: "MOVX",  operands: "A,@R0"},
-  /* E3 */ {n: 1, name: "MOVX",  operands: "A,@R1"},
-  /* E4 */ {n: 1, name: "CLR",   operands: "A"},
-  /* E5 */ {n: 2, name: "MOV",   operands: "A,1:direct"},
-  /* E6 */ {n: 1, name: "MOV",   operands: "A,@R0"},
-  /* E7 */ {n: 1, name: "MOV",   operands: "A,@R1"},
-  /* E8 */ {n: 1, name: "MOV",   operands: "A,R0"},
-  /* E9 */ {n: 1, name: "MOV",   operands: "A,R1"},
-  /* EA */ {n: 1, name: "MOV",   operands: "A,R2"},
-  /* EB */ {n: 1, name: "MOV",   operands: "A,R3"},
-  /* EC */ {n: 1, name: "MOV",   operands: "A,R4"},
-  /* ED */ {n: 1, name: "MOV",   operands: "A,R5"},
-  /* EE */ {n: 1, name: "MOV",   operands: "A,R6"},
-  /* EF */ {n: 1, name: "MOV",   operands: "A,R7"},
-  /* F0 */ {n: 1, name: "MOVX",  operands: "@DPTR,A"},
-  /* F1 */ {n: 2, name: "ACALL", operands: "1:addr11"},
-  /* F2 */ {n: 1, name: "MOVX",  operands: "@R0,A"},
-  /* F3 */ {n: 1, name: "MOVX",  operands: "@R1,A"},
-  /* F4 */ {n: 1, name: "CPL",   operands: "A"},
-  /* F5 */ {n: 2, name: "MOV",   operands: "1:direct,A"},
-  /* F6 */ {n: 1, name: "MOV",   operands: "@R0,A"},
-  /* F7 */ {n: 1, name: "MOV",   operands: "@R1,A"},
-  /* F8 */ {n: 1, name: "MOV",   operands: "R0,A"},
-  /* F9 */ {n: 1, name: "MOV",   operands: "R1,A"},
-  /* FA */ {n: 1, name: "MOV",   operands: "R2,A"},
-  /* FB */ {n: 1, name: "MOV",   operands: "R3,A"},
-  /* FC */ {n: 1, name: "MOV",   operands: "R4,A"},
-  /* FD */ {n: 1, name: "MOV",   operands: "R5,A"},
-  /* FE */ {n: 1, name: "MOV",   operands: "R6,A"},
-  /* FF */ {n: 1, name: "MOV",   operands: "R7,A"},
-];
 
 
 const pswBits = makeBits(PSW, 'cy ac f0 rs1 rs0 ov ud p');
@@ -745,10 +484,10 @@ ${briefState(bh.state)}`);
 
   disassemble(pc) {
     const op = this.code[pc];
-    const ope = opTable[op];
+    const ope = opcodes[op];
 
     if (!ope) {
-      console.log(`Undefined opTable[${op}] pc=${pc}`);
+      console.log(`Undefined opcodes[${op}] pc=${pc}`);
       this.dumpFetchHistory();
     }
 
@@ -771,20 +510,24 @@ ${briefState(bh.state)}`);
       verbatum: x => x,
       direct: x => displayableAddress(bytes[+x], 'd'),
       rela: x => displayableAddress(nextPC + this.toSigned(bytes[+x]), 'c'),
+      Ri: () => 'R' + (op & 7).toString(),
+      '@Ri': () => '@R' + (op & 1).toString(),
     };
 
+    const opcodeHandlers = {Ri: 'Ri', '@Ri': '@Ri'};
+
     const operands = ope.operands.split(/,/)
-            .map(opnd => {
-              let [offset, handler] = opnd.split(/:/);
-              if (handler == null) handler = 'verbatum';
-              return {offset, handler};
-            })
-            .map(x => handlers[x.handler](x.offset))
-            .join(',');
+          .map(opnd => {
+            let [offset, handler] = opnd.split(/:/);
+            handler = handler || opcodeHandlers[offset] || 'verbatum';
+            return {handler, offset};
+          })
+          .map(x => handlers[x.handler](x.offset))
+          .join(',');
 
     return `\
 ${displayableAddress(pc, 'c').padStart(28)}: \
-${disassembly}  ${ope.name.padEnd(6)} ${operands}`;
+${disassembly}  ${ope.mnemonic.padEnd(6)} ${operands}`;
   },
 
 
@@ -2284,7 +2027,7 @@ function doList(words) {
 
   if (words.length < 2) {
     const op = cpu.code[lastX];
-    const ope = opTable[op];
+    const ope = opcodes[op];
     x = lastX + ope.n;
   } else {
     x = getAddress(words);
@@ -2651,7 +2394,7 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
 const syms = {d: {}, c: {}, b: {}, n: {}, x: {}};
 
 
-function setupMain() {
+function setupSimulator() {
   const argv = process.argv.slice(1);
 
   function usageExit(msg) {
@@ -2795,72 +2538,13 @@ node ${argv[0]} hex-file-name lst-file-name`);
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-// Build the parser from its PEGJS source file and return the
-// resulting parser object.
-const GRAMMAR_PATH = './mcs8051.pegjs'
-function buildParser() {
-  let grammar, parser;
-
-  try {
-    grammar = fs.readFileSync(require.resolve(GRAMMAR_PATH), 'utf8')
-  } catch(e) {
-    console.error(`FATAL error reading required '${GRAMMAR_PATH}' grammar:\n`, e);
-    process.exit(-1);
-  }
-
-  const buildParserOptions = {
-    output: 'parser',
-    allowedStartRules: ['Start'],
-    trace: false,
-  };
-
-  try {
-    parser = PEG.generate(grammar, buildParserOptions);
-  } catch(e) {
-    console.error(`INTERNAL ERROR Grammar '${GRAMMAR_PATH}' parse failed:\n`, e);
-    process.exit(-1);
-  }
-
-  return parser;
-}
-
-
-const INSN_PATH = './mcs8051.insn';
-
-
 // Only start the thing if we are not loaded via require.
 if (require.main === module) {
-  setupMain();
+  const ast = CODEGEN.init();
+  opcodes = CODEGEN.generate(ast);
 
-  const parser = buildParser();
-
-  let insnSrc;
-
-  try {
-    insnSrc = fs.readFileSync(INSN_PATH, {encoding: 'utf-8'});
-  } catch(e) {
-    console.error(`Unable to open ${INSN_PATH}: ${e.code}`);
-    process.exit(-1);
-  }
-
-  const tracer = require('./tracer');
-  tracer.setSrc(insnSrc);
-
-  try {
-    parser.parse(insnSrc, {tracer});
-  } catch(e) {
-    const found = e.found ? `found "${e.found}"` : '';
-    const at = e.location ?
-          ` at ${util.inspect(e.location.start)}-${util.inspect(e.location.end)}` :
-          '';
-    console.error(`\
-Parsing or runtime error:
-${util.inspect(e, {depth: 99})}
-  ${found}${at}`);
-    process.exit(-1);
-  }
-
+  setupSimulator();
+  
   console.log('[Control-\\ will interrupt execution and return to prompt]');
 
   if (process.stdin.setRawMode)
@@ -2868,7 +2552,7 @@ ${util.inspect(e, {depth: 99})}
   else
     doGo(['go']);
 } else {
-  module.exports.opTable = opTable;
+  module.exports.opcodes = opcodes;
   module.exports.SFRs = SFRs;
   module.exports.toHex2 = toHex2;
   module.exports.toHex4 = toHex4;
@@ -2882,6 +2566,4 @@ ${util.inspect(e, {depth: 99})}
   module.exports.tmodBits = tmodBits;
   module.exports.tconBits = tconBits;
   module.exports.t2conBits = t2conBits;
-
-  module.exports.buildParser = buildParser;
 }

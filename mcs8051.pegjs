@@ -42,23 +42,24 @@ Start = p:Instruction
                                             mode: 0o664,
                                           });
 
-                                          return [p, ...pRest]; }
+                                          return p }
 
 Instruction = mnemonic:SYMBOL EQ b1:OpSpec
-        bN:( b2:OpSpec b3:OpSpec? { return {b2, b3}; } )? COLON
+        bN:( b2:OpSpec b3:OpSpec? { return {b2, b3} } )? operands:Operands COLON
         transfers:Transfer*             { return mk('Instruction', { 
                                             mnemonic,
+                                            operands,
                                             b1,
                                             b2: bN ? bN.b2 : null,
                                             b3: bN ? bN.b3 : null,
                                             transfers,
-                                          }); }
+                                          }) }
 
-Transfer = target:Target e:(ARROW e:Expression { return e; } )? EOL
+Transfer = target:Target e:(ARROW e:Expression { return e } )? EOL
                                         { return mk('Transfer', {
                                             target,
                                             e: e || null,
-                                          }); }
+                                          }) }
 /       IF e:Expression EOL? THEN EOL
           thenPart:Transfer+
           elsePart:( ELSE EOL et:Transfer+ {return et})?
@@ -72,14 +73,14 @@ Transfer = target:Target e:(ARROW e:Expression { return e; } )? EOL
 Target = e:Indirection                  { return e }
 /       e:Code                          { return e }
 
-Indirection = LP e:Indirection RP       { return mk('Indirection', {e}); }
+Indirection = LP e:Indirection RP       { return mk('Indirection', {e}) }
 /       Var
 
-Var = id:SYMBOL field:BitField?         { return mk('Var', {id, field}); }
-/       NOT e:Var                       { return mk('Not', {e}); }
+Var = id:SYMBOL field:BitField?         { return mk('Var', {id, field}) }
+/       NOT e:Var                       { return mk('Not', {e}) }
 
 BitField = LBIT h:INTEGER MINUS l:INTEGER RBIT
-                                        { return mk('BitField', {h, l}); }
+                                        { return mk('BitField', {h, l}) }
 
 Expression =
     l:Term
@@ -89,7 +90,7 @@ Expression =
         EQ      / NE    / LT    / GT    /
         PLUS    / MINUS
     )
-    r:Expression                        { return mk(type, {l, r}); }
+    r:Expression                        { return mk(type, {l, r}) }
 /   Term
 
 Term =  INTEGER
@@ -98,21 +99,23 @@ Term =  INTEGER
 /       Indirection
 
 Code = LBRACE code:$( !RBRACE .)* RBRACE
-                                        { return mk('Code', {code}); }
+                                        { return mk('Code', {code}) }
 
-OpSpec = sym:SYMBOL                     { return mk('Symbol', {sym}); }
-/       WS '0' [bB] bits:$[A-Za-z_01]+  { return mk('Bits', {bits}); }
-/       WS '0' [xX] d:$[a-fA-F0-9]+     { return parseInt(d, 16); }
-/       WS d:$[a-fA-F0-9]+ [hH]         { return parseInt(d, 16); }
+OpSpec = sym:SYMBOL                     { return mk('Symbol', {sym}) }
+/       WS '0' [bB] bits:$[A-Za-z_01]+  { return mk('Bits', {bits}) }
+/       WS '0' [xX] d:$[a-fA-F0-9]+     { return parseInt(d, 16) }
+/       WS d:$[a-fA-F0-9]+ [hH]         { return parseInt(d, 16) }
 
-INTEGER = WS '0' [xX] d:$[a-fA-F0-9]+   { return parseInt(d, 16); }
-/       WS '0' [bB] d:$[01]+            { return parseInt(d, 2); }
-/       WS d:$[a-fA-F0-9]+ [hH]         { return parseInt(d, 16); }
-/       WS d:$[0-9]+                    { return parseInt(d); }
+Operands = WS '"' s:$(!'"' .)* '"'   { return s }
+
+INTEGER = WS '0' [xX] d:$[a-fA-F0-9]+   { return parseInt(d, 16) }
+/       WS '0' [bB] d:$[01]+            { return parseInt(d, 2) }
+/       WS d:$[a-fA-F0-9]+ [hH]         { return parseInt(d, 16) }
+/       WS d:$[0-9]+                    { return parseInt(d) }
 
 SYMBOL = WS
          s:$( [a-zA-Z_] [a-zA-Z_0-9]* ) !{ return isKeyword(s) }
-                                        { return s; }
+                                        { return s }
 
 EOL = ( [\n\r\0B\x0C]                   // Line ending whitespace
       /   '//' (!'\n' .)* '\n'          // // to end of line comments
