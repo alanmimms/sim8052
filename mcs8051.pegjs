@@ -45,7 +45,7 @@ Start = p:Instruction
                                           return p }
 
 Instruction = mnemonic:SYMBOL EQ b1:OpSpec
-        bN:( b2:OpSpec b3:OpSpec? { return {b2, b3} } )? operands:Operands COLON
+        bN:( b2:OpSpec b3:OpSpec? { return {b2, b3} } )? operands:Operands COLON EOL
         transfers:Transfer*             { return mk('Instruction', { 
                                             mnemonic,
                                             operands,
@@ -70,11 +70,11 @@ Transfer = target:Target e:(ARROW e:Expression { return e } )? EOL
                                           });
                                         }
 
-Target = e:Indirection                  { return e }
-/       e:Code                          { return e }
+Target = VarOrIndirection
+ /       Code
 
-Indirection = LP e:Indirection RP       { return mk('Indirection', {e}) }
-/       Var
+VarOrIndirection = Var
+/       LP e:VarOrIndirection RP        { return mk('Indirection', {e}) }
 
 Var = id:SYMBOL field:BitField?         { return mk('Var', {id, field}) }
 /       NOT e:Var                       { return mk('Not', {e}) }
@@ -94,9 +94,8 @@ Expression =
 /   Term
 
 Term =  INTEGER
+/       VarOrIndirection
 /       Code
-/       Var
-/       Indirection
 
 Code = LBRACE code:$( !RBRACE .)* RBRACE
                                         { return mk('Code', {code}) }
@@ -113,18 +112,17 @@ INTEGER = WS '0' [xX] d:$[a-fA-F0-9]+   { return parseInt(d, 16) }
 /       WS d:$[a-fA-F0-9]+ [hH]         { return parseInt(d, 16) }
 /       WS d:$[0-9]+                    { return parseInt(d) }
 
-SYMBOL = WS
-         s:$( [a-zA-Z_] [a-zA-Z_0-9]* ) !{ return isKeyword(s) }
+SYMBOL = WS s:$( [a-zA-Z_] [a-zA-Z_0-9]* )
+         !{ return isKeyword(s) }
                                         { return s }
 
-EOL = ( [\n\r\0B\x0C]                   // Line ending whitespace
-      /   '//' (!'\n' .)* '\n'          // // to end of line comments
-      )
+EOL = WS (
+     [\n\r\0B\x0C]                      // Line ending whitespace
+  /  '//' (!'\n' .)* '\n'               // "//" to end of line comments
+  )
 
-INLINE_WS = [ \t]                       // Whitespace within a line
-      /   '/*' (!'*/' .)* '*/'          // /* */ comments
-
-WS = ( INLINE_WS / EOL )*               // Arbitrary whitespace
+WS = '/*' (!'*/' .)* '*/'               // /* */ comments
+  /  [ \t]*                             // Whitespace within a line
 
 COLON =  WS ':'         {return 'COLON'}
 LP =     WS '('         {return 'LP'}
