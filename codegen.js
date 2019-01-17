@@ -127,22 +127,26 @@ already defined for ${op.toString(16)}H as ${handlers[op].mnemonic}`);
         // Insert auto-increment of PC if it is not explicitly
         // assigned.
         if (!h.pcIsAssigned) {
-          h.transfers.unshift({
+          h.transfers.push({
             type: 'Transfer',
             target: {type: 'Var', id: 'PC'},
             e: {type: 'PLUS', l: {type: 'Var', id: 'PC'}, r: h.n},
           });
         }
 
-        h.handlerSource = h.transfers
-          .map(xfr => genTransfer(xfr))
-          .join('\n');
+        if (h.transfers.length === 0) {
+          h.handlerSource = 'UNIMPLEMENTED OPCODE';
+        } else {
+          h.handlerSource = h.transfers
+            .map(xfr => genTransfer(xfr))
+            .join('\n');
+        }
       });
 
     const handlersLog = handlers.map((h, op) => `\
 ${op.toString(16)}H: ${h.mnemonic} ${h.operands}
 ${h.handlerSource}
-`).join('////////////////////////////////////////////////////////////////\n');
+`).join('\n');
 
     fs.writeFileSync('handlers.log', handlersLog, {mode: 0o664});
 
@@ -158,28 +162,55 @@ ${h.handlerSource}
 
 
     function genTransfer(xfr) {
+      const t = xfr.target && xfr.target || xfr;
 
-      if (xfr.type === 'If') {
-        const thenTransfers = xfr.thenPart.map(x => genTransfer(x)).join('\n');
-        const elseTransfers = (xfr.elsePart || []).map(x => genTransfer(x)).join('\n');
+      switch (t.type) {
+      case 'Var':
         return `\
-// if ${genExpr(xfr.e)} then
-//   ${thenTransfers}
-// ${elseTransfers ? `\
-// else
-//   ${elseTransfers}\
-` : ''}\        
-// endif`;
-      } else {
+${genTarget(t)} = ${genExpr(xfr.e)}`;
+        
+      case 'Indirection':
+        return `\
+(${genTarget(t)}) = ${genExpr(xfr.e)}`;
 
-        if (xfr.target.type === 'Var') {
-          return `\
-// ${xfr.target.id} = ${genExpr(xfr.e)}`;
-        } else {
-          return `\
-// COMPLEX target type ${xfr.target.type}
-// get=${genExpr(xfr.e)}`;
-        }
+      case 'If':
+        const thenTransfers = t.thenPart.map(x => genTransfer(x)).join('\n  ');
+        const elseTransfers = (t.elsePart || []).map(x => genTransfer(x)).join('\n  ');
+
+        let s = `\
+if ${genExpr(xfr.e)} then
+  ${thenTransfers}
+`;
+
+        if (t.elsePart) s += `else
+  ${elseTransfers}
+`;
+        s += `\
+endif`;
+
+        return s;
+
+      case 'Code':
+        return `{ ${t.code} }`;
+
+      default:
+        return `\
+UNKNOWN target type ${t.type}`;
+      }
+    }
+
+
+    function genTarget(t) {
+
+      switch (t.type) {
+      case 'Var':
+        return t.id;
+
+      case 'Indirection':
+        return `putIndirectGoesHere(${genTarget(t.e)})`;
+
+      default:
+        return `UNKNOWN target type ${t.type}`;
       }
     }
 
@@ -187,8 +218,8 @@ ${h.handlerSource}
     function genExpr(e) {
       if (typeof e === 'number') return e.toString(10);
 
-      if (!e) return '/* genExpr(null) */';
-      if (!e.type) return '/* empty type */';
+      if (!e) return 'genExpr(null)';
+      if (!e.type) return 'empty type';
 
       switch (e.type) {
       case 'Code':
@@ -206,6 +237,24 @@ ${h.handlerSource}
       case 'MINUS':
         return genBinary(e, '-');
 
+      case 'EQ':
+        return genBinary(e, '===');
+
+      case 'NE':
+        return genBinary(e, '!==');
+
+      case 'LT':
+        return genBinary(e, '<');
+
+      case 'GT':
+        return genBinary(e, '>');
+
+      case 'ANDAND':
+        return genBinary(e, '&&');
+
+      case 'OROR':
+        return genBinary(e, '||');
+
       case 'AND':
         return genBinary(e, '&');
 
@@ -215,8 +264,11 @@ ${h.handlerSource}
       case 'XOR':
         return genBinary(e, '^');
 
+      case 'Not':
+        return `!${genExpr(e.e)}`;
+
       default:
-        return `/* UNKNOWN genExpr(${e.type}) */`;
+        return `UNKNOWN genExpr(${e.type})`;
       }
     }
 
