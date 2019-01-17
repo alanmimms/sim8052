@@ -147,7 +147,7 @@ DJNZ = 0b11010101 DIR RELA "1:direct,2:rela":
       PC <- PC + RELA
     endif
 
-INC = 0b0000100 "A":
+INC = 0b00000100 "A":
     A <- A + 1
 
 INC = 0b00001RRR "Ri":
@@ -309,7 +309,7 @@ ORL = 0b01001RRR "A,Ri":
 ORL = 0b01000101 DIR "A,1:direct":
     A <- A | DIR
 
-ORL = 0b010011I "A,@Ri":
+ORL = 0b0100011I "A,@Ri":
     A <- A | INDIRECT
 
 ORL = 0b01000100 IMM "A,1:immed":
