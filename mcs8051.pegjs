@@ -70,11 +70,12 @@ Transfer = target:Target e:(ARROW e:Expression { return e } )? EOL
                                           });
                                         }
 
-Target = VarOrIndirection
+Target = VarOrAt
  /       Code
 
-VarOrIndirection = Var
-/       LP e:VarOrIndirection RP        { return mk('Indirection', {e}) }
+VarOrAt = AT e:VarOrAt                    { return mk('At', {e}) }
+/       space:SYMBOL SLASH addr:VarOrAt { return mk('Slash', {space, addr}) }
+/       Var
 
 Var = id:SYMBOL field:BitField?         { return mk('Var', {id, field}) }
 /       NOT e:Var                       { return mk('Not', {e}) }
@@ -94,7 +95,7 @@ Expression =
 /   Term
 
 Term =  INTEGER
-/       VarOrIndirection
+/       VarOrAt
 /       Code
 
 Code = LBRACE code:$( !RBRACE .)* RBRACE
@@ -125,8 +126,8 @@ WS = '/*' (!'*/' .)* '*/'               // /* */ comments
   /  [ \t]*                             // Whitespace within a line
 
 COLON =  WS ':'         {return 'COLON'}
-LP =     WS '('         {return 'LP'}
-RP =     WS ')'         {return 'RP'}
+AT =     WS '@'         {return 'AT'}
+SLASH =  WS '/'         {return 'SLASH'}
 ARROW =  WS '<-'        {return 'ARROW'}
 LBIT =   WS '['         {return 'LBIT'}
 RBIT =   WS ']'         {return 'RBIT'}

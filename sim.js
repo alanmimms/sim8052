@@ -7,6 +7,7 @@ const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
+const CPU = require('./cpu.js');
 
 const CODEGEN = require('./codegen');
 
@@ -25,91 +26,33 @@ const XRAMSize = 65536;
 var opcodes;
 
 
-// These constants simplify accesses to SFRs.
-const SFRs = {
-  ACC: 0xE0,
-  B: 0xF0,
-  SP: 0x81,
-  P0: 0x80,
-  P1: 0x90,
-  P2: 0xA0,
-  P3: 0xB0,
-  IP: 0xB8,
-  IE: 0xA8,
-  TMOD: 0x89,
-  TCON: 0x88,
-  T2CON: 0xC8,
-  T2MOD: 0xC9,
-  TH0: 0x8C,
-  TL0: 0x8A,
-  TH1: 0x8D,
-  TL1: 0x8B,
-  TH2: 0xCD,
-  TL2: 0xCC,
-  RCAP2H: 0xCB,
-  RCAP2L: 0xCA,
-  PCON: 0x87,
-  PSW: 0xD0,
-  DPL: 0x82,
-  DPH: 0x83,
-  SCON: 0x98,
-  SBUF: 0x99,
-};
-
-
-const ACC = SFRs.ACC;
-const B = SFRs.B;
-const SP = SFRs.SP;
-const P0 = SFRs.P0;
-const P1 = SFRs.P1;
-const P2 = SFRs.P2;
-const P3 = SFRs.P3;
-const IP = SFRs.IP;
-const IE = SFRs.IE;
-const TMOD = SFRs.TMOD;
-const TCON = SFRs.TCON;
-const T2CON = SFRs.T2CON;
-const T2MOD = SFRs.T2MOD;
-const TH0 = SFRs.TH0;
-const TL0 = SFRs.TL0;
-const TH1 = SFRs.TH1;
-const TL1 = SFRs.TL1;
-const TH2 = SFRs.TH2;
-const TL2 = SFRs.TL2;
-const RCAP2H = SFRs.RCAP2H;
-const RCAP2L = SFRs.RCAP2L;
-const PCON = SFRs.PCON;
-const PSW = SFRs.PSW;
-const DPL = SFRs.DPL;
-const DPH = SFRs.DPH;
-const SCON = SFRs.SCON;
-const SBUF = SFRs.SBUF;
-
-
-const pswBits = makeBits(PSW, 'cy ac f0 rs1 rs0 ov ud p');
-const pconBits = makeBits(PCON, 'smod . . . gf1 gf0 pd idl');
-const sconBits = makeBits(SCON, 'sm0 sm1 sm2 ren tb8 rb8 ti ri');
-const ipBits = makeBits(IP, '. . pt2 ps pt1 px1 pt0 px0');
-const ieBits = makeBits(IE, 'ea . et2 es et1 ex1 et0 ex0');
-const tmodBits = makeBits(TMOD, 'gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0');
-const tconBits = makeBits(TCON, 'tf1 tr1 tf0 tr0 ie1 it1 ie0 it0');
-const t2conBits = makeBits(T2CON, 'tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2');
-
-
-const mathMask = pswBits.ovMask | pswBits.acMask | pswBits.cyMask;
-const rsMask = pswBits.rs0Mask | pswBits.rs1Mask;
-
-
-const parityTable = [
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-];
+const ACC = CPU.ACC;
+const B = CPU.B;
+const SP = CPU.SP;
+const P0 = CPU.P0;
+const P1 = CPU.P1;
+const P2 = CPU.P2;
+const P3 = CPU.P3;
+const IP = CPU.IP;
+const IE = CPU.IE;
+const TMOD = CPU.TMOD;
+const TCON = CPU.TCON;
+const T2CON = CPU.T2CON;
+const T2MOD = CPU.T2MOD;
+const TH0 = CPU.TH0;
+const TL0 = CPU.TL0;
+const TH1 = CPU.TH1;
+const TL1 = CPU.TL1;
+const TH2 = CPU.TH2;
+const TL2 = CPU.TL2;
+const RCAP2H = CPU.RCAP2H;
+const RCAP2L = CPU.RCAP2L;
+const PCON = CPU.PCON;
+const PSW = CPU.PSW;
+const DPL = CPU.DPL;
+const DPH = CPU.DPH;
+const SCON = CPU.SCON;
+const SBUF = CPU.SBUF;
 
 
 const cpu = {
@@ -134,6 +77,9 @@ const cpu = {
   // 0: Low priority in progress.
   // 1: High priority in progress.
   ipl: -1,
+
+  // Temporary value used during some instructions
+  tmp: 0,
 
   // Serial port input queue
   sbufQueue: [],
@@ -611,61 +557,6 @@ function toHex2(v) {
 
 function toHex4(v) {
   return toHex2(v >>> 8) + toHex2(v & 0xFF);
-}
-
-
-// Take a string and return a bit field object containing xBit (bit
-// address), xShift, and xMask values for each bit. The string is a
-// space separated list of fields left to right where the leftmost is
-// bit #n and rightmost is bit #0 and '.' is used for a reserved bit.
-function makeBits(base, bitDescriptorString) {
-  const o = {};
-
-  bitDescriptorString.split(/\s+/)
-    .reverse()
-    .map((name, index) => {
-
-      if (name !== '.') {
-        o[name + 'Shift'] = index;
-        o[name + 'Mask'] = 1 << index;
-        o[name + 'Bit'] = base + index;
-      }
-    });
-
-  return o;
-}
-
-
-try {
-  test_makeBits;
-
-  const s1 = 'a7 b6 c5 d4 e3 f2 g1 h0';
-  console.log(`makeBits(0x80, "${s1}") =`, makeBits(0x80, s1));
-
-  const s2 = 'a7 b6 . d4 . f2 . h0';
-  console.log(`makeBits(0x90, "${s2}") =`, makeBits(0x90, s2));
-} catch(e) {
-}
-
-
-try {
-  gen_parity;
-
-  let s = '';
-
-  for (let k = 0; k <= 0xFF; ++k) {
-    let p = 0;
-
-    for (let bn = 7; bn >= 0; --bn) {
-      p = p ^ ((k >>> bn) & 1);
-    }
-
-    s = s.concat(p ? '1,' : '0,',
-                 ((k & 0x1F) === 0x1F) ? "\n" : "");
-  }
-
-  console.log(s);
-} catch(e) {
 }
 
 
@@ -1539,17 +1430,7 @@ if (require.main === module) {
     doGo(['go']);
 } else {
   module.exports.opcodes = opcodes;
-  module.exports.SFRs = SFRs;
   module.exports.toHex2 = toHex2;
   module.exports.toHex4 = toHex4;
   module.exports.cpu = cpu;
-
-  module.exports.pswBits = pswBits;
-  module.exports.pconBits = pconBits;
-  module.exports.sconBits = sconBits;
-  module.exports.ipBits = ipBits;
-  module.exports.ieBits = ieBits;
-  module.exports.tmodBits = tmodBits;
-  module.exports.tconBits = tconBits;
-  module.exports.t2conBits = t2conBits;
 }
