@@ -1,3 +1,38 @@
+# Using Proxy() to mediate access for get/set even of array
+
+```
+> var c = { k: 0, a: [1, 2, 3], set iram(v) { this.a[99] = v } }
+undefined
+> c.iram = 1234
+1234
+> c
+{ k: 0, a: [ 1, 2, 3, <96 empty items>, 1234 ], iram: [Setter] }
+> var c = { k: 0, _a: [1, 2, 3] }
+undefined
+> c.a = new Proxy(c._a, { set(target, property, value, receiver) { c._a[property] = value }})
+[ 1, 2, 3 ]
+> c
+{ k: 0, _a: [ 1, 2, 3 ], a: [ 1, 2, 3 ] }
+> c.a[99] = 1234
+1234
+> c
+{ k: 0,
+  _a: [ 1, 2, 3, <96 empty items>, 1234 ],
+  a: [ 1, 2, 3, <96 empty items>, 1234 ] }
+> c.iram = new Proxy(c._a, { set(target, property, value, receiver) { c._a[property] = value }})
+[ 1, 2, 3, <96 empty items>, 1234 ]
+> c.iram[0xff] = 'abcdef'
+'abcdef'
+> c
+{ k: 0,
+  _a: [ 1, 2, 3, <96 empty items>, 1234, <155 empty items>, 'abcdef' ],
+  a: [ 1, 2, 3, <96 empty items>, 1234, <155 empty items>, 'abcdef' ],
+  iram: [ 1, 2, 3, <96 empty items>, 1234, <155 empty items>, 'abcdef' ] }
+> c.iram[0xff]
+'abcdef'
+```
+
+
 # Decimal printing
 
 * Numbers < 128 print normally
