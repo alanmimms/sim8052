@@ -165,6 +165,45 @@ const cpu = {
   },
 
 
+  get CY() {
+    return +!!(this.psw & pswBits.cyMask);
+  },
+
+  get AC() {
+    return +!!(this.psw & pswBits.acMask);
+  },
+
+  get OV() {
+    return +!!(this.psw & pswBits.ovMask);
+  },
+
+
+  set CY(v) {
+
+    if (v)
+      this.psw |= pswBits.cyMask;
+    else
+      this.psw &= ~pswBits.cyMask;
+  },
+
+
+  set AC(v) {
+
+    if (v)
+      this.psw |= pswBits.acMask;
+    else
+      this.psw &= ~pswBits.acMask;
+  },
+
+
+  set OV(v) {
+
+    if (v)
+      this.psw |= pswBits.ovMask;
+    else
+      this.psw &= ~pswBits.ovMask;
+  },
+
 
   getSFR(sfr) {
 

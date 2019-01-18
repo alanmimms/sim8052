@@ -202,6 +202,11 @@ function codegenOpcode(h, op) {
     case 'HILO':
       return `(${params.HI}) << 8 | (${params.LO})`;
 
+    case 'CY':
+    case 'OV':
+    case 'AC':
+      return `cpu.${e.id}`;
+
     case 'BIT':
     case 'DIR':
     case 'DIRSRC':

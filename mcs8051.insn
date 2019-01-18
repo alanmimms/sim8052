@@ -63,7 +63,7 @@ CJNE = 0b10110101 DIR RELA "A,1:dir,2:rela":
     CY <- A < DIR
     if A != DIR
     then
-      pc <- pc + RELA
+      PC <- PC + RELA
     endif
 
 CJNE = 0b10110100 IMM RELA "A,1:immed,2:rela":
@@ -71,7 +71,7 @@ CJNE = 0b10110100 IMM RELA "A,1:immed,2:rela":
     CY <- A < IMM
     if A != IMM
     then
-      pc <- pc + RELA
+      PC <- PC + RELA
     endif
 
 CJNE = 0b10111RRR IMM RELA "Ri,1:immed,2:rela":
@@ -79,7 +79,7 @@ CJNE = 0b10111RRR IMM RELA "Ri,1:immed,2:rela":
     CY <- R < IMM
     if R != IMM
     then
-      pc <- pc + RELA
+      PC <- PC + RELA
     endif
 
 CJNE = 0b1011011I IMM RELA "IRAM/Ri,1:immed,2:rela":
@@ -87,7 +87,7 @@ CJNE = 0b1011011I IMM RELA "IRAM/Ri,1:immed,2:rela":
     CY <- I < IMM
     if I != IMM
     then
-      pc <- pc + RELA
+      PC <- PC + RELA
     endif
 
 CLR = 0b11100100 "A":
