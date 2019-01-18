@@ -122,193 +122,249 @@ already defined for ${op.toString(16)}H as ${handlers[op].mnemonic}`);
 
     // Generate the code for the simHandler(cpu, insnPC, op) function
     // for each opcode.
-    handlers
-      .map((h, op) => {
-        h.pcIsAssigned = h.transfers.find(xfr => isVar(xfr.target, 'PC'));
-
-        // Insert auto-increment of PC if it is not explicitly
-        // assigned.
-        if (!h.pcIsAssigned) {
-          h.transfers.push({
-            type: 'Transfer',
-            target: {type: 'Var', id: 'PC'},
-            e: {type: 'PLUS', l: {type: 'Var', id: 'PC'}, r: h.n},
-          });
-        }
-
-        if (h.transfers.length === 0) {
-          h.handlerSource = 'UNIMPLEMENTED OPCODE';
-        } else {
-          h.handlerSource = h.transfers
-            .map(xfr => genTransfer(xfr, op))
-            .join('\n');
-        }
-      });
-
-    const handlersLog = handlers.map((h, op) => `\
+    const handlersLog = handlers.map((h, op) => {
+      h.handlerSource = codegenOpcode(h, op);
+      return `\
 ${op.toString(16)}H: ${h.mnemonic} ${h.operands}
 ${h.handlerSource}
-`).join('\n');
+`;
+    }).join('\n');
 
     fs.writeFileSync('handlers.log', handlersLog, {mode: 0o664});
-
     return handlers;
+  }
+};
 
 
-    ////////////////////////////////////////////////////////////////
-    // Return true if specified item is the named variable.
-    function isVar(item, id) {
-      if (!item) return '/* isVar(null) */';
-      return (item.type === 'Var' && item.id === id);
-    }
+// Generate the code for the specified opcode `op` for Instruction `h`
+// and place that code into `h.handlerSource`.
+function codegenOpcode(h, op) {
+  h.pcIsAssigned = h.transfers.find(xfr => isVar(xfr.target, 'PC'));
+
+  // Insert auto-increment of PC if it is not explicitly
+  // assigned.
+  if (!h.pcIsAssigned) {
+    h.transfers.push({
+      type: 'Transfer',
+      target: {type: 'Var', id: 'PC'},
+      e: {type: 'PLUS', l: {type: 'Var', id: 'PC'}, r: h.n},
+    });
+  }
+
+  if (h.transfers.length === 0) return 'UNIMPLEMENTED OPCODE';
+
+  return h.transfers
+    .map(xfr => genTransfer(xfr))
+    .join('\n');
 
 
-    function symbolToCode(sym, op, params) {
-      switch (sym) {
-      case 'A': return 'cpu.SFR[ACC]';
-      case 'B': return 'cpu.SFR[B]';
-      case 'TMP': return 'cpu.tmp';
-      case 'PC': return 'cpu.pc';
-      case 'SP': return 'cpu.SFR[SP]';
-      case 'DPTR': return 'cpu.dptr';
-      case 'DIRECT': return `cpu.iram[${params.DIR}]`;
-      case 'IMM': return `cpu.iram[${params.IMM}]`;
-      case 'R': 
-        const rsMask = '0x' + (CPU.pswBits.rs1 | CPU.pswBits.rs0).toString(16);
-        return `cpu.iram[(cpu.SFR[PSW] & ${rsMask}) + ${params.op & 7}]`;
+  ////////////////////////////////////////////////////////////////
+  // Return true if specified item is the named variable.
+  function isVar(item, id) {
+    if (!item) return '/* isVar(null) */';
+    return (item.type === 'Var' && item.id === id);
+  }
 
-      default: return 'symbolToCode DEFAULT!'
-      };
-    }
-    
 
-    function genTransfer(xfr, op) {
-      const t = xfr.target && xfr.target || xfr;
+  function symbolToCode(sym, params) {
 
-      switch (t.type) {
-      case 'Var':
-      case 'At':
-      case 'Slash':
-        return `${genTarget(t, op)} = ${genExpr(xfr.e, op)}`;
+    switch (sym) {
+    case 'A': return 'cpu.SFR[ACC]';
+    case 'B': return 'cpu.SFR[B]';
+    case 'TMP': return 'cpu.tmp';
+    case 'PC': return 'cpu.pc';
+    case 'SP': return 'cpu.SFR[SP]';
+    case 'DPTR': return 'cpu.dptr';
 
-      case 'If':
-        const thenTransfers = t.thenPart.map(x => genTransfer(x, op)).join('\n  ');
-        const elseTransfers = (t.elsePart || []).map(x => genTransfer(x, op)).join('\n  ');
+    case 'IMM':
+      return params.IMM;
 
-        let s = `\
-if ${genExpr(xfr.e, op)} then
+    case 'BIT':
+    case 'DIR':
+    case 'DIRSRC':
+    case 'DIRDST':
+      return `cpu.iram[${params[sym]}]`;
+
+    case 'RELA':
+      return `cpu.toSigned(${params.RELA})`;
+
+    case 'R': 
+      const rsMask = '0x' + (CPU.pswBits.rs1Mask | CPU.pswBits.rs0Mask).toString(16);
+      return `cpu.iram[(cpu.SFR[PSW] & ${rsMask}) + ${params.b1Value & 7}]`;
+
+    default: return 'symbolToCode DEFAULT!'
+    };
+  }
+
+
+  // For the current Instruction, create the parameters object
+  // containining the values from the instruction's encoding to be
+  // used during the codegen and execution of the instruction. For
+  // example, for an instruction with an IMM immediate value in its
+  // encoding, the `IMM` property will be filled in with the code to
+  // fetch that value from the code stream.
+  function instructionParams() {
+    const b1Value = extractInstructionField();
+    const params = {b1Value};
+
+    ['-never-match-placeholder-', 'b2', 'b3'].forEach((byte, offset) => {
+      let code;
+
+      if (!h[byte] || h[byte].type !== 'SYMBOL') return;
+        
+      switch (h[byte].sym) {
+      case 'IMM':
+      case 'DIR':
+      case 'DIRSRC':
+      case 'DIRDST':
+      case 'HI':
+      case 'LO':
+      case 'RELA':
+      case 'BIT':
+        params[h[byte].sym] = `cpu.code[cpu.pc + ${offset}] /* ${h[byte].sym} */`;
+        break;
+
+      default:
+        console.log(`Unhandled Instruction byte symbol ${h[byte].sym}`);
+        code = `/* UNHANDLED ${h[byte].sym} */`;
+        break;
+      }
+    });
+
+    return params;
+  }
+
+
+  // Given the current Instruction uses a `b1` encoding like
+  // `10111RRR`, extract the value from `op` containing the bits
+  // `RRR` and return them or return `null` if there are no embedded
+  // letters in the encoding.
+  function extractInstructionField() {
+    const b1Match = h.b1.bits.match(/([A-Z]+)/);
+    if (!b1Match) return null;
+    const nBits = b1Match[1].length;
+    const topBitNumber = 7 - b1Match.index;
+    const mask = ((1 << nBits) - 1) << (topBitNumber - nBits + 1);
+    return op & mask;
+  }
+
+
+  function genTransfer(xfr) {
+    const t = xfr.target && xfr.target || xfr;
+
+    switch (t.type) {
+    case 'Var':
+    case 'At':
+    case 'Slash':
+      return `${genTarget(t)} = ${genExpr(xfr.e)}`;
+
+    case 'If':
+      const thenTransfers = t.thenPart.map(x => genTransfer(x)).join('\n  ');
+      const elseTransfers = (t.elsePart || []).map(x => genTransfer(x)).join('\n  ');
+
+      let s = `\
+if ${genExpr(xfr.e)} then
   ${thenTransfers}
 `;
 
-        if (t.elsePart) s += `else
+      if (t.elsePart) s += `else
   ${elseTransfers}
 `;
-        s += `\
+      s += `\
 endif`;
 
-        return s;
+      return s;
 
-      case 'Code':
-        return `{ ${t.code} }`;
+    case 'Code':
+      return `{ ${t.code} }`;
 
-      default:
-        return `\
+    default:
+      return `\
 UNKNOWN target type ${t.type}`;
-      }
     }
+  }
 
 
-    function genTarget(t, op) {
+  function genTarget(t) {
 
-      switch (t.type) {
-      case 'Var':
+    switch (t.type) {
+    case 'Var':
+      return symbolToCode(t.id, instructionParams());
 
-        switch(t.id) {
-        case 'R':
-          return `cpu.R${op & 7}`;
+    case 'At':
+      return `putAtGoesHere(${genTarget(t.e)})`;
 
-        case 'INDIRECT':
-          return `cpu.atR${op & 1}`;
+    case 'Slash':
+      return `${t.space}[${genExpr(t.addr)}]`;
 
-        default:
-          return t.id;
-        }
-
-      case 'At':
-        return `putAtGoesHere(${genTarget(t.e, op)})`;
-
-      case 'Slash':
-        return `${t.space}[${genExpr(t.addr, op)}]`;
-
-      default:
-        return `UNKNOWN target type ${t.type}`;
-      }
+    default:
+      return `UNKNOWN target type ${t.type}`;
     }
+  }
 
 
-    function genExpr(e, op) {
-      if (typeof e === 'number') return e.toString(10);
+  function genExpr(e) {
+    if (typeof e === 'number') return e.toString(10);
 
-      if (!e) return `genExpr(null, ${op.mnemonic})`;
-      if (!e.type) return `empty type op=${op.mnemonic}`;
+    if (!e) return `genExpr(null, ${op.mnemonic})`;
+    if (!e.type) return `empty type op=${op.mnemonic}`;
 
-      switch (e.type) {
-      case 'Code':
-        return `{ ${e.code}; }`;
+    switch (e.type) {
+    case 'Code':
+      return `{ ${e.code}; }`;
 
-      case 'At':
-        return `INDIRECT ${e.e.id}`;
+    case 'At':
+      return `INDIRECT ${e.e.id}`;
 
-      case 'Slash':
-        return `${e.space}[${genExpr(e.addr, op)}]`;
+    case 'Slash':
+      return `${e.space}[${genExpr(e.addr)}]`;
 
-      case 'Var':
-        return e.id;
+    case 'Var':
+      return e.id;
 
-      case 'PLUS':
-        return genBinary(e, '+', op);
+    case 'PLUS':
+      return genBinary(e, '+');
 
-      case 'MINUS':
-        return genBinary(e, '-', op);
+    case 'MINUS':
+      return genBinary(e, '-');
 
-      case 'EQ':
-        return genBinary(e, '===', op);
+    case 'EQ':
+      return genBinary(e, '===');
 
-      case 'NE':
-        return genBinary(e, '!==', op);
+    case 'NE':
+      return genBinary(e, '!==');
 
-      case 'LT':
-        return genBinary(e, '<', op);
+    case 'LT':
+      return genBinary(e, '<');
 
-      case 'GT':
-        return genBinary(e, '>', op);
+    case 'GT':
+      return genBinary(e, '>');
 
-      case 'ANDAND':
-        return genBinary(e, '&&', op);
+    case 'ANDAND':
+      return genBinary(e, '&&');
 
-      case 'OROR':
-        return genBinary(e, '||', op);
+    case 'OROR':
+      return genBinary(e, '||');
 
-      case 'AND':
-        return genBinary(e, '&', op);
+    case 'AND':
+      return genBinary(e, '&');
 
-      case 'OR':
-        return genBinary(e, '|', op);
+    case 'OR':
+      return genBinary(e, '|');
 
-      case 'XOR':
-        return genBinary(e, '^', op);
+    case 'XOR':
+      return genBinary(e, '^');
 
-      case 'Not':
-        return `!${genExpr(e.e, op)}`;
+    case 'Not':
+      return `!${genExpr(e.e)}`;
 
-      default:
-        return `UNKNOWN genExpr(${e.type}, ${op.mnemonic})`;
-      }
+    default:
+      return `UNKNOWN genExpr(${e.type}, ${op.mnemonic})`;
     }
+  }
 
 
-    function genBinary(e, operator, op) {
-      return `${genExpr(e.l, op)} ${operator} ${genExpr(e.r, op)}`;
-    }
+  function genBinary(e, operator) {
+    return `${genExpr(e.l)} ${operator} ${genExpr(e.r)}`;
   }
 }
