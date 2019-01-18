@@ -44,8 +44,9 @@ Start = p:Instruction
 
                                           return p }
 
-Instruction = mnemonic:SYMBOL EQ b1:OpSpec
-        bN:( b2:OpSpec b3:OpSpec? { return {b2, b3} } )? operands:Operands COLON EOL
+Instruction = mnemonic:SYMBOL EQ b1:OperandSpec
+        bN:( b2:OperandSpec b3:OperandSpec?
+                                        { return {b2, b3} } )? operands:Operands COLON EOL
         transfers:Transfer*             { return mk('Instruction', { 
                                             mnemonic,
                                             operands,
@@ -100,7 +101,7 @@ Term =  INTEGER
 Code = LBRACE code:$( !RBRACE .)* RBRACE
                                         { return mk('Code', {code}) }
 
-OpSpec = sym:SYMBOL                     { return mk('Symbol', {sym}) }
+OperandSpec = sym:SYMBOL                { return mk('SYMBOL', {sym}) }
 /       WS '0' [bB] bits:$[A-Za-z_01]+  { return mk('Bits', {bits}) }
 /       WS '0' [xX] d:$[a-fA-F0-9]+     { return parseInt(d, 16) }
 /       WS d:$[a-fA-F0-9]+ [hH]         { return parseInt(d, 16) }

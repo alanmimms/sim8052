@@ -196,6 +196,9 @@ function codegenOpcode(h, op) {
     case 'IMM':
       return params.IMM;
 
+    case 'PAGE':
+      return params.PAGE;
+
     case 'BIT':
     case 'DIR':
     case 'DIRSRC':
@@ -207,11 +210,15 @@ function codegenOpcode(h, op) {
 
     case 'R':
     case 'Ri':
+      // We know we can use rsMask bits of PSW without doing a full
+      // update of PSW with parity generation, etc., so do that by
+      // accessing it directly.
+      //
       // TODO: Handle field NYBHI/NYBLO
       return `cpu.iram[(cpu.SFR[PSW] & ${rsMask}) + ${params.b1Value & 7}]`;
 
     default:
-      return 'symbolToCode DEFAULT!'
+      return `symbolToCode DEFAULT! (${e.id})`
     };
   }
 
@@ -244,8 +251,7 @@ function codegenOpcode(h, op) {
         break;
 
       case 'PAGE':
-        params[h[byte].sym] = 
-          `${b1Value} << 8 | cpu.code[cpu.pc + ${offset}] /* ${h[byte].sym} */`;
+        params.PAGE = `${b1Value} << 8 | cpu.code[cpu.pc + ${offset}] /* PAGE */`;
         break;
 
       default:
@@ -323,22 +329,6 @@ UNKNOWN target type ${t.type}`;
   }
 
 
-  function bitWidthOfVar(v) {
-
-    switch (v) {
-    case 'DPTR':
-    case 'PC':
-      return 16;
-
-    case 'pcPAGE':
-      return 10;
-
-    default:
-      return 8;
-    }
-  }
-
-
   function genExpr(e) {
     if (typeof e === 'number') return e.toString(10);
 
@@ -399,5 +389,21 @@ UNKNOWN target type ${t.type}`;
 
   function genBinary(e, operator) {
     return `${genExpr(e.l)} ${operator} ${genExpr(e.r)}`;
+  }
+
+
+  function bitWidthOfVar(v) {
+
+    switch (v) {
+    case 'DPTR':
+    case 'PC':
+      return 16;
+
+    case 'pcPAGE':
+      return 10;
+
+    default:
+      return 8;
+    }
   }
 }
