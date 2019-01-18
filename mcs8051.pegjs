@@ -73,8 +73,8 @@ Transfer = target:Target e:(ARROW e:Expression { return e } )? EOL
 Target = VarOrAt
  /       Code
 
-VarOrAt = AT e:VarOrAt                    { return mk('At', {e}) }
-/       space:SYMBOL SLASH addr:VarOrAt { return mk('Slash', {space, addr}) }
+VarOrAt = space:SYMBOL SLASH addr:VarOrAt
+                                        { return mk('Slash', {space, addr}) }
 /       Var
 
 Var = id:SYMBOL field:BitField?         { return mk('Var', {id, field}) }
@@ -125,7 +125,6 @@ WS = '/*' (!'*/' .)* '*/'               // /* */ comments
   /  [ \t]*                             // Whitespace within a line
 
 COLON =  WS ':'         {return 'COLON'}
-AT =     WS '@'         {return 'AT'}
 SLASH =  WS '/'         {return 'SLASH'}
 ARROW =  WS '<-'        {return 'ARROW'}
 DOT  =   WS '.'         {return 'DOT'}

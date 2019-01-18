@@ -1,9 +1,9 @@
 ACALL = 0bAAA10001 PAGE "1:addr11":
     PC <- PC + 2
     SP <- SP + 1
-    @SP <- PC.LO
+    IRAM/SP <- PC.LO
     SP <- SP + 1
-    @SP <- PC.HI
+    IRAM/SP <- PC.HI
     PC.PAGE <- PAGE
 
 ADD = 0b00101RRR "A,Ri":
@@ -12,8 +12,8 @@ ADD = 0b00101RRR "A,Ri":
 ADD = 0b00100101 DIR "A,1:direct":
     A_AC_CY_OV <- { doADD(DIR, 0) }
 
-ADD = 0b0010011I "A,1:@Ri":
-    A_AC_CY_OV <- { doADD(@Ri, 0) }
+ADD = 0b0010011I "A,1:IRAM/Ri":
+    A_AC_CY_OV <- { doADD(IRAM/Ri, 0) }
 
 ADD = 0b00100100 IMM "A,1:immed":
     A_AC_CY_OV <- { doADD(IMM, 0) }
@@ -24,8 +24,8 @@ ADDC = 0b00111RRR "A,Ri":
 ADDC = 0b00110101 DIR "A,1:direct":
     A_AC_CY_OV <- { doADD(DIR, CY) }
 
-ADDC = 0b0011011I "A,@Ri":
-    A_AC_CY_OV <- { doADD(@Ri, CY) }
+ADDC = 0b0011011I "A,IRAM/Ri":
+    A_AC_CY_OV <- { doADD(IRAM/Ri, CY) }
 
 ADDC = 0b00110100 IMM "A,1:immed":
     A_AC_CY_OV <- { doADD(IMM, CY) }
@@ -40,8 +40,8 @@ ANL = 0b01011RRR "A,Ri":
 ANL = 0b01010101 DIR "A,1:direct":
     A <- A & DIR
 
-ANL = 0b0101011I "A,@Ri":
-    A <- A & @Ri
+ANL = 0b0101011I "A,IRAM/Ri":
+    A <- A & IRAM/Ri
 
 ANL = 0b01010100 IMM "A,1:immed":
     A <- A & IMM
@@ -82,7 +82,7 @@ CJNE = 0b10111RRR IMM RELA "Ri,1:immed,2:rela":
       pc <- pc + RELA
     endif
 
-CJNE = 0b1011011I IMM RELA "@Ri,1:immed,2:rela":
+CJNE = 0b1011011I IMM RELA "IRAM/Ri,1:immed,2:rela":
     PC <- PC + 3
     CY <- I < IMM
     if I != IMM
@@ -125,8 +125,8 @@ DEC = 0b00011RRR "Ri":
 DEC = 0b00010101 DIR "1:direct":
     DIR <- DIR - 1
 
-DEC = 0b0001011I "@Ri":
-    @Ri <- @Ri - 1
+DEC = 0b0001011I "IRAM/Ri":
+    IRAM/Ri <- IRAM/Ri - 1
 
 DIV = 0b10000100 "AB":
     A <- { doDIV() }
@@ -156,8 +156,8 @@ INC = 0b00001RRR "Ri":
 INC = 0b00000101 DIR "1:direct":
     DIR <- DIR + 1
 
-INC = 0b0000011I "@Ri":
-    @Ri <- @Ri + 1
+INC = 0b0000011I "IRAM/Ri":
+    IRAM/Ri <- IRAM/Ri + 1
 
 INC = 0b10100011 "DPTR":
     DPTR <- DPTR + 1
@@ -218,9 +218,9 @@ JZ = 0b01100000 RELA "1:rela":
 LCALL = 0b00010010 HI LO "1:addr16":
     PC <- PC + 3
     SP <- SP + 1
-    @SP <- PC.LO
+    IRAM/SP <- PC.LO
     SP <- SP + 1
-    @SP <- PC.HI
+    IRAM/SP <- PC.HI
     PC <- HILO
 
 LJMP = 0b00000010 HI LO "1:addr16":
@@ -232,8 +232,8 @@ MOV = 0b11101RRR "A,Ri":
 MOV = 0b11100101 DIR "A,1:direct":
     A <- DIR
 
-MOV = 0b1110011I "A,@Ri":
-    A <- @Ri
+MOV = 0b1110011I "A,IRAM/Ri":
+    A <- IRAM/Ri
 
 MOV = 0b01110100 IMM "A,1:immed":
     A <- IMM
@@ -256,20 +256,20 @@ MOV = 0b10001RRR DIR "1:direct,Ri":
 MOV = 0b10000101 DIRSRC DIRDST "2:direct,1:direct":
     DIRDST <- DIRSRC
 
-MOV = 0b1000011I DIR "@Ri,1:direct":
-    DIR <- @Ri
+MOV = 0b1000011I DIR "IRAM/Ri,1:direct":
+    DIR <- IRAM/Ri
 
 MOV = 0b01110101 DIR IMM "1:direct,2:immed":
     DIR <- IMM
 
-MOV = 0b1111011I "@Ri,A":
-    @Ri <- A
+MOV = 0b1111011I "IRAM/Ri,A":
+    IRAM/Ri <- A
 
-MOV = 0b1010011I DIR "@Ri,1:direct":
-    @Ri <- DIR
+MOV = 0b1010011I DIR "IRAM/Ri,1:direct":
+    IRAM/Ri <- DIR
 
-MOV = 0b0111011I IMM "@Ri,1:immed":
-    @Ri <- IMM
+MOV = 0b0111011I IMM "IRAM/Ri,1:immed":
+    IRAM/Ri <- IMM
 
 MOV = 0b10100010 BIT "C,1:bit":
     CY <- BIT
@@ -286,14 +286,14 @@ MOVC = 0b10010011 "A,@A+DPTR":
 MOVC = 0b10000011 "A,@A+PC":
     A <- CODE/A_PLUS_PC
 
-MOVX = 0b1110001I "A,@Ri":
-    A <- EXT/@Ri
+MOVX = 0b1110001I "A,IRAM/Ri":
+    A <- EXT/IRAM/Ri
 
 MOVX = 0b11100000 "A,@DPTR":
     A <- EXT/DPTR
 
-MOVX = 0b1111001I "@Ri,A":
-    EXT/@Ri <- A
+MOVX = 0b1111001I "IRAM/Ri,A":
+    EXT/IRAM/Ri <- A
 
 MOVX = 0b11110000 "@DPTR,A":
     EXT/DPTR <- A
@@ -309,8 +309,8 @@ ORL = 0b01001RRR "A,Ri":
 ORL = 0b01000101 DIR "A,1:direct":
     A <- A | DIR
 
-ORL = 0b0100011I "A,@Ri":
-    A <- A | @Ri
+ORL = 0b0100011I "A,IRAM/Ri":
+    A <- A | IRAM/Ri
 
 ORL = 0b01000100 IMM "A,1:immed":
     A <- A | IMM
@@ -328,23 +328,23 @@ ORL = 0b10100000 BIT "C,1:nbit":
     CY <- CY | ~BIT
 
 POP = 0b11010000 DIR "1:direct":
-    DIR <- @SP
+    DIR <- IRAM/SP
     SP <- SP - 1
 
 PUSH = 0b11000000 DIR "1:direct":
     SP <- SP + 1
-    @SP <- DIR
+    IRAM/SP <- DIR
 
 RET = 0b00100010 "":
-    PC.HI <- @SP
+    PC.HI <- IRAM/SP
     SP <- SP - 1
-    PC.LO <- @SP
+    PC.LO <- IRAM/SP
     SP <- SP - 1
 
 RETI = 0b00110010 "":
-    PC.HI <- @SP
+    PC.HI <- IRAM/SP
     SP <- SP - 1
-    PC.HI <- @SP
+    PC.HI <- IRAM/SP
     SP <- SP - 1
     { doRETI() }
 
@@ -376,8 +376,8 @@ SUBB = 0b10011RRR "A,Ri":
 SUBB = 0b10010101 DIR "A,1:direct":
     A_AC_CY_OV <- { doSUBB(A, DIR, CY) }
 
-SUBB = 0b1001011I "A,@Ri":
-    A_AC_CY_OV <- { doSUBB(A, @Ri, CY) }
+SUBB = 0b1001011I "A,IRAM/Ri":
+    A_AC_CY_OV <- { doSUBB(A, IRAM/Ri, CY) }
 
 SUBB = 0b10010100 IMM "A,1:immed":
     A_AC_CY_OV <- { doSUBB(A, IMM, CY) }
@@ -397,15 +397,15 @@ XCH = 0b11000101 DIR "A,1:direct":
     A <- DIR
     DIR <- TMP
 
-XCH = 0b1100011I "A,@Ri":
+XCH = 0b1100011I "A,IRAM/Ri":
     TMP <- A
-    A <- @Ri
-    @Ri <- TMP
+    A <- IRAM/Ri
+    IRAM/Ri <- TMP
 
-XCHD = 0b1101011I "A,@Ri":
+XCHD = 0b1101011I "A,IRAM/Ri":
     TMP <- A
-    A.NYBLO <- @Ri.NYBLO
-    @Ri.NYBLO <- TMP.NYBLO
+    A.NYBLO <- IRAM/Ri.NYBLO
+    IRAM/Ri.NYBLO <- TMP.NYBLO
 
 XRL = 0b01101RRR "A,Ri":
     A <- A ^ R
@@ -413,8 +413,8 @@ XRL = 0b01101RRR "A,Ri":
 XRL = 0b01100101 DIR "A,1:direct":
     A <- A ^ DIR
 
-XRL = 0b0110011I "A,@Ri":
-    A <- A ^ @Ri
+XRL = 0b0110011I "A,IRAM/Ri":
+    A <- A ^ IRAM/Ri
 
 XRL = 0b01100100 IMM "A,1:immed":
     A <- A ^ IMM
