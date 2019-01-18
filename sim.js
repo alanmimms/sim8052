@@ -279,6 +279,11 @@ const cpu = {
   },
 
 
+  doRETI() {
+    if (this.ipl >= 0) this.ipl = this.ipl - 1;
+  },
+
+
   doADD() {
     const a = this.SFR[ACC]
     const b = this.alu1;
@@ -318,7 +323,62 @@ const cpu = {
   },
 
 
+  doMUL() {
+    const a = this.SFR[ACC] * this.SFR[B];
+    this.CY = 0;                // Always clears CY.
+    this.OV = +(a > 0xFF);
+    this.SFR[ACC] = a;
+    this.SFR[B] = a >>> 8;
+  },
+
+
+  doDIV() {
+    // DIV always clears CY. DIV sets OV on divide by 0.
+    const b = this.SFR[B];
+    this.CY = 0;
+
+    if (b === 0) {
+      this.OV = 1;
+    } else {
+      const curACC = this.SFR[ACC];
+      const a = Math.floor(curACC / b);
+      b = curACC % b;
+      this.SFR[ACC] = a;
+      this.SFR[B] = b;
+    }
+  },
+
+  doRL() {
+    let a = this.SFR[ACC];
+    a <<= 1;
+    a = a & 0xFF | a >>> 8;
+    this.SFR[ACC] = a;
+  },
+
+
+  doRLC() {
+    let a = this.SFR[ACC];
+    let c = this.CY;
+    this.CY = a >>> 7;
+    a <<= 1;
+    this.SFR[ACC] = a | c;
+  },
+
+
+  doRR() {
+    let a = this.SFR[ACC];
+    a = a >>> 1 | a << 7;
+    this.SFR[ACC] =  a;
+  },
+
+
   doRRC(a, c) {
+    a = this.SFR[ACC];
+    let c = this.CY;
+    this.CY = a & 1;
+    a >>>= 1;
+    a |= c << 7;
+    this.SFR[ACC] = a;
   },
 
 

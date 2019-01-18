@@ -320,7 +320,7 @@ endif`;
       return s;
 
     case 'Code':
-      return `{ ${t.code} }`;
+      return t.code.trim();
 
     default:
       return `\
@@ -352,7 +352,7 @@ UNKNOWN target type ${t.type}`;
 
     switch (e.type) {
     case 'Code':
-      return `{ ${e.code}; }`;
+      return e.code.trim();
 
     case 'Slash':
     case 'Var':
