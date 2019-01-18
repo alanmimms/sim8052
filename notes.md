@@ -1,6 +1,6 @@
 # Using Proxy() to mediate access for get/set even of array
 
-```
+
 > var c = { k: 0, a: [1, 2, 3], set iram(v) { this.a[99] = v } }
 undefined
 > c.iram = 1234

@@ -55,22 +55,28 @@ const SCON = CPU.SCON;
 const SBUF = CPU.SBUF;
 
 
+// These are done first so we can construct a Proxy to access it.
+const iram = Buffer.alloc(0x100, 0x00, 'binary');
+const xram = Buffer.alloc(XRAMSize, 0x00, 'binary');
+const SFR = Buffer.alloc(0x100, 0x00, 'binary');
+
+
 const cpu = {
 
   // Program counter - invisible to software in most ways
   pc: 0,
 
-  // Internal RAM
-  iram: Buffer.alloc(0x100, 0x00, 'binary'),
-
-  // SFRs. Even though this is 256 bytes, only 0x80..0xFF are used.
-  SFR: Buffer.alloc(0x100, 0x00, 'binary'),
-
   // Code (program) memory.
   code: Buffer.alloc(CODESize, 0x00, 'binary'),
 
+  // Internal RAM
+  iram,
+
+  // SFRs. Even though this is 256 bytes, only 0x80..0xFF are used.
+  SFR,
+
   // External (data) memory.
-  xram: Buffer.alloc(XRAMSize, 0x00, 'binary'),
+  xram,
 
   // Interrupt priority level.
   // -1: No interrupt in progress.
@@ -110,6 +116,47 @@ const cpu = {
   branchHistoryMask: 255,
   branchHistory: new Array(256),
   branchHistoryX: -1,           // Always points to most recent entry
+
+
+  // Get/set low nybble of IRAM location
+  iramNYBLO: new Proxy(iram, {
+
+    // Set low nybble of IRAM location
+    set(target, ea, value) {
+      iram[ea] = iram[ea] & ~0x0F | value & 0x0F;
+    },
+
+    // Get low nybble of IRAM location
+    get: (target, ea, value) => iram[ea] & 0x0F,
+  }),
+
+
+  // Get/set low and high byte or page field of PC
+  set pcLO(v) {
+    cpu.pc = cpu.pc & ~0xFF | v & 0xFF;
+  },
+
+  get pcLO() {
+    return cpu.pc & 0xFF;
+  },
+
+  set pcHI(v) {
+    cpu.pc = cpu.pc & ~0xFF00 | v & 0xFF00;
+  },
+
+  get pcHI() {
+    return cpu.pc & 0xFF00;
+  },
+
+
+  set pcPAGE(v) {
+    cpu.pc = cpu.pc & ~0x7FF | v & 0x7FF;
+  },
+
+  get pcPAGE() {
+    return cpu.pc & 0x7FF;
+  },
+
 
 
   fetch() {

@@ -80,8 +80,7 @@ VarOrAt = AT e:VarOrAt                    { return mk('At', {e}) }
 Var = id:SYMBOL field:BitField?         { return mk('Var', {id, field}) }
 /       NOT e:Var                       { return mk('Not', {e}) }
 
-BitField = LBIT h:INTEGER MINUS l:INTEGER RBIT
-                                        { return mk('BitField', {h, l}) }
+BitField = DOT field:SYMBOL             { return field }
 
 Expression =
     l:Term
@@ -129,8 +128,7 @@ COLON =  WS ':'         {return 'COLON'}
 AT =     WS '@'         {return 'AT'}
 SLASH =  WS '/'         {return 'SLASH'}
 ARROW =  WS '<-'        {return 'ARROW'}
-LBIT =   WS '['         {return 'LBIT'}
-RBIT =   WS ']'         {return 'RBIT'}
+DOT  =   WS '.'         {return 'DOT'}
 LBRACE = WS '{'         {return 'LBRACE'}
 RBRACE = WS '}'         {return 'RBRACE'}
 ANDAND = WS '&&'        {return 'ANDAND'}

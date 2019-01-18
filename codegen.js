@@ -167,12 +167,25 @@ function codegenOpcode(h, op) {
 
 
   function symbolToCode(sym, params) {
+    const rsMask = '0x' + (CPU.pswBits.rs1Mask | CPU.pswBits.rs0Mask).toString(16);
 
     switch (sym) {
-    case 'A': return 'cpu.SFR[ACC]';
+    case 'A': {
+      // TODO: Handle field NYBHI/NYBLO
+      return 'cpu.SFR[ACC]';
+    }
+
     case 'B': return 'cpu.SFR[B]';
-    case 'TMP': return 'cpu.tmp';
-    case 'PC': return 'cpu.pc';
+    case 'TMP': {
+      // TODO: Handle field NYBHI/NYBLO
+      return 'cpu.tmp';
+    }
+
+    case 'PC': {
+      // TODO: Handle field HI, LO, PAGE
+      return 'cpu.pc';
+    }
+
     case 'SP': return 'cpu.SFR[SP]';
     case 'DPTR': return 'cpu.dptr';
 
@@ -188,9 +201,11 @@ function codegenOpcode(h, op) {
     case 'RELA':
       return `cpu.toSigned(${params.RELA})`;
 
-    case 'R': 
-      const rsMask = '0x' + (CPU.pswBits.rs1Mask | CPU.pswBits.rs0Mask).toString(16);
+    case 'R':
+    case 'Ri': {
+      // TODO: Handle field NYBHI/NYBLO
       return `cpu.iram[(cpu.SFR[PSW] & ${rsMask}) + ${params.b1Value & 7}]`;
+    }      
 
     default: return 'symbolToCode DEFAULT!'
     };
@@ -222,6 +237,11 @@ function codegenOpcode(h, op) {
       case 'RELA':
       case 'BIT':
         params[h[byte].sym] = `cpu.code[cpu.pc + ${offset}] /* ${h[byte].sym} */`;
+        break;
+
+      case 'PAGE':
+        params[h[byte].sym] = 
+          `${b1Value} << 8 | cpu.code[cpu.pc + ${offset}] /* ${h[byte].sym} */`;
         break;
 
       default:
@@ -292,7 +312,9 @@ UNKNOWN target type ${t.type}`;
       return symbolToCode(t.id, instructionParams());
 
     case 'At':
-      return `putAtGoesHere(${genTarget(t.e)})`;
+      return `\
+const ri = ${genTarget(t.e)};
+putAtGoesHere(ri)`;
 
     case 'Slash':
       return `${t.space}[${genExpr(t.addr)}]`;

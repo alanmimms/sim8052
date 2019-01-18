@@ -1,10 +1,10 @@
-ACALL = 0bAAA10001 LO "1:addr11":
+ACALL = 0bAAA10001 PAGE "1:addr11":
     PC <- PC + 2
     SP <- SP + 1
-    @SP <- PC[7-0]
+    @SP <- PC.LO
     SP <- SP + 1
-    @SP <- PC[15-8]
-    PC[10-0] <- { pageAddress(A, LO) }
+    @SP <- PC.HI
+    PC.PAGE <- PAGE
 
 ADD = 0b00101RRR "A,Ri":
     A_AC_CY_OV <- { doADD(R, 0) }
@@ -30,9 +30,9 @@ ADDC = 0b0011011I "A,@Ri":
 ADDC = 0b00110100 IMM "A,1:immed":
     A_AC_CY_OV <- { doADD(IMM, CY) }
 
-AJMP = 0bAAA00001 LO "1:addr11":
+AJMP = 0bAAA00001 PAGE "1:addr11":
     PC <- PC + 2
-    PC[10-0] <- { pageAddress(A, LO) }
+    PC.PAGE <- PAGE
 
 ANL = 0b01011RRR "A,Ri":
     A <- A & R
@@ -109,11 +109,11 @@ CPL = 0b10110011 "C":
     CY <- ~CY
 
 DA = 0b11010100 "A":
-    if A[3-0] > 9 || AC then
-      A[3-0] <- A[3-0] + 6
+    if A.NYBLO > 9 || AC then
+      A.NYBLO <- A.NYBLO + 6
     endif
-    if A[7-4] > 9 || CY then
-      A[7-4] <- A[7-4] + 6
+    if A.NYBHI > 9 || CY then
+      A.NYBHI <- A.NYBHI + 6
     endif
 
 DEC = 0b00010100 "A":
@@ -218,9 +218,9 @@ JZ = 0b01100000 RELA "1:rela":
 LCALL = 0b00010010 HI LO "1:addr16":
     PC <- PC + 3
     SP <- SP + 1
-    @SP <- PC[7-0]
+    @SP <- PC.LO
     SP <- SP + 1
-    @SP <- PC[15-8]
+    @SP <- PC.HI
     PC <- HILO
 
 LJMP = 0b00000010 HI LO "1:addr16":
@@ -336,15 +336,15 @@ PUSH = 0b11000000 DIR "1:direct":
     @SP <- DIR
 
 RET = 0b00100010 "":
-    PC[15-8] <- @SP
+    PC.HI <- @SP
     SP <- SP - 1
-    PC[7-0] <- @SP
+    PC.LO <- @SP
     SP <- SP - 1
 
 RETI = 0b00110010 "":
-    PC[15-8] <- @SP
+    PC.HI <- @SP
     SP <- SP - 1
-    PC[7-0] <- @SP
+    PC.HI <- @SP
     SP <- SP - 1
     { doRETI() }
 
@@ -384,8 +384,8 @@ SUBB = 0b10010100 IMM "A,1:immed":
 
 SWAP = 0b11000100 "A":
     TMP <- A
-    A[7-4] <- TMP[3-0]
-    A[3-0] <- TMP[7-4]
+    A.NYBHI <- TMP.NYBLO
+    A.NYBLO <- TMP.NYBHI
 
 XCH = 0b11001RRR "A,Ri":
     TMP <- A
@@ -404,8 +404,8 @@ XCH = 0b1100011I "A,@Ri":
 
 XCHD = 0b1101011I "A,@Ri":
     TMP <- A
-    A[3-0] <- @Ri[3-0]
-    @Ri[3-0] <- TMP[3-0]
+    A.NYBLO <- @Ri.NYBLO
+    @Ri.NYBLO <- TMP.NYBLO
 
 XRL = 0b01101RRR "A,Ri":
     A <- A ^ R
