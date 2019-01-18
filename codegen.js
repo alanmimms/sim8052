@@ -199,6 +199,9 @@ function codegenOpcode(h, op) {
     case 'PAGE':
       return params.PAGE;
 
+    case 'HILO':
+      return `(${params.HI}) << 8 | (${params.LO})`;
+
     case 'BIT':
     case 'DIR':
     case 'DIRSRC':
