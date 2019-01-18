@@ -142,6 +142,10 @@ ${h.handlerSource}
 
 // Generate the code for the specified opcode `op` for Instruction `h`
 // and place that code into `h.handlerSource`.
+//
+//TODO:
+//* Find uses of Ri or @Ri and declare `rBase` at top of the handler
+//  to avoid the `cpu.ira[(cpu.SFR[PSW] & 0x18) + i]` mess.
 function codegenOpcode(h, op) {
   h.pcIsAssigned = h.transfers.find(xfr => isVar(xfr.target, 'PC'));
 
@@ -329,7 +333,7 @@ UNKNOWN target type ${t.type}`;
       return symbolToCode(t, instructionParams());
 
     case 'Slash':
-      return `${t.space}[${genExpr(t.addr)}]`;
+      return `cpu.${t.space.toLowerCase()}[${genExpr(t.addr)}]`;
 
     default:
       return `UNKNOWN target type ${t.type}`;
@@ -348,8 +352,6 @@ UNKNOWN target type ${t.type}`;
       return `{ ${e.code}; }`;
 
     case 'Slash':
-      return `${e.space}[${genExpr(e.addr)}]`;
-
     case 'Var':
       return genTarget(e);
 

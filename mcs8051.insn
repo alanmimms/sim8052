@@ -287,16 +287,16 @@ MOVC = 0b10000011 "A,@A+PC":
     A <- CODE/A_PLUS_PC
 
 MOVX = 0b1110001I "A,IRAM/Ri":
-    A <- EXT/IRAM/Ri
+    A <- XMEM/IRAM/Ri
 
 MOVX = 0b11100000 "A,@DPTR":
-    A <- EXT/DPTR
+    A <- XMEM/DPTR
 
 MOVX = 0b1111001I "IRAM/Ri,A":
-    EXT/IRAM/Ri <- A
+    XMEM/IRAM/Ri <- A
 
 MOVX = 0b11110000 "@DPTR,A":
-    EXT/DPTR <- A
+    XMEM/DPTR <- A
 
 MUL = 0b10100100 "AB":
     A <- { doMUL(A, B) }
