@@ -7,28 +7,44 @@ ACALL = 0bAAA10001 PAGE "1:addr11":
     PC.PAGE <- PAGE
 
 ADD = 0b00101RRR "A,Ri":
-    A_AC_CY_OV <- { doADD(R, 0) }
+    ALU1 <- R
+    ALUC <- 0
+    A_AC_CY_OV <- { doADD() }
 
 ADD = 0b00100101 DIR "A,1:direct":
-    A_AC_CY_OV <- { doADD(DIR, 0) }
+    ALU1 <- DIR
+    ALUC <- 0
+    A_AC_CY_OV <- { doADD() }
 
 ADD = 0b0010011I "A,1:IRAM/Ri":
-    A_AC_CY_OV <- { doADD(IRAM/Ri, 0) }
+    ALU1 <- IMM/Ri
+    ALUC <- 0
+    A_AC_CY_OV <- { doADD() }
 
 ADD = 0b00100100 IMM "A,1:immed":
-    A_AC_CY_OV <- { doADD(IMM, 0) }
+    ALU1 <- IMM
+    ALUC <- 0
+    A_AC_CY_OV <- { doADD() }
 
 ADDC = 0b00111RRR "A,Ri":
-    A_AC_CY_OV <- { doADD(R, CY) }
+    ALU1 <- R
+    ALUC <- CY
+    A_AC_CY_OV <- { doADD() }
 
 ADDC = 0b00110101 DIR "A,1:direct":
-    A_AC_CY_OV <- { doADD(DIR, CY) }
+    ALU1 <- DIR
+    ALUC <- CY
+    A_AC_CY_OV <- { doADD() }
 
 ADDC = 0b0011011I "A,IRAM/Ri":
-    A_AC_CY_OV <- { doADD(IRAM/Ri, CY) }
+    ALU1 <- IRAM/Ri
+    ALUC <- CY
+    A_AC_CY_OV <- { doADD() }
 
 ADDC = 0b00110100 IMM "A,1:immed":
-    A_AC_CY_OV <- { doADD(IMM, CY) }
+    ALU1 <- IMM
+    ALUC <- CY
+    A_AC_CY_OV <- { doADD() }
 
 AJMP = 0bAAA00001 PAGE "1:addr11":
     PC <- PC + 2
@@ -299,7 +315,7 @@ MOVX = 0b11110000 "@DPTR,A":
     XMEM/DPTR <- A
 
 MUL = 0b10100100 "AB":
-    A <- { doMUL(A, B) }
+    A <- { doMUL() }
 
 NOP = 0b00000000 "":
 
@@ -349,16 +365,16 @@ RETI = 0b00110010 "":
     { doRETI() }
 
 RL = 0b00100011 "A":
-    A <- { doRL(A) }
+    A <- { doRL() }
 
 RLC = 0b00110011 "A":
-    A <- { doRLC(A, CY) }
+    A <- { doRLC() }
 
 RR = 0b00000011 "A":
-    A <- { doRR(A) }
+    A <- { doRR() }
 
 RRC = 0b00010011 "A":
-    A <- { doRRC(A, CY) }
+    A <- { doRRC() }
 
 SETB = 0b11010011 "C":
     CY <- 1
@@ -371,16 +387,20 @@ SJMP = 0b10000000 RELA "1:rela":
     PC <- PC + RELA
 
 SUBB = 0b10011RRR "A,Ri":
-    A_AC_CY_OV <- { doSUBB(A, R, CY) }
+    ALU1 <- R
+    A_AC_CY_OV <- { doSUBB() }
 
 SUBB = 0b10010101 DIR "A,1:direct":
-    A_AC_CY_OV <- { doSUBB(A, DIR, CY) }
+    ALU1 <- DIR
+    A_AC_CY_OV <- { doSUBB() }
 
 SUBB = 0b1001011I "A,IRAM/Ri":
-    A_AC_CY_OV <- { doSUBB(A, IRAM/Ri, CY) }
+    ALU1 <- IRAM/Ri
+    A_AC_CY_OV <- { doSUBB() }
 
 SUBB = 0b10010100 IMM "A,1:immed":
-    A_AC_CY_OV <- { doSUBB(A, IMM, CY) }
+    ALU1 <- IMM
+    A_AC_CY_OV <- { doSUBB() }
 
 SWAP = 0b11000100 "A":
     TMP <- A
