@@ -94,6 +94,10 @@ const cpu = {
   // Temporary value used during some instructions
   tmp: 0,
 
+  // Parameters to ALU operations like doADD, doSUBB, etc.
+  alu1: 0,
+  aluC: 0,
+
   // Serial port input queue
   sbufQueue: [],
 
@@ -275,9 +279,10 @@ const cpu = {
   },
 
 
-  doADD(op, b) {
-    const c = (op & 0x10) ? this.getCY() : 0;
+  doADD() {
     const a = this.SFR[ACC]
+    const b = this.alu1;
+    const c = this.aluC;
 
     const acValue = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
     const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
@@ -292,10 +297,11 @@ const cpu = {
   },
 
 
-  doSUBB(op, b) {
-    const c = this.getCY();
-    const toSub = b + c;
+  doSUBB() {
     const a = this.SFR[ACC];
+    const b = this.alu1;
+    const c = this.aluC;
+    const toSub = b + c;
     const result = (a - toSub) & 0xFF;
 
     const cyValue = +(a < toSub);
@@ -309,6 +315,10 @@ const cpu = {
       acValue << pswBits.acShift |
       cyValue << pswBits.cyShift;
     this.SFR[ACC] = a - toSub;
+  },
+
+
+  doRRC(a, c) {
   },
 
 
