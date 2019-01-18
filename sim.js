@@ -220,7 +220,7 @@ const cpu = {
       else
         psw &= ~pswBits.pMask;
 
-      this.putSFR(PSW, psw);
+      this.SFR[PSW] = psw;
       return psw;
 
     case P3:
@@ -263,94 +263,39 @@ const cpu = {
   },
 
 
-  getOV() {
-    return +!!(this.getSFR(PSW) & pswBits.ovMask);
+  get DPTR() {
+    return this.SFR[DPH] << 8 | this.SFR[DPL];
   },
 
 
-  getCY() {
-    return +!!(this.getSFR(PSW) & pswBits.cyMask);
-  },
-
-
-  getAC() {
-    return +!!(this.getSFR(PSW) & pswBits.acMask);
-  },
-
-
-  putCY(v) {
-    if (v)
-      this.putSFR(PSW, this.getSFR(PSW) | pswBits.cyMask);
-    else
-      this.putSFR(PSW, this.getSFR(PSW) & ~pswBits.cyMask);
-  },
-
-
-  putOV(v) {
-    if (v)
-      this.putSFR(PSW, this.getSFR(PSW) | pswBits.ovMask);
-    else
-      this.putSFR(PSW, this.getSFR(PSW) & ~pswBits.ovMask);
-  },
-
-
-  getDPTR() {
-    return this.getSFR(DPH) << 8 | this.getSFR(DPL);
-  },
-
-
-  putDPTR(v) {
+  set DPTR(v) {
     v &= 0xFFFF;
-    this.putSFR(DPL, v);
-    this.putSFR(DPH, v >>> 8);
-  },
-
-
-  push1(v) {
-    const newSP = this.getSFR(SP) + 1;
-    this.putDirect(newSP, v);
-    this.putSFR(SP, newSP);
-  },
-
-
-  push2(v) {
-    const newSP = this.getSFR(SP) + 2;
-    this.putDirect(newSP - 1, v);
-    this.putDirect(newSP,     v >>> 8);
-    this.putSFR(SP, newSP);
-  },
-
-
-  pop() {
-    const curSP = this.getSFR(SP);
-    const a = this.getDirect(curSP);
-    this.putSFR(SP, curSP - 1);
-    return a;
+    this.SFR[DPL] = v;
+    this.SFR[DPH] = v >>> 8;
   },
 
 
   doADD(op, b) {
     const c = (op & 0x10) ? this.getCY() : 0;
-    const a = this.getSFR(ACC)
-    const pswMathCleared = this.getSFR(PSW) & ~mathMask;
+    const a = this.SFR[ACC]
 
     const acValue = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
     const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
     const cyValue = +(a + b + c > 0xFF);
     const ovValue = cyValue ^ c6Value;
 
-    this.putSFR(PSW, pswMathCleared |
-                (ovValue << pswBits.ovShift) |
-                (acValue << pswBits.acShift) |
-                (cyValue << pswBits.cyShift));
-    this.putSFR(ACC, a + b + c);
+    this.SFR[PSW] &= ~mathMask;
+    this.SFR[PSW] |= ovValue << pswBits.ovShift |
+      acValue << pswBits.acShift |
+      cyValue << pswBits.cyShift;
+    this.SFR[ACC] = a + b + c;
   },
 
 
   doSUBB(op, b) {
     const c = this.getCY();
     const toSub = b + c;
-    const a = this.getSFR(ACC);
+    const a = this.SFR[ACC];
     const result = (a - toSub) & 0xFF;
 
     const cyValue = +(a < toSub);
@@ -359,12 +304,11 @@ const cpu = {
     const ovValue = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
                       (a > 0x7F && b < 0x80 && result < 0x80));
 
-    this.putSFR(PSW, (this.getSFR(PSW) & ~mathMask) |
-                ovValue << pswBits.ovShift |
-                acValue << pswBits.acShift |
-                cyValue << pswBits.cyShift);
-
-    this.putSFR(ACC, a - toSub);
+    this.SFR[PSW] &= ~mathMask;
+    this.SFR[PSW] |= ovValue << pswBits.ovShift |
+      acValue << pswBits.acShift |
+      cyValue << pswBits.cyShift;
+    this.SFR[ACC] = a - toSub;
   },
 
 
@@ -374,13 +318,13 @@ const cpu = {
 
 
   getR(r) {
-    const ra = (this.getSFR(PSW) & rsMask) + r;
+    const ra = (this.SFR[PSW] & rsMask) + r;
     return this.iram[ra];
   },
 
 
   putR(r, v) {
-    const ra = (this.getSFR(PSW) & rsMask) + r;
+    const ra = (this.SFR[PSW] & rsMask) + r;
     this.iram[ra] = v;
   },
 
