@@ -129,7 +129,7 @@ already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
     const handlersLog = handlers.map((h, op) => {
       h.handlerSource = codegenOpcode(h, op);
       return `\
-${toHex2(op)}: ${h.mnemonic} ${h.operands}
+// ${toHex2(op)}: ${h.mnemonic} ${h.operands}
 ${h.handlerSource}
 `;
     }).join('\n');
@@ -144,8 +144,9 @@ ${h.handlerSource}
 // and place that code into `h.handlerSource`.
 //
 //TODO:
-//* Find uses of Ri or @Ri and declare `rBase` at top of the handler
-//  to avoid the `cpu.ira[(cpu.SFR[PSW] & 0x18) + i]` mess.
+// * Find references to Ri or @Ri and declare `rBase` at top of the
+//   handler to avoid the `cpu.ira[(cpu.SFR[PSW] & 0x18) + i]` mess.
+// * Optimize transfers like `X = X + k` to be like `X += k`.
 function codegenOpcode(h, op) {
   h.pcIsAssigned = h.transfers.find(xfr => isVar(xfr.target, 'PC'));
 
@@ -163,7 +164,8 @@ function codegenOpcode(h, op) {
 
   return h.transfers
     .map(xfr => genTransfer(xfr))
-    .join('\n');
+    .join(';\n') 
+    + ';';
 
 
   ////////////////////////////////////////////////////////////////
@@ -182,7 +184,11 @@ function codegenOpcode(h, op) {
       // TODO: Handle field NYBHI/NYBLO
       return 'cpu.SFR[ACC]';
 
-    case 'B': return 'cpu.SFR[B]';
+    case 'ALU1':        return 'cpu.alu1';
+    case 'ALUC':        return 'cpu.aluC';
+    case 'B':           return 'cpu.SFR[B]';
+    case 'SP':          return 'cpu.SFR[SP]';
+
     case 'TMP':
       // TODO: Handle field NYBHI/NYBLO
       return 'cpu.tmp';
@@ -190,9 +196,6 @@ function codegenOpcode(h, op) {
     case 'PC':
       // TODO: Handle field HI, LO, PAGE
       return 'cpu.pc' + (e.field || '');
-
-    case 'SP':
-      return 'cpu.SFR[SP]';
 
     case 'DPTR':
       return 'cpu.dptr' + (e.field || '');
