@@ -6,9 +6,13 @@ const util = require('util');
 const PEG = require('pegjs');
 
 const CPU = require('./cpu.js');
+const SimUtils = require('./simutils.js');
 
 const GRAMMAR_PATH = './mcs8051.pegjs'
 const INSN_PATH = './mcs8051.insn';
+
+
+const {toHex2, toHex4} = SimUtils;
 
 
 module.exports = {
@@ -110,7 +114,7 @@ ${util.inspect(e, {depth: 99})}
           if (handlers[op]) 
             console.error(`\
 In ${insn.mnemonic} handler, \
-already defined for ${op.toString(16)}H as ${handlers[op].mnemonic}`);
+already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
           handlers[op] = insn;
         });
     });
@@ -118,14 +122,14 @@ already defined for ${op.toString(16)}H as ${handlers[op].mnemonic}`);
     // Make sure we define all 256 handlers
     handlers
       .forEach((h, op) =>
-               h || console.error(`Handler not defined for ${op.toString(16)}H`));
+               h || console.error(`Handler not defined for ${toHex2(op)}`));
 
     // Generate the code for the simHandler(cpu, insnPC, op) function
     // for each opcode.
     const handlersLog = handlers.map((h, op) => {
       h.handlerSource = codegenOpcode(h, op);
       return `\
-${op.toString(16)}H: ${h.mnemonic} ${h.operands}
+${toHex2(op)}: ${h.mnemonic} ${h.operands}
 ${h.handlerSource}
 `;
     }).join('\n');
@@ -166,28 +170,28 @@ function codegenOpcode(h, op) {
   }
 
 
-  function symbolToCode(sym, params) {
-    const rsMask = '0x' + (CPU.pswBits.rs1Mask | CPU.pswBits.rs0Mask).toString(16);
+  function symbolToCode(e, params) {
+    const rsMask = '0x' + toHex2(CPU.pswBits.rs1Mask | CPU.pswBits.rs0Mask);
 
-    switch (sym) {
-    case 'A': {
+    switch (e.id) {
+    case 'A':
       // TODO: Handle field NYBHI/NYBLO
       return 'cpu.SFR[ACC]';
-    }
 
     case 'B': return 'cpu.SFR[B]';
-    case 'TMP': {
+    case 'TMP':
       // TODO: Handle field NYBHI/NYBLO
       return 'cpu.tmp';
-    }
 
-    case 'PC': {
+    case 'PC':
       // TODO: Handle field HI, LO, PAGE
-      return 'cpu.pc';
-    }
+      return 'cpu.pc' + (e.field || '');
 
-    case 'SP': return 'cpu.SFR[SP]';
-    case 'DPTR': return 'cpu.dptr';
+    case 'SP':
+      return 'cpu.SFR[SP]';
+
+    case 'DPTR':
+      return 'cpu.dptr' + (e.field || '');
 
     case 'IMM':
       return params.IMM;
@@ -196,18 +200,18 @@ function codegenOpcode(h, op) {
     case 'DIR':
     case 'DIRSRC':
     case 'DIRDST':
-      return `cpu.iram[${params[sym]}]`;
+      return `cpu.iram[${params[e.id]}]`;
 
     case 'RELA':
       return `cpu.toSigned(${params.RELA})`;
 
     case 'R':
-    case 'Ri': {
+    case 'Ri':
       // TODO: Handle field NYBHI/NYBLO
       return `cpu.iram[(cpu.SFR[PSW] & ${rsMask}) + ${params.b1Value & 7}]`;
-    }      
 
-    default: return 'symbolToCode DEFAULT!'
+    default:
+      return 'symbolToCode DEFAULT!'
     };
   }
 
@@ -274,7 +278,6 @@ function codegenOpcode(h, op) {
 
     switch (t.type) {
     case 'Var':
-    case 'At':
     case 'Slash':
       return `${genTarget(t)} = ${genExpr(xfr.e)}`;
 
@@ -309,18 +312,29 @@ UNKNOWN target type ${t.type}`;
 
     switch (t.type) {
     case 'Var':
-      return symbolToCode(t.id, instructionParams());
-
-    case 'At':
-      return `\
-const ri = ${genTarget(t.e)};
-putAtGoesHere(ri)`;
+      return symbolToCode(t, instructionParams());
 
     case 'Slash':
       return `${t.space}[${genExpr(t.addr)}]`;
 
     default:
       return `UNKNOWN target type ${t.type}`;
+    }
+  }
+
+
+  function bitWidthOfVar(v) {
+
+    switch (v) {
+    case 'DPTR':
+    case 'PC':
+      return 16;
+
+    case 'pcPAGE':
+      return 10;
+
+    default:
+      return 8;
     }
   }
 
@@ -335,14 +349,11 @@ putAtGoesHere(ri)`;
     case 'Code':
       return `{ ${e.code}; }`;
 
-    case 'At':
-      return `INDIRECT ${e.e.id}`;
-
     case 'Slash':
       return `${e.space}[${genExpr(e.addr)}]`;
 
     case 'Var':
-      return e.id;
+      return genTarget(e);
 
     case 'PLUS':
       return genBinary(e, '+');
