@@ -11,6 +11,9 @@ const CPU = require('./cpu.js');
 
 const CODEGEN = require('./codegen');
 
+const {toHex1, toHex2, toHex4} = require('./simutils.js');
+
+
 const debugBASIC2 = false;
 const debugTB51 = true;
 
@@ -55,10 +58,14 @@ const SCON = CPU.SCON;
 const SBUF = CPU.SBUF;
 
 
+const {pswBits, sconBits, parityTable, mathMask, rsMask} = CPU;
+
+
 // These are done first so we can construct a Proxy to access it.
 const iram = Buffer.alloc(0x100, 0x00, 'binary');
 const xram = Buffer.alloc(XRAMSize, 0x00, 'binary');
 const SFR = Buffer.alloc(0x100, 0x00, 'binary');
+const code = Buffer.alloc(CODESize, 0x00, 'binary');
 
 
 const cpu = {
@@ -67,7 +74,7 @@ const cpu = {
   pc: 0,
 
   // Code (program) memory.
-  code: Buffer.alloc(CODESize, 0x00, 'binary'),
+  code,
 
   // Internal RAM
   iram,
@@ -141,7 +148,7 @@ const cpu = {
   },
 
   set pcHI(v) {
-    cpu.pc = cpu.pc & ~0xFF00 | v & 0xFF00;
+    cpu.pc = cpu.pc & ~0xFF00 | (v << 8) & 0xFF00;
   },
 
   get pcHI() {
@@ -157,11 +164,6 @@ const cpu = {
     return cpu.pc & 0x7FF;
   },
 
-
-
-  fetch() {
-    return this.code[this.pc++];
-  },
 
 
   getSFR(sfr) {
@@ -570,7 +572,7 @@ ${_.range(0, 8)
     this.fetchHistoryX = (this.fetchHistoryX + 1) & this.fetchHistoryMask;
     this.fetchHistory[this.fetchHistoryX] = this.pc;
 
-    const op = this.fetch();
+    const op = this.code[this.pc++];
     ++this.instructionsExecuted;
 
     if (debugBASIC2 && this.pc === 0x1F04) {
@@ -592,19 +594,6 @@ ${_.range(0, 8)
     handler(this, insnPC, op);
   },
 };
-
-
-function toHex1(v) {
-  return (v & 0x0F).toString(16).toUpperCase();
-}
-
-function toHex2(v) {
-  return (v | 0x100).toString(16).toUpperCase().slice(-2);
-}
-
-function toHex4(v) {
-  return toHex2(v >>> 8) + toHex2(v & 0xFF);
-}
 
 
 var lastX = 0;
