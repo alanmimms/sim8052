@@ -307,20 +307,18 @@ function codegenOpcode(h, op) {
       const elseTransfers = (t.elsePart || []).map(x => genTransfer(x)).join('\n  ');
 
       let s = `\
-if ${genExpr(xfr.e)} then
+if (${genExpr(xfr.e)}) {
   ${thenTransfers}
-`;
+}`;
 
-      if (t.elsePart) s += `else
+      if (t.elsePart) s += `else {
   ${elseTransfers}
-`;
-      s += `\
-endif`;
+}`;
 
       return s;
 
     case 'Code':
-      return t.code.trim();
+      return 'cpu.' + t.code.trim();
 
     default:
       return `\
@@ -352,7 +350,7 @@ UNKNOWN target type ${t.type}`;
 
     switch (e.type) {
     case 'Code':
-      return e.code.trim();
+      return 'cpu.' + e.code.trim();
 
     case 'Slash':
     case 'Var':

@@ -59,7 +59,7 @@ Instruction = mnemonic:SYMBOL EQ b1:OperandSpec
 Transfer = target:Target e:(ARROW e:Expression { return e } )? EOL
                                         { return mk('Transfer', {
                                             target,
-                                            e: e || null,
+                                            e,
                                           }) }
 /       IF e:Expression EOL? THEN EOL
           thenPart:Transfer+
