@@ -100,8 +100,8 @@ CJNE = 0b10111RRR IMM RELA "Ri,1:immed,2:rela":
 
 CJNE = 0b1011011I IMM RELA "IRAM/Ri,1:immed,2:rela":
     PC <- PC + 3
-    CY <- I < IMM
-    if I != IMM
+    CY <- IRAM/Ri < IMM
+    if IRAM/Ri != IMM
     then
       PC <- PC + RELA
     endif
@@ -264,6 +264,8 @@ MOV = 0b01111RRR IMM "Ri,1:immed":
     R <- IMM
 
 MOV = 0b11110101 DIR "1:direct,A":
+  { console.log("Foo this is MOV DIR A"); }
+  { const [a, b] = [123, 0]; console.log("Foo div by zero", a / b); }
     DIR <- A
 
 MOV = 0b10001RRR DIR "1:direct,Ri":
@@ -276,6 +278,8 @@ MOV = 0b1000011I DIR "IRAM/Ri,1:direct":
     DIR <- IRAM/Ri
 
 MOV = 0b01110101 DIR IMM "1:direct,2:immed":
+  { console.log("Foo this is MOV DIR IMM"); }
+  { const [a, b] = [123, 0]; console.log("Foo div by zero", a / b); }
     DIR <- IMM
 
 MOV = 0b1111011I "IRAM/Ri,A":

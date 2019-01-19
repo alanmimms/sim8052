@@ -2,6 +2,7 @@
 
 const _ = require('lodash');
 const fs = require('fs');
+const vm = require('vm');
 const util = require('util');
 const PEG = require('pegjs');
 
@@ -81,8 +82,10 @@ ${util.inspect(e, {depth: 99})}
   },
 
 
-  // Generate instruction handlers and return the array of function
-  // pointers to be indexed by opcode.
+  // Generate instruction handlers from the `ast` and return the array
+  // of function pointers to be indexed by opcode. The handlers are
+  // designed to run in the CPU execution context (i.e., the `cpu`
+  // object).
   generate(ast) {
     const handlers = [];
 
@@ -124,13 +127,19 @@ already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
       .forEach((h, op) =>
                h || console.error(`Handler not defined for ${toHex2(op)}`));
 
-    // Generate the code for the simHandler(cpu, insnPC, op) function
-    // for each opcode.
+    // Generate the code for the simulator function for each opcode.
     const handlersLog = handlers.map((h, op) => {
-      h.handlerSource = codegenOpcode(h, op);
+      h.handlerSource = codegenOpcode(h, op).join(';\n  ') + ';';
+
+      // Precompile the handler to simulate this opcode
+      h.script = new vm.Script(h.handlerSource, {
+        filename: 'generated code for simulator',
+        displayErrors: true,
+      });
+
       return `\
 // ${toHex2(op)}: ${h.mnemonic} ${h.operands}
-${h.handlerSource}
+  ${h.handlerSource}
 `;
     }).join('\n');
 
@@ -145,7 +154,7 @@ ${h.handlerSource}
 //
 //TODO:
 // * Find references to Ri or @Ri and declare `rBase` at top of the
-//   handler to avoid the `cpu.ira[(cpu.SFR[PSW] & 0x18) + i]` mess.
+//   handler to avoid the `iram[(SFR[PSW] & 0x18) + i]` mess.
 // * Optimize transfers like `X = X + k` to be like `X += k`.
 function codegenOpcode(h, op) {
   h.pcIsAssigned = h.transfers.find(xfr => isVar(xfr.target, 'PC'));
@@ -162,10 +171,7 @@ function codegenOpcode(h, op) {
 
   if (h.transfers.length === 0) return 'UNIMPLEMENTED OPCODE';
 
-  return h.transfers
-    .map(xfr => genTransfer(xfr))
-    .join(';\n') 
-    + ';';
+  return h.transfers.map(xfr => genTransfer(xfr));
 
 
   ////////////////////////////////////////////////////////////////
@@ -182,23 +188,23 @@ function codegenOpcode(h, op) {
     switch (e.id) {
     case 'A':
       // TODO: Handle field NYBHI/NYBLO
-      return 'cpu.SFR[ACC]';
+      return 'SFR[ACC]';
 
-    case 'ALU1':        return 'cpu.alu1';
-    case 'ALUC':        return 'cpu.aluC';
-    case 'B':           return 'cpu.SFR[B]';
-    case 'SP':          return 'cpu.SFR[SP]';
+    case 'ALU1':        return 'alu1';
+    case 'ALUC':        return 'aluC';
+    case 'B':           return 'SFR[B]';
+    case 'SP':          return 'SFR[SP]';
 
     case 'TMP':
       // TODO: Handle field NYBHI/NYBLO
-      return 'cpu.tmp';
+      return 'tmp';
 
     case 'PC':
       // TODO: Handle field HI, LO, PAGE
-      return 'cpu.pc' + (e.field || '');
+      return 'pc' + (e.field || '');
 
     case 'DPTR':
-      return 'cpu.dptr' + (e.field || '');
+      return 'dptr' + (e.field || '');
 
     case 'IMM':
       return params.IMM;
@@ -212,16 +218,22 @@ function codegenOpcode(h, op) {
     case 'CY':
     case 'OV':
     case 'AC':
-      return `cpu.${e.id}`;
+      return e.id;
 
     case 'BIT':
     case 'DIR':
     case 'DIRSRC':
     case 'DIRDST':
-      return `cpu.iram[${params[e.id]}]`;
+      return `DIR[${params[e.id]}]`;
+
+    case 'A_PLUS_DPTR':
+      return `SFR[ACC] + DPTR`;
+
+    case 'A_PLUS_PC':
+      return `SFR[ACC] + pc`;
 
     case 'RELA':
-      return `cpu.toSigned(${params.RELA})`;
+      return `toSigned(${params.RELA})`;
 
     case 'R':
     case 'Ri':
@@ -230,7 +242,7 @@ function codegenOpcode(h, op) {
       // accessing it directly.
       //
       // TODO: Handle field NYBHI/NYBLO
-      return `cpu.iram[(cpu.SFR[PSW] & ${rsMask}) + ${params.b1Value & 7}]`;
+      return `iram[(SFR[PSW] & ${rsMask}) + ${params.b1Value & 7}]`;
 
     default:
       return `symbolToCode DEFAULT! (${e.id})`
@@ -262,11 +274,11 @@ function codegenOpcode(h, op) {
       case 'LO':
       case 'RELA':
       case 'BIT':
-        params[h[byte].sym] = `cpu.code[cpu.pc + ${offset}] /* ${h[byte].sym} */`;
+        params[h[byte].sym] = `code[pc + ${offset}] /* ${h[byte].sym} */`;
         break;
 
       case 'PAGE':
-        params.PAGE = `${b1Value} << 8 | cpu.code[cpu.pc + ${offset}] /* PAGE */`;
+        params.PAGE = `${b1Value} << 8 | code[pc + ${offset}] /* PAGE */`;
         break;
 
       default:
@@ -318,7 +330,7 @@ if (${genExpr(xfr.e)}) {
       return s;
 
     case 'Code':
-      return 'cpu.' + t.code.trim();
+      return t.code.trim();
 
     default:
       return `\
@@ -334,7 +346,7 @@ UNKNOWN target type ${t.type}`;
       return symbolToCode(t, instructionParams());
 
     case 'Slash':
-      return `cpu.${t.space.toLowerCase()}[${genExpr(t.addr)}]`;
+      return `${t.space.toLowerCase()}[${genExpr(t.addr)}]`;
 
     default:
       return `UNKNOWN target type ${t.type}`;
@@ -350,7 +362,7 @@ UNKNOWN target type ${t.type}`;
 
     switch (e.type) {
     case 'Code':
-      return 'cpu.' + e.code.trim();
+      return e.code.trim();
 
     case 'Slash':
     case 'Var':

@@ -7,6 +7,7 @@ const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
+const vm = require('vm');
 const CPU = require('./cpu.js');
 
 const CODEGEN = require('./codegen');
@@ -29,6 +30,7 @@ const XRAMSize = 65536;
 var opcodes;
 
 
+// These are also stuffed into the `cpu` context for generated code.
 const ACC = CPU.ACC;
 const B = CPU.B;
 const SP = CPU.SP;
@@ -68,6 +70,9 @@ const SFR = Buffer.alloc(0x100, 0x00, 'binary');
 const code = Buffer.alloc(CODESize, 0x00, 'binary');
 
 
+const sbufQueue = [];
+
+
 const cpu = {
 
   // Program counter - invisible to software in most ways
@@ -99,7 +104,7 @@ const cpu = {
   aluC: 0,
 
   // Serial port input queue
-  sbufQueue: [],
+  sbufQueue,
 
   // Simulator state and control
   tracing: false,
@@ -209,73 +214,15 @@ const cpu = {
   },
 
 
-  getSFR(sfr) {
-
-    switch (sfr) {
-    case SBUF:
-      return this.sbufQueue.length ? this.sbufQueue.shift() : 0x00;
-
-    case PSW:
-      let psw = this.SFR[PSW];
-
-      // Update parity before returning PSW
-      if (parityTable[this.SFR[ACC]] << pswBits.pShift)
-        psw |= pswBits.pMask;
-      else
-        psw &= ~pswBits.pMask;
-
-      this.SFR[PSW] = psw;
-      return psw;
-
-    case P3:
-      let p3 = this.SFR[P3];
-      p3 ^= 1;
-      this.SFR[P3] = p3;          // Fake RxD toggling
-      return p3;
-
-    case SCON:
-      return this.SFR[SCON] | +(this.sbufQueue.length !== 0) << sconBits.riShift;
-      break;
-
-    default:
-      return this.SFR[sfr];
-    }
-  },
-
-
-  putSFR(sfr, v) {
-
-    switch (sfr) {
-    case SBUF:
-      process.stdout.write(String.fromCharCode(v));
-
-      // Transmitting a character immediately signals TI saying it is done.
-      this.putDirect(SCON, this.getDirect(SCON) | sconBits.tiMask);
-
-      // TODO: Make this do an interrupt
-      break;
-
-    case SCON:
-      if (this.debugSCON) console.log(`putDirect SCON now=${toHex2(v)}`);
-
-      // Fall through...
-      
-    default:
-      this.SFR[sfr] = v;
-      break;
-    }
-  },
-
-
   get DPTR() {
-    return this.SFR[DPH] << 8 | this.SFR[DPL];
+    return SFR[DPH] << 8 | SFR[DPL];
   },
 
 
   set DPTR(v) {
     v &= 0xFFFF;
-    this.SFR[DPL] = v;
-    this.SFR[DPH] = v >>> 8;
+    SFR[DPL] = v;
+    SFR[DPH] = v >>> 8;
   },
 
 
@@ -285,7 +232,7 @@ const cpu = {
 
 
   doADD() {
-    const a = this.SFR[ACC]
+    const a = SFR[ACC]
     const b = this.alu1;
     const c = this.aluC;
 
@@ -294,16 +241,16 @@ const cpu = {
     const cyValue = +(a + b + c > 0xFF);
     const ovValue = cyValue ^ c6Value;
 
-    this.SFR[PSW] &= ~mathMask;
-    this.SFR[PSW] |= ovValue << pswBits.ovShift |
+    SFR[PSW] &= ~mathMask;
+    SFR[PSW] |= ovValue << pswBits.ovShift |
       acValue << pswBits.acShift |
       cyValue << pswBits.cyShift;
-    this.SFR[ACC] = a + b + c;
+    SFR[ACC] = a + b + c;
   },
 
 
   doSUBB() {
-    const a = this.SFR[ACC];
+    const a = SFR[ACC];
     const b = this.alu1;
     const c = this.aluC;
     const toSub = b + c;
@@ -315,70 +262,70 @@ const cpu = {
     const ovValue = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
                       (a > 0x7F && b < 0x80 && result < 0x80));
 
-    this.SFR[PSW] &= ~mathMask;
-    this.SFR[PSW] |= ovValue << pswBits.ovShift |
+    SFR[PSW] &= ~mathMask;
+    SFR[PSW] |= ovValue << pswBits.ovShift |
       acValue << pswBits.acShift |
       cyValue << pswBits.cyShift;
-    this.SFR[ACC] = a - toSub;
+    SFR[ACC] = a - toSub;
   },
 
 
   doMUL() {
-    const a = this.SFR[ACC] * this.SFR[B];
+    const a = SFR[ACC] * SFR[B];
     this.CY = 0;                // Always clears CY.
     this.OV = +(a > 0xFF);
-    this.SFR[ACC] = a;
-    this.SFR[B] = a >>> 8;
+    SFR[ACC] = a;
+    SFR[B] = a >>> 8;
   },
 
 
   doDIV() {
     // DIV always clears CY. DIV sets OV on divide by 0.
-    const b = this.SFR[B];
+    const b = SFR[B];
     this.CY = 0;
 
     if (b === 0) {
       this.OV = 1;
     } else {
-      const curACC = this.SFR[ACC];
+      const curACC = SFR[ACC];
       const a = Math.floor(curACC / b);
       b = curACC % b;
-      this.SFR[ACC] = a;
-      this.SFR[B] = b;
+      SFR[ACC] = a;
+      SFR[B] = b;
     }
   },
 
   doRL() {
-    let a = this.SFR[ACC];
+    let a = SFR[ACC];
     a <<= 1;
     a = a & 0xFF | a >>> 8;
-    this.SFR[ACC] = a;
+    SFR[ACC] = a;
   },
 
 
   doRLC() {
-    let a = this.SFR[ACC];
+    let a = SFR[ACC];
     let c = this.CY;
     this.CY = a >>> 7;
     a <<= 1;
-    this.SFR[ACC] = a | c;
+    SFR[ACC] = a | c;
   },
 
 
   doRR() {
-    let a = this.SFR[ACC];
+    let a = SFR[ACC];
     a = a >>> 1 | a << 7;
-    this.SFR[ACC] =  a;
+    SFR[ACC] =  a;
   },
 
 
   doRRC(a, c) {
-    a = this.SFR[ACC];
+    a = SFR[ACC];
     let c = this.CY;
     this.CY = a & 1;
     a >>>= 1;
     a |= c << 7;
-    this.SFR[ACC] = a;
+    SFR[ACC] = a;
   },
 
 
@@ -387,50 +334,67 @@ const cpu = {
   },
 
 
-  getR(r) {
-    const ra = (this.SFR[PSW] & rsMask) + r;
-    return this.iram[ra];
-  },
-
-
-  putR(r, v) {
-    const ra = (this.SFR[PSW] & rsMask) + r;
-    this.iram[ra] = v;
-  },
-
-
   // Direct accesses in 0x00..0x7F are internal RAM.
   // Above that, direct accesses are to SFRs.
-  getDirect(ra) {
-    if (ra < 0x80)
-      return this.iram[ra];
-    else
-      return this.getSFR(ra);
-  },
+  DIR: new Proxy(iram, {
 
+    set(target, ea, value) {
 
-  // Direct accesses in 0x00..0x7F are internal RAM.
-  // Above that, direct accesses are to SFRs.
-  putDirect(ra, v) {
+      if (ea < 0x80) {
+        iram[ea] = value;
+      } else {
 
-    if (ra < 0x80) {
-      this.iram[ra] = v;
-    } else {
-      this.putSFR(ra, v);
+        switch (ea) {
+        case SBUF:
+          process.stdout.write(String.fromCharCode(value));
+
+          // Transmitting a character immediately signals TI saying it is done.
+          this.DIR[SCON] |= sconBits.tiMask;
+
+          // TODO: Make this do an interrupt
+          break;
+
+        default:
+          SFR[ea] = value;
+          break;
+        }
+      }
+    },
+
+    get(target, ea) {
+      if (ea < 0x80) return iram[ea];
+
+      switch (ea) {
+      case SBUF:
+        return sbufQueue.length ? sbufQueue.shift() : 0x00;
+
+      case PSW:
+        let psw = SFR[PSW];
+
+        // Update parity before returning PSW
+        if (parityTable[SFR[ACC]] << pswBits.pShift)
+          psw |= pswBits.pMask;
+        else
+          psw &= ~pswBits.pMask;
+
+        SFR[PSW] = psw;
+        return psw;
+
+      case P3:
+        let p3 = SFR[P3];
+        p3 ^= 1;
+        SFR[P3] = p3;          // Fake RxD toggling
+        return p3;
+
+      case SCON:
+        return SFR[SCON] | +(sbufQueue.length !== 0) << sconBits.riShift;
+        break;
+
+      default:
+        return SFR[ea];
+      }
     }
-
-    if (this.debugDirect) console.log(`${displayableAddress(ra, 'd')} is now ${toHex2(v)}`);
-  },
-
-
-  getIndirect(r) {
-    return this.iram[this.getR(r)];
-  },
-
-
-  putIndirect(r, v) {
-    this.iram[this.getR(r)] = v;
-  },
+  }),
 
 
   getBitAddrMask(bn) {
@@ -442,7 +406,7 @@ const cpu = {
 
   getBit(bn) {
     const {ra, bm} = this.getBitAddrMask(bn);
-    const v = +!!(this.getDirect(ra) & bm);
+    const v = +!!(this.DIR[ra] & bm);
 
     // If we are spinning waiting for SCON.RI to go high we can
     // introduce a bit of delay.
@@ -454,7 +418,7 @@ const cpu = {
 
   putBit(bn, b) {
     const {ra, bm} = this.getBitAddrMask(bn);
-    let v = this.getDirect(ra);
+    let v = this.DIR[ra];
 
     if (b) {
       v = v | bm;
@@ -462,22 +426,7 @@ const cpu = {
       v = v & ~bm;
     }
 
-    this.putDirect(ra, v);
-  },
-
-
-  getCode(ca) {
-    return this.code[ca];
-  },
-
-
-  getXData(xa) {
-    return this.xram[xa];
-  },
-
-
-  putXData(xa, v) {
-    this.xram[xa] = v;
+    this.DIR[ra] = v;
   },
 
 
@@ -531,7 +480,7 @@ ${briefState(bh.state)}`);
   
 
   disassemble(pc) {
-    const op = this.code[pc];
+    const op = code[pc];
     const ope = opcodes[op];
 
     if (!ope) {
@@ -540,7 +489,7 @@ ${briefState(bh.state)}`);
     }
 
     const nextPC = pc + ope.n;
-    const bytes = this.code.slice(pc, nextPC);
+    const bytes = code.slice(pc, nextPC);
 
     const disassembly = bytes.toString('hex')
           .toUpperCase()
@@ -580,12 +529,18 @@ ${disassembly}  ${ope.mnemonic.padEnd(6)} ${operands}`;
 
 
   dumpState() {
+
+    function getR(r) {
+      const ra = (SFR[PSW] & rsMask) + r;
+      return iram[ra];
+    }
+
     console.log(`\
- a=${toHex2(this.SFR[ACC])}   b=${toHex2(this.SFR[B])}  cy=${+this.getCY()} ov=${+this.getOV()} ac=${this.getAC()}  \
-sp=${toHex2(this.SFR[SP])} psw=${toHex2(this.SFR[PSW])}  dptr=${toHex4(this.getDPTR())}  \
+ a=${toHex2(SFR[ACC])}   b=${toHex2(SFR[B])}  cy=${+this.CY} ov=${+this.OV} ac=${this.AC}  \
+sp=${toHex2(SFR[SP])} psw=${toHex2(SFR[PSW])}  dptr=${toHex4(this.DPTR)}  \
 pc=${toHex4(this.pc)}
 ${_.range(0, 8)
-  .map((v, rn) => `r${rn}=${toHex2(this.getR(rn))}`)
+  .map((v, rn) => `r${rn}=${toHex2(getR(rn))}`)
   .join('  ')
 }`);
   },
@@ -594,17 +549,17 @@ ${_.range(0, 8)
 
 
   captureState() {
-    const rBase = this.SFR[PSW] & rsMask;
+    const rBase = SFR[PSW] & rsMask;
     const state = {
-      a: this.SFR[ACC],
-      b: this.SFR[B],
-      cy: this.getCY(),
-      ov: this.getOV(),
-      ac: this.getAC(),
-      sp: this.SFR[SP],
-      psw: this.SFR[PSW],
-      dptr: this.getDPTR(),
-      regs: [...this.iram.slice(rBase, rBase+8)],
+      a: SFR[ACC],
+      b: SFR[B],
+      cy: this.CY,
+      ov: this.OV,
+      ac: this.AC,
+      sp: SFR[SP],
+      psw: SFR[PSW],
+      dptr: this.DPTR,
+      regs: [...iram.slice(rBase, rBase+8)],
     };
 
     return state;
@@ -617,7 +572,7 @@ ${_.range(0, 8)
     this.branchHistoryX = (this.branchHistoryX + 1) & this.branchHistoryMask;
     this.branchHistory[this.branchHistoryX] = {from, to, opName, state: this.captureState()};
   },
-  
+
 
   run1(insnPC) {
     this.pc = insnPC;
@@ -625,28 +580,28 @@ ${_.range(0, 8)
     this.fetchHistoryX = (this.fetchHistoryX + 1) & this.fetchHistoryMask;
     this.fetchHistory[this.fetchHistoryX] = this.pc;
 
-    const op = this.code[this.pc++];
+    const op = code[insnPC];
+    const ope = opcodes[op];
     ++this.instructionsExecuted;
 
-    if (debugBASIC2 && this.pc === 0x1F04) {
-      if (this.dumpCount-- === 0) this.running = false;
-      console.log(`RSUB1-2=1F04H: in=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
-      console.log(`    called from ${toHex2(this.iram[this.SFR[SP]])}${toHex2(this.iram[this.SFR[SP]-1])}`);
-    }
-
-    if (debugBASIC2 && this.pc === 0x1F2C) {
-      console.log(`1F2C:        R2,R0=${toHex2(this.getR(2))}${toHex2(this.getR(0))}`);
-    }
-
-    if (debugBASIC2 && this.pc === 0x1F3C) {
-      console.log(`1F3C:                   RETURN`);
-    }
-
-    const ope = opcodes[op];
-    const handler = ope.simHandler;
-    handler(this, insnPC, op);
+    ope.script.runInContext(simContext, {
+      filename: 'generated code for simulator',
+      displayErrors: true,
+    });
   },
 };
+
+
+// Stuff the SFR names into the `cpu` context so generated code can
+// use them.
+Object.keys(CPU.SFRs).forEach(sfr => cpu[sfr] = CPU[sfr]);
+
+
+// Create the execution context for the simulator's opcode
+// simulation functions
+const simContext = vm.createContext(cpu, {
+  name: 'simContext',
+});
 
 
 var lastX = 0;
@@ -711,12 +666,12 @@ const commands = [
 
   {name: 'mem',
    description: 'Display external memory at specified address.',
-   doFn: doMem,
+   doFn: words => doDumpMem(cpu.xram, cpu.xram.length, words),
   },
 
   {name: 'code',
    description: 'Display code memory at specified address.',
-   doFn: doCode,
+   doFn: words => doDumpMem(cpu.code, cpu.code.length, words),
   },
 
   {name: 'history',
@@ -731,12 +686,12 @@ const commands = [
 
   {name: 'sfr',
    description: 'Display SFR at specified address.',
-   doFn: doSFR,
+   doFn: words => doDumpMem(cpu.SFR, cpu.SFR.length, words),
   },
 
   {name: 'iram',
    description: 'Display IRAM at specified address.',
-   doFn: doIRAM,
+   doFn: words => doDumpMem(cpu.iram, cpu.iram.length, words),
   },
 
   {name: 'list',
@@ -867,7 +822,7 @@ function displayableAddress(x, space = 'c') {
 }
 
 
-function doMem(words) {
+function doDumpMem(memToDump, memSize, words) {
   let x, endAddress;
   let n = 0;
 
@@ -877,7 +832,7 @@ function doMem(words) {
     x = getAddress(words);
 
     if (words.length > 2) {
-      endAddress = Math.min(x + parseInt(words[2], 16), 0x10000);
+      endAddress = Math.min(x + parseInt(words[2], 16), memSize);
     } else {
       endAddress = x + 1;
     }
@@ -900,84 +855,7 @@ function doMem(words) {
     }
 
     if (((n - 1) & 0x07) === 0) line += ' ';
-    line += ' ' + toHex2(cpu.xram[x++]);
-  }
-
-  if (line.length > 0) lines.push(line);
-
-  console.log(lines
-              .map((L, lineX) => _.padStart(addrs[lineX], longestAddr) + L)
-              .join('\n'));
-}
-
-
-function doCode(words) {
-  let x;
-
-  if (words.length < 2) {
-    x = ++lastX;
-  } else {
-    x = getAddress(words);
-  }
-
-  const addr = displayableAddress(x, 'c');
-  console.log(`${addr}: ${toHex2(cpu.code[x])}`);
-  lastX = x;
-}
-
-
-function doSFR(words) {
-  let x;
-  let w;
-
-  if (words.length < 2) {
-    x = ++lastX;
-  } else {
-    x = getAddress(words);
-  }
-
-  w = cpu.getDirect(x);
-
-  let addr = displayableAddress(x, 'd');
-  console.log(`${addr}: ${toHex2(w)}`);
-  lastX = x;
-}
-
-
-function doIRAM(words) {
-  let x, endAddress;
-  let n = 0;
-
-  if (words.length < 2) {
-    x = ++lastX;
-  } else {
-    x = getAddress(words);
-
-    if (words.length > 2) {
-      endAddress = Math.min(x + parseInt(words[2], 16), 0x100);
-    } else {
-      endAddress = x + 1;
-    }
-  }
-
-  let longestAddr = 0;
-  const addrs = [];
-  const lines = [];
-  let line = '';
-  lastX = x;
-
-  while (x < endAddress) {
-
-    if ((n++ & 0x0F) === 0) {
-      if (line.length > 0) lines.push(line);
-      const addr = displayableAddress(x, 'd') + ':';
-      if (addr.length > longestAddr) longestAddr = addr.length;
-      addrs.push(addr);
-      line = '';
-    }
-
-    if (((n - 1) & 0x07) === 0) line += ' ';
-    line += ' ' + toHex2(cpu.iram[x++]);
+    line += ' ' + toHex2(memToDump[x++]);
   }
 
   if (line.length > 0) lines.push(line);
