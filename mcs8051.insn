@@ -1,54 +1,56 @@
 ACALL = 0bAAA10001 PAGE "1:addr11":
+    TMP <- PAGE
     PC <- PC + 2
     SP <- SP + 1
     IRAM/SP <- PC.LO
     SP <- SP + 1
     IRAM/SP <- PC.HI
-    PC.PAGE <- PAGE
+    PC.PAGE <- TMP
 
 ADD = 0b00101RRR "A,Ri":
     ALU1 <- R
     ALUC <- 0
-    { doADD() }
+    { this.doADD() }
 
 ADD = 0b00100101 DIR "A,1:direct":
     ALU1 <- DIR
     ALUC <- 0
-    { doADD() }
+    { this.doADD() }
 
 ADD = 0b0010011I "A,1:IRAM/Ri":
     ALU1 <- IMM/Ri
     ALUC <- 0
-    { doADD() }
+    { this.doADD() }
 
 ADD = 0b00100100 IMM "A,1:immed":
     ALU1 <- IMM
     ALUC <- 0
-    { doADD() }
+    { this.doADD() }
 
 ADDC = 0b00111RRR "A,Ri":
     ALU1 <- R
     ALUC <- CY
-    { doADD() }
+    { this.doADD() }
 
 ADDC = 0b00110101 DIR "A,1:direct":
     ALU1 <- DIR
     ALUC <- CY
-    { doADD() }
+    { this.doADD() }
 
 ADDC = 0b0011011I "A,IRAM/Ri":
     ALU1 <- IRAM/Ri
     ALUC <- CY
-    { doADD() }
+    { this.doADD() }
 
 ADDC = 0b00110100 IMM "A,1:immed":
     ALU1 <- IMM
     ALUC <- CY
-    { doADD() }
+    { this.doADD() }
 
 AJMP = 0bAAA00001 PAGE "1:addr11":
+    TMP <- PAGE
     PC <- PC + 2
-    PC.PAGE <- PAGE
+    PC.PAGE <- TMP
 
 ANL = 0b01011RRR "A,Ri":
     A <- A & R
@@ -145,7 +147,7 @@ DEC = 0b0001011I "IRAM/Ri":
     IRAM/Ri <- IRAM/Ri - 1
 
 DIV = 0b10000100 "AB":
-    { doDIV() }
+    { this.doDIV() }
 
 DJNZ = 0b11011RRR RELA "Ri,1:rela":
     PC <- PC + 2
@@ -232,12 +234,13 @@ JZ = 0b01100000 RELA "1:rela":
     endif
 
 LCALL = 0b00010010 HI LO "1:addr16":
+    TMP <- HILO
     PC <- PC + 3
     SP <- SP + 1
     IRAM/SP <- PC.LO
     SP <- SP + 1
     IRAM/SP <- PC.HI
-    PC <- HILO
+    PC <- TMP
 
 LJMP = 0b00000010 HI LO "1:addr16":
     PC <- HILO
@@ -264,8 +267,6 @@ MOV = 0b01111RRR IMM "Ri,1:immed":
     R <- IMM
 
 MOV = 0b11110101 DIR "1:direct,A":
-  { console.log("Foo this is MOV DIR A"); }
-  { const [a, b] = [123, 0]; console.log("Foo div by zero", a / b); }
     DIR <- A
 
 MOV = 0b10001RRR DIR "1:direct,Ri":
@@ -278,8 +279,6 @@ MOV = 0b1000011I DIR "IRAM/Ri,1:direct":
     DIR <- IRAM/Ri
 
 MOV = 0b01110101 DIR IMM "1:direct,2:immed":
-  { console.log("Foo this is MOV DIR IMM"); }
-  { const [a, b] = [123, 0]; console.log("Foo div by zero", a / b); }
     DIR <- IMM
 
 MOV = 0b1111011I "IRAM/Ri,A":
@@ -307,19 +306,19 @@ MOVC = 0b10000011 "A,@A+PC":
     A <- CODE/A_PLUS_PC
 
 MOVX = 0b1110001I "A,IRAM/Ri":
-    A <- XMEM/IRAM/Ri
+    A <- XRAM/IRAM/Ri
 
 MOVX = 0b11100000 "A,@DPTR":
-    A <- XMEM/DPTR
+    A <- XRAM/DPTR
 
 MOVX = 0b1111001I "IRAM/Ri,A":
-    XMEM/IRAM/Ri <- A
+    XRAM/IRAM/Ri <- A
 
 MOVX = 0b11110000 "@DPTR,A":
-    XMEM/DPTR <- A
+    XRAM/DPTR <- A
 
 MUL = 0b10100100 "AB":
-    { doMUL() }
+    { this.doMUL() }
 
 NOP = 0b00000000 "":
 
@@ -366,19 +365,19 @@ RETI = 0b00110010 "":
     SP <- SP - 1
     PC.HI <- IRAM/SP
     SP <- SP - 1
-    { doRETI() }
+    { this.doRETI() }
 
 RL = 0b00100011 "A":
-    { doRL() }
+    { this.doRL() }
 
 RLC = 0b00110011 "A":
-    { doRLC() }
+    { this.doRLC() }
 
 RR = 0b00000011 "A":
-    { doRR() }
+    { this.doRR() }
 
 RRC = 0b00010011 "A":
-    { doRRC() }
+    { this.doRRC() }
 
 SETB = 0b11010011 "C":
     CY <- 1
@@ -387,24 +386,25 @@ SETB = 0b11010010 BIT "1:bit":
     BIT <- 1
 
 SJMP = 0b10000000 RELA "1:rela":
+    TMP <- RELA
     PC <- PC + 2
-    PC <- PC + RELA
+    PC <- PC + TMP
 
 SUBB = 0b10011RRR "A,Ri":
     ALU1 <- R
-    { doSUBB() }
+    { this.doSUBB() }
 
 SUBB = 0b10010101 DIR "A,1:direct":
     ALU1 <- DIR
-    { doSUBB() }
+    { this.doSUBB() }
 
 SUBB = 0b1001011I "A,IRAM/Ri":
     ALU1 <- IRAM/Ri
-    { doSUBB() }
+    { this.doSUBB() }
 
 SUBB = 0b10010100 IMM "A,1:immed":
     ALU1 <- IMM
-    { doSUBB() }
+    { this.doSUBB() }
 
 SWAP = 0b11000100 "A":
     TMP <- A

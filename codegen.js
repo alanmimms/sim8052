@@ -411,7 +411,7 @@ UNKNOWN target type ${t.type}`;
 
 
   function genBinary(e, operator) {
-    return `${genExpr(e.l)} ${operator} ${genExpr(e.r)}`;
+    return `(${genExpr(e.l)}) ${operator} (${genExpr(e.r)})`;
   }
 
 
