@@ -149,7 +149,8 @@ const cpu = {
 
   // Get/set low and high byte or page field of PC
   set pcLO(v) {
-    cpu.pc = cpu.pc & ~0xFF | v & 0xFF;
+    cpu.pc &= ~0xFF;
+    cpu.pc |= v & 0xFF;
   },
 
   get pcLO() {
@@ -157,7 +158,8 @@ const cpu = {
   },
 
   set pcHI(v) {
-    cpu.pc = cpu.pc & ~0xFF00 | (v << 8) & 0xFF00;
+    cpu.pc &= ~0xFF00;
+    cpu.pc |= (v & 0xFF) << 8;
   },
 
   get pcHI() {
@@ -166,7 +168,8 @@ const cpu = {
 
 
   set pcPAGE(v) {
-    cpu.pc = cpu.pc & ~0x7FF | v & 0x7FF;
+    cpu.pc &= ~0x7FF;
+    cpu.pc |= v & 0x7FF;
   },
 
   get pcPAGE() {
@@ -523,8 +526,8 @@ ${briefState(bh.state)}`);
           .join(',');
 
     return `\
-${displayableAddress(pc, 'c').padStart(28)}: \
-${disassembly}  ${ope.mnemonic.padEnd(6)} ${operands}`;
+${(displayableAddress(pc, 'c') + ': ' + disassembly).padEnd(38)} \
+${ope.mnemonic.padEnd(6)} ${operands}`;
   },
 
 
