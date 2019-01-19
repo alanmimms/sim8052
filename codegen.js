@@ -183,7 +183,7 @@ function codegenOpcode(h, op) {
 
 
   function symbolToCode(e, params) {
-    const rsMask = '0x' + toHex2(CPU.pswBits.rs1Mask | CPU.pswBits.rs0Mask);
+    const rsMask = toHex2(CPU.pswBits.rs1Mask | CPU.pswBits.rs0Mask, '0x');
 
     switch (e.id) {
     case 'A':
@@ -200,7 +200,6 @@ function codegenOpcode(h, op) {
       return 'tmp';
 
     case 'PC':
-      // TODO: Handle field HI, LO, PAGE
       return 'pc' + (e.field || '');
 
     case 'DPTR':
@@ -213,7 +212,7 @@ function codegenOpcode(h, op) {
       return params.PAGE;
 
     case 'HILO':
-      return `(${params.HI}) << 8 | (${params.LO})`;
+      return `${toHex2(params.HI, '0x')} << 8 | ${toHex2(params.LO, '0x')}`;
 
     case 'CY':
     case 'OV':
@@ -233,7 +232,7 @@ function codegenOpcode(h, op) {
       return `SFR[ACC] + pc`;
 
     case 'RELA':
-      return `toSigned(${params.RELA})`;
+      return `toSigned(${toHex2(params.RELA, '0x')})`;
 
     case 'R':
     case 'Ri':
@@ -278,7 +277,7 @@ function codegenOpcode(h, op) {
         break;
 
       case 'PAGE':
-        params.PAGE = `${b1Value} << 8 | code[pc + ${offset}] /* PAGE */`;
+        params.PAGE = `${toHex2(b1Value, '0x')} << 8 | code[pc + ${offset}] /* PAGE */`;
         break;
 
       default:
