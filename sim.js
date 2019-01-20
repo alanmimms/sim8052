@@ -532,12 +532,7 @@ ${ope.mnemonic.padEnd(6)} ${operands}`;
 
 
   dumpState() {
-
-    function getR(r) {
-      const ra = (SFR[PSW] & rsMask) + r;
-      return iram[ra];
-    }
-
+    const getR = r => iram[(SFR[PSW] & rsMask) + r];
     console.log(`\
  a=${toHex2(SFR[ACC])}   b=${toHex2(SFR[B])}  cy=${+this.CY} ov=${+this.OV} ac=${this.AC}  \
 sp=${toHex2(SFR[SP])} psw=${toHex2(SFR[PSW])}  dptr=${toHex4(this.DPTR)}  \
