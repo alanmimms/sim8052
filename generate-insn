@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 'use strict';
 
 const _ = require('lodash');
@@ -11,142 +13,79 @@ const SimUtils = require('./simutils.js');
 
 const GRAMMAR_PATH = './mcs8051.pegjs'
 const INSN_PATH = './mcs8051.insn';
+const CODE_PATH = './mcs8051-insn.js';
 
 
 const {toHex2, toHex4} = SimUtils;
 
 
-module.exports = {
+const parser = buildParser();
+const ast = generateAST(parser);
+const code = generateCodeFromAST(ast);
 
-  // Build the parser from its PEGJS source file and return the
-  // resulting parser object.
-  buildParser() {
-    let grammar, parser;
-
-    try {
-      grammar = fs.readFileSync(require.resolve(GRAMMAR_PATH), 'utf8')
-    } catch(e) {
-      console.error(`FATAL error reading required '${GRAMMAR_PATH}' grammar:\n`, e);
-      process.exit(-1);
-    }
-
-    const buildParserOptions = {
-      output: 'parser',
-      allowedStartRules: ['Start'],
-      trace: false,
-    };
-
-    try {
-      parser = PEG.generate(grammar, buildParserOptions);
-    } catch(e) {
-      console.error(`INTERNAL ERROR Grammar '${GRAMMAR_PATH}' parse failed:\n`, e);
-      process.exit(-1);
-    }
-
-    return parser;
-  },
+fs.writeFileSync(CODE_PATH, code, {mode: 0o664});
 
 
-  // Initialize the parser for our INSN language.
-  init() {
-    let insnSrc;
-    let ast;
+// Build the parser from its PEGJS source file and return the
+// resulting parser object.
+function buildParser(grammarPath = GRAMMAR_PATH) {
+  let grammar, parser;
 
-    const parser = module.exports.buildParser();
+  try {
+    grammar = fs.readFileSync(require.resolve(grammarPath), 'utf8')
+  } catch(e) {
+    console.error(`FATAL error reading required '${grammarPath}' grammar:\n`, e);
+    process.exit(-1);
+  }
 
-    try {
-      insnSrc = fs.readFileSync(INSN_PATH, {encoding: 'utf-8'});
-    } catch(e) {
-      console.error(`Unable to open ${INSN_PATH}: ${e.code}`);
-      process.exit(-1);
-    }
+  const buildParserOptions = {
+    output: 'parser',
+    allowedStartRules: ['Start'],
+    trace: false,
+  };
 
-    const tracer = require('./tracer');
-    tracer.setSrc(insnSrc);
+  try {
+    parser = PEG.generate(grammar, buildParserOptions);
+  } catch(e) {
+    console.error(`INTERNAL ERROR Grammar '${grammarPath}' parse failed:\n`, e);
+    process.exit(-1);
+  }
 
-    try {
-      ast = parser.parse(insnSrc, {tracer});
-    } catch(e) {
-      const found = e.found ? `found "${e.found}"` : '';
-      const at = e.location ?
-            ` at ${util.inspect(e.location.start)}-${util.inspect(e.location.end)}` :
-            '';
-      console.error(`\
+  return parser;
+}
+
+
+// Initialize the parser for our INSN language.
+function generateAST(parser) {
+  let insnSrc;
+  let ast;
+
+  try {
+    insnSrc = fs.readFileSync(INSN_PATH, {encoding: 'utf-8'});
+  } catch(e) {
+    console.error(`Unable to open ${INSN_PATH}: ${e.code}`);
+    process.exit(-1);
+  }
+
+  const tracer = require('./tracer');
+  tracer.setSrc(insnSrc);
+
+  try {
+    ast = parser.parse(insnSrc, {tracer});
+  } catch(e) {
+    const found = e.found ? `found "${e.found}"` : '';
+    const at = e.location ?
+          ` at ${util.inspect(e.location.start)}-${util.inspect(e.location.end)}` :
+          '';
+    console.error(`\
 Parsing or runtime error:
 ${util.inspect(e, {depth: 99})}
   ${found}${at}`);
-      process.exit(-1);
-    }
-
-    return _.flatten(ast);
-  },
-
-
-  // Generate instruction handlers from the `ast` and return the array
-  // of function pointers to be indexed by opcode. The handlers are
-  // designed to run in the CPU execution context (i.e., the `cpu`
-  // object).
-  generate(ast) {
-    const handlers = [];
-
-    ast.forEach(insn => {
-
-      if (insn.type !== 'Instruction') {
-        console.error('Bad AST array entry=', util.inspect(insn, {depth:999}));
-        return;
-      }
-
-      // Define number of byte in Instruction by counting bytes
-      // defined nonempty in the entry.
-      insn.n = 1 + +!!insn.b2 + +!!insn.b3;
-
-      // Build regular expression from the Bits entry (e.g., 11001001
-      // or 1100110I or 11001RRR) by replacing each letter with "." to
-      // act as a dont-care bit. We then match this number against a
-      // binary representation of the opcode including all
-      // leading-zeroes in the `filter()` below. The set of matching
-      // elements is the set of opcodes we need this entry to apply to
-      // in handlers[].
-      const toMatch = new RegExp('^' +
-                                 insn.b1.bits
-                                 .replace(/[A-Z]/g, '.')
-                                 + '$');
-      _.range(0, 0x100)
-        .filter(op => !!(op | 0x1000).toString(2).slice(-8).match(toMatch))
-        .forEach(op => {
-          if (handlers[op]) 
-            console.error(`\
-In ${insn.mnemonic} handler, \
-already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
-          handlers[op] = insn;
-        });
-    });
-
-    // Make sure we define all 256 handlers
-    handlers
-      .forEach((h, op) =>
-               h || console.error(`Handler not defined for ${toHex2(op)}`));
-
-    // Generate the code for the simulator function for each opcode.
-    const handlersLog = handlers.map((h, op) => {
-      h.handlerSource = codegenOpcode(h, op).join(';\n  ') + ';';
-
-      // Precompile the handler to simulate this opcode
-      h.script = new vm.Script(h.handlerSource, {
-        filename: 'generated code for simulator',
-        displayErrors: true,
-      });
-
-      return `\
-// ${toHex2(op)}: ${h.mnemonic} ${h.operands}
-  ${h.handlerSource}
-`;
-    }).join('\n');
-
-    fs.writeFileSync('handlers.log', handlersLog, {mode: 0o664});
-    return handlers;
+    process.exit(-1);
   }
-};
+
+  return _.flatten(ast);
+}
 
 
 // Generate the code for the specified opcode `op` for Instruction `h`
@@ -263,7 +202,7 @@ function codegenOpcode(h, op) {
       let code;
 
       if (!h[byte] || h[byte].type !== 'SYMBOL') return;
-        
+      
       switch (h[byte].sym) {
       case 'IMM':
       case 'DIR':
@@ -428,4 +367,69 @@ UNKNOWN target type ${t.type}`;
       return 8;
     }
   }
+}
+
+
+// Generate instruction handlers from the `ast` and return the array
+// of function pointers to be indexed by opcode. The handlers are
+// designed to run in the CPU execution context (i.e., the `cpu`
+// object).
+function generateCodeFromAST(ast) {
+  const handlers = [];
+
+  ast.forEach(insn => {
+
+    if (insn.type !== 'Instruction') {
+      console.error('Bad AST array entry=', util.inspect(insn, {depth:999}));
+      return;
+    }
+
+    // Define number of byte in Instruction by counting bytes
+    // defined nonempty in the entry.
+    insn.n = 1 + +!!insn.b2 + +!!insn.b3;
+
+    // Build regular expression from the Bits entry (e.g., 11001001
+    // or 1100110I or 11001RRR) by replacing each letter with "." to
+    // act as a dont-care bit. We then match this number against a
+    // binary representation of the opcode including all
+    // leading-zeroes in the `filter()` below. The set of matching
+    // elements is the set of opcodes we need this entry to apply to
+    // in handlers[].
+    const toMatch = new RegExp('^' +
+                               insn.b1.bits
+                               .replace(/[A-Z]/g, '.')
+                               + '$');
+    _.range(0, 0x100)
+      .filter(op => !!(op | 0x1000).toString(2).slice(-8).match(toMatch))
+      .forEach(op => {
+        if (handlers[op]) 
+          console.error(`\
+In ${insn.mnemonic} handler, \
+already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
+        handlers[op] = insn;
+      });
+  });
+
+  // Make sure we define all 256 handlers
+  handlers
+    .forEach((h, op) =>
+             h || console.error(`Handler not defined for ${toHex2(op)}`));
+
+  // Generate the code for the simulator function for each opcode.
+  const code = handlers.map((h, op) => {
+    h.handlerSource = codegenOpcode(h, op).join(';\n  ') + ';';
+
+    // Precompile the handler to simulate this opcode
+    h.script = new vm.Script(h.handlerSource, {
+      filename: 'generated code for simulator',
+      displayErrors: true,
+    });
+
+    return `\
+// ${toHex2(op)}: ${h.mnemonic} ${h.operands}
+  ${h.handlerSource}
+`;
+  }).join('\n');
+
+  return code;
 }

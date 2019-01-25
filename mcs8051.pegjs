@@ -1,6 +1,8 @@
 {
-  // NOTES:
-  // * If PC is not assigned in insn, PC = PC + number of bytes in insn by default
+  // This is used with pegjs parser generator to build mcs8051-insn.js, which is the guts
+  // of the instruction simulation used by sim.js. First pegjs generates the parser
+  // mcs8051.js. Then this is run to create the mcs8051-insn.js source.
+  // All of this is shown in package.json as the "build" script.
   const fs = require('fs');
   const util = require('util');
   const DEBLOG = util.debuglog('parse');

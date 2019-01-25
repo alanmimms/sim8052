@@ -17,6 +17,7 @@
     "jest": "^23.6.0"
   },
   "scripts": {
+    "build": "./generate-insn mcs8051.insn mcs8051-insn.js",
     "test": "jest"
   }
 }
