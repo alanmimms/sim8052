@@ -6,3 +6,4 @@ debugout.txt
 mcs8051.js
 ast.log
 handlers.log
+mcs8051-insn.js
