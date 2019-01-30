@@ -1,8 +1,11 @@
 {
-  // This is used with pegjs parser generator to build 8052-insn.js, which is the guts
-  // of the instruction simulation used by sim.js. First pegjs generates the parser
-  // 8052.js. Then this is run to create the 8052-insn.js source.
-  // All of this is shown in package.json as the "build" script.
+
+  // This is used with pegjs parser generator to build 8052-insn.js,
+  // which is the guts of the instruction simulation used by sim.js.
+  // First pegjs generates the parser 8052.js. Then this is run to
+  // create the 8052-insn.js source. All of this is shown in
+  // package.json as the "build" script.
+
   const fs = require('fs');
   const util = require('util');
   const DEBLOG = util.debuglog('parse');
