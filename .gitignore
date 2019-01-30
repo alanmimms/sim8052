@@ -3,7 +3,7 @@
 node_modules
 yarn-error.log
 debugout.txt
-mcs8051.js
+8052.js
 ast.log
 handlers.log
-mcs8051-insn.js
+8052-insn.js
