@@ -1,8 +1,8 @@
 {
-  "name": "mcs8051",
+  "name": "sim8052",
   "version": "0.0.1",
   "main": "sim.js",
-  "repository": "ssh://alan@git.thefuture.place:/home/alan/alan-git/mcs8051",
+  "repository": "ssh://alan@git.thefuture.place:/home/alan/alan-git/sim8052",
   "author": "Alan Mimms <alanmimms@gmail.com>",
   "license": "MIT",
   "engines": {
@@ -17,7 +17,7 @@
     "jest": "^23.6.0"
   },
   "scripts": {
-    "build": "./generate-insn mcs8051.insn mcs8051-insn.js",
+    "build": "./generate-insn 8052.insn 8052-insn.js",
     "test": "jest"
   }
 }

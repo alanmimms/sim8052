@@ -11,9 +11,9 @@ const PEG = require('pegjs');
 const CPU = require('./cpu.js');
 const SimUtils = require('./simutils.js');
 
-const GRAMMAR_PATH = './mcs8051.pegjs'
-const INSN_PATH = './mcs8051.insn';
-const CODE_PATH = './mcs8051-insn.js';
+const GRAMMAR_PATH = './8052.pegjs'
+const INSN_PATH = './8052.insn';
+const CODE_PATH = './8052-insn.js';
 
 
 const {toHex2, toHex4} = SimUtils;
