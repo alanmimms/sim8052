@@ -417,7 +417,7 @@ already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
 
   // Generate the code for the simulator function for each opcode.
   const code = handlers.map((h, op) => {
-    h.handlerSource = codegenOpcode(h, op).join(';\n    ') + ';';
+    h.handlerSource = codegenOpcode(h, op).join(';\n      ') + ';';
 
     // Precompile the handler to simulate this opcode
     h.script = new vm.Script(h.handlerSource, {
@@ -428,15 +428,17 @@ already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
     return `\
 
   // ${toHex2(op)}: ${h.mnemonic} ${h.operands}
-  () => {
-    ${h.handlerSource}
+  { n: ${h.n}, mnemonic: "${h.mnemonic}", operands: "${h.operands}",
+    opFunction() {
+      ${h.handlerSource}
+    },
   },
 `;
   }).join('\n');
 
   return `\
 'use strict';
-module.exports.opFunctions = [
+module.exports.opcodes = [
 ${code}
 ];
 `;

@@ -9,9 +9,13 @@ const _ = require('lodash');
 const readline = require('readline');
 const CPU = require('./cpu.js');
 
-const {opFunctions} = require('./8052-insn');
-
 const {toHex1, toHex2, toHex4} = require('./simutils.js');
+
+
+// Table of opcode information and handlers for disassembly and
+// function for simulation of the instruction whose opcode is the
+// index.
+const {opcodes} = require('./8052-insn');
 
 
 const debugBASIC2 = false;
@@ -22,11 +26,6 @@ const insnsPerTick = 100;
 
 const CODESize = 65536;
 const XRAMSize = 65536;
-
-
-// Table of opcode information and handlers for disassembly and
-// simulation of the instruction whose opcode is the index.
-var opcodes;
 
 
 // These are also stuffed into the `cpu` context for generated code.
@@ -139,6 +138,7 @@ const cpu = {
     // Set low nybble of IRAM location
     set(target, ea, value) {
       iram[ea] = iram[ea] & ~0x0F | value & 0x0F;
+      return true;
     },
 
     // Get low nybble of IRAM location
@@ -361,6 +361,8 @@ const cpu = {
           break;
         }
       }
+
+      return true;
     },
 
     get(target, ea) {
@@ -578,9 +580,8 @@ ${_.range(0, 8)
     this.fetchHistory[this.fetchHistoryX] = this.pc;
 
     const op = code[insnPC];
-    const oph = opFunctions[op];
+    opcodes[op].opFunction.apply(this);
     ++this.instructionsExecuted;
-    oph.apply(this);
   },
 };
 

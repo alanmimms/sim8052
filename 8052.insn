@@ -10,42 +10,42 @@ ACALL = 0bAAA10001 PAGE "1:addr11":
 ADD = 0b00101RRR "A,Ri":
     ALU1 <- R
     ALUC <- 0
-    { cpu.doADD() }
+    { this.doADD() }
 
 ADD = 0b00100101 DIR "A,1:direct":
     ALU1 <- DIR
     ALUC <- 0
-    { cpu.doADD() }
+    { this.doADD() }
 
 ADD = 0b0010011I "A,1:@Ri":
     ALU1 <- IMM/Ri
     ALUC <- 0
-    { cpu.doADD() }
+    { this.doADD() }
 
 ADD = 0b00100100 IMM "A,1:immed":
     ALU1 <- IMM
     ALUC <- 0
-    { cpu.doADD() }
+    { this.doADD() }
 
 ADDC = 0b00111RRR "A,Ri":
     ALU1 <- R
     ALUC <- CY
-    { cpu.doADD() }
+    { this.doADD() }
 
 ADDC = 0b00110101 DIR "A,1:direct":
     ALU1 <- DIR
     ALUC <- CY
-    { cpu.doADD() }
+    { this.doADD() }
 
 ADDC = 0b0011011I "A,@Ri":
     ALU1 <- IRAM/Ri
     ALUC <- CY
-    { cpu.doADD() }
+    { this.doADD() }
 
 ADDC = 0b00110100 IMM "A,1:immed":
     ALU1 <- IMM
     ALUC <- CY
-    { cpu.doADD() }
+    { this.doADD() }
 
 AJMP = 0bAAA00001 PAGE "1:addr11":
     TMP <- PAGE
@@ -147,7 +147,7 @@ DEC = 0b0001011I "@Ri":
     IRAM/Ri <- IRAM/Ri - 1
 
 DIV = 0b10000100 "AB":
-    { cpu.doDIV() }
+    { this.doDIV() }
 
 DJNZ = 0b11011RRR RELA "Ri,1:rela":
     PC <- PC + 2
@@ -318,7 +318,7 @@ MOVX = 0b11110000 "@DPTR,A":
     XRAM/DPTR <- A
 
 MUL = 0b10100100 "AB":
-    { cpu.doMUL() }
+    { this.doMUL() }
 
 NOP = 0b00000000 "":
 
@@ -365,19 +365,19 @@ RETI = 0b00110010 "":
     SP <- SP - 1
     PC.HI <- IRAM/SP
     SP <- SP - 1
-    { cpu.doRETI() }
+    { this.doRETI() }
 
 RL = 0b00100011 "A":
-    { cpu.doRL() }
+    { this.doRL() }
 
 RLC = 0b00110011 "A":
-    { cpu.doRLC() }
+    { this.doRLC() }
 
 RR = 0b00000011 "A":
-    { cpu.doRR() }
+    { this.doRR() }
 
 RRC = 0b00010011 "A":
-    { cpu.doRRC() }
+    { this.doRRC() }
 
 SETB = 0b11010011 "C":
     CY <- 1
@@ -392,19 +392,19 @@ SJMP = 0b10000000 RELA "1:rela":
 
 SUBB = 0b10011RRR "A,Ri":
     ALU1 <- R
-    { cpu.doSUBB() }
+    { this.doSUBB() }
 
 SUBB = 0b10010101 DIR "A,1:direct":
     ALU1 <- DIR
-    { cpu.doSUBB() }
+    { this.doSUBB() }
 
 SUBB = 0b1001011I "A,@Ri":
     ALU1 <- IRAM/Ri
-    { cpu.doSUBB() }
+    { this.doSUBB() }
 
 SUBB = 0b10010100 IMM "A,1:immed":
     ALU1 <- IMM
-    { cpu.doSUBB() }
+    { this.doSUBB() }
 
 SWAP = 0b11000100 "A":
     TMP <- A
