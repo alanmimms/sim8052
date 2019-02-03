@@ -363,7 +363,7 @@ RET = 0b00100010 "":
 RETI = 0b00110010 "":
     PC.HI <- IRAM/SP
     SP <- SP - 1
-    PC.HI <- IRAM/SP
+    PC.LO <- IRAM/SP
     SP <- SP - 1
     { this.doRETI() }
 
