@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 'use strict';
 
 const _ = require('lodash');
@@ -417,7 +416,7 @@ already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
 
   // Generate the code for the simulator function for each opcode.
   const code = handlers.map((h, op) => {
-    h.handlerSource = codegenOpcode(h, op).join(';\n  ') + ';';
+    h.handlerSource = codegenOpcode(h, op).join(';\n    ') + ';';
 
     // Precompile the handler to simulate this opcode
     h.script = new vm.Script(h.handlerSource, {
@@ -427,7 +426,8 @@ already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
 
     return `\
 
-  () => {       // ${toHex2(op)}: ${h.mnemonic} ${h.operands}
+  // ${toHex2(op)}: ${h.mnemonic} ${h.operands}
+  () => {
     ${h.handlerSource}
   },
 `;
