@@ -197,10 +197,12 @@ function codegenOpcode(h, op) {
     const b1Value = extractInstructionField();
     const params = {b1Value};
 
-    ['-never-match-placeholder-', 'b2', 'b3'].forEach((byte, offset) => {
+    ['-b1-placeholder-', 'b2', 'b3'].forEach((byte, offset) => {
       let code;
 
       if (!h[byte] || h[byte].type !== 'SYMBOL') return;
+
+      h.needPC0 = true;
       
       switch (h[byte].sym) {
       case 'IMM':
@@ -211,11 +213,11 @@ function codegenOpcode(h, op) {
       case 'LO':
       case 'RELA':
       case 'BIT':
-        params[h[byte].sym] = `this.code[this.pc + ${offset}] /* ${h[byte].sym} */`;
+        params[h[byte].sym] = `this.code[pc0 + ${offset}] /* ${h[byte].sym} */`;
         break;
 
       case 'PAGE':
-        params.PAGE = `${b1Value} << 8 | this.code[this.pc + ${offset}] /* PAGE */`;
+        params.PAGE = `${b1Value} << 8 | this.code[pc0 + ${offset}] /* PAGE */`;
         break;
 
       default:
@@ -430,6 +432,7 @@ already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
   // ${toHex2(op)}: ${h.mnemonic} ${h.operands}
   { n: ${h.n}, mnemonic: "${h.mnemonic}", operands: "${h.operands}",
     opFunction() {
+      const pc0 = this.pc;
       ${h.handlerSource}
     },
   },
