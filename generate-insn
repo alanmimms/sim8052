@@ -426,10 +426,17 @@ already defined for ${toHex2(op)} as ${handlers[op].mnemonic}`);
     });
 
     return `\
-// ${toHex2(op)}: ${h.mnemonic} ${h.operands}
-  ${h.handlerSource}
+
+  () => {       // ${toHex2(op)}: ${h.mnemonic} ${h.operands}
+    ${h.handlerSource}
+  },
 `;
   }).join('\n');
 
-  return code;
+  return `\
+'use strict';
+module.exports.opFunctions = [
+${code}
+];
+`;
 }
