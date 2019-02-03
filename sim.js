@@ -450,7 +450,7 @@ const cpu = {
 
     for (let k = this.fetchHistoryMask; k; --k) {
       const x = (this.fetchHistoryX - k) & this.fetchHistoryMask;
-      console.log(`-${toHex2(k+1)}: ${displayableAddress(this.fetchHistory[x], 'c')}`);
+      console.log(`-${toHex4(k+1)}: ${displayableAddress(this.fetchHistory[x], 'c')}`);
     }
   },
   
@@ -580,7 +580,15 @@ ${_.range(0, 8)
     this.fetchHistory[this.fetchHistoryX] = this.pc;
 
     const op = code[insnPC];
-    opcodes[op].opFunction.apply(this);
+    const ope = opcodes[op];
+
+    if (!ope) {
+      console.error(`pc=${insnPC}=${toHex4(insnPC)}, op=${op}=${toHex2(op)} is undefined`);
+      this.dumpFetchHistory();
+      debugger;
+    }
+
+    ope.opFunction.apply(this);
     ++this.instructionsExecuted;
   },
 };
