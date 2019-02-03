@@ -239,7 +239,7 @@ function codegenOpcode(h, op) {
     const nBits = b1Match[1].length;
     const topBitNumber = 7 - b1Match.index;
     const mask = ((1 << nBits) - 1) << (topBitNumber - nBits + 1);
-    return op & mask;
+    return (op & mask) >> (topBitNumber - nBits + 1);
   }
 
 
