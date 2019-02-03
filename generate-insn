@@ -126,22 +126,22 @@ function codegenOpcode(h, op) {
     switch (e.id) {
     case 'A':
       // TODO: Handle field NYBHI/NYBLO
-      return 'SFR[ACC]';
+      return 'this.SFR[this.ACC]';
 
-    case 'ALU1':        return 'alu1';
-    case 'ALUC':        return 'aluC';
-    case 'B':           return 'SFR[B]';
-    case 'SP':          return 'SFR[SP]';
+    case 'ALU1':        return 'this.alu1';
+    case 'ALUC':        return 'this.aluC';
+    case 'B':           return 'this.SFR[this.B]';
+    case 'SP':          return 'this.SFR[this.SP]';
 
     case 'TMP':
       // TODO: Handle field NYBHI/NYBLO
-      return 'tmp';
+      return 'this.tmp';
 
     case 'PC':
-      return 'pc' + (e.field || '');
+      return 'this.pc' + (e.field || '');
 
     case 'DPTR':
-      return 'dptr' + (e.field || '');
+      return 'this.dptr' + (e.field || '');
 
     case 'IMM':
       return params.IMM;
@@ -155,22 +155,22 @@ function codegenOpcode(h, op) {
     case 'CY':
     case 'OV':
     case 'AC':
-      return e.id;
+      return 'this.' + e.id;
 
     case 'BIT':
     case 'DIR':
     case 'DIRSRC':
     case 'DIRDST':
-      return `DIR[${params[e.id]}]`;
+      return `this.DIR[${params[e.id]}]`;
 
     case 'A_PLUS_DPTR':
-      return `SFR[ACC] + DPTR`;
+      return `this.SFR[this.ACC] + this.dptr`;
 
     case 'A_PLUS_PC':
-      return `SFR[ACC] + pc`;
+      return `this.SFR[this.ACC] + this.pc`;
 
     case 'RELA':
-      return `toSigned(${params.RELA})`;
+      return `this.toSigned(${params.RELA})`;
 
     case 'R':
     case 'Ri':
@@ -179,7 +179,7 @@ function codegenOpcode(h, op) {
       // accessing it directly.
       //
       // TODO: Handle field NYBHI/NYBLO
-      return `iram[(SFR[PSW] & ${rsMaskCode}) + ${params.b1Value & 7}]`;
+      return `this.iram[(this.SFR[this.PSW] & ${rsMaskCode}) + ${params.b1Value & 7}]`;
 
     default:
       return `symbolToCode DEFAULT! (${e.id})`
@@ -211,11 +211,11 @@ function codegenOpcode(h, op) {
       case 'LO':
       case 'RELA':
       case 'BIT':
-        params[h[byte].sym] = `code[pc + ${offset}] /* ${h[byte].sym} */`;
+        params[h[byte].sym] = `this.code[this.pc + ${offset}] /* ${h[byte].sym} */`;
         break;
 
       case 'PAGE':
-        params.PAGE = `${b1Value} << 8 | code[pc + ${offset}] /* PAGE */`;
+        params.PAGE = `${b1Value} << 8 | this.code[this.pc + ${offset}] /* PAGE */`;
         break;
 
       default:
@@ -252,17 +252,18 @@ function codegenOpcode(h, op) {
       return `${genTarget(t)} = ${genExpr(xfr.e)}`;
 
     case 'If':
-      const thenTransfers = t.thenPart.map(x => genTransfer(x)).join('\n  ');
-      const elseTransfers = (t.elsePart || []).map(x => genTransfer(x)).join('\n  ');
+      const thenTransfers = t.thenPart.map(x => genTransfer(x)).join('\n      ');
+      const elseTransfers = (t.elsePart || []).map(x => genTransfer(x)).join('\n      ');
 
       let s = `\
 if (${genExpr(xfr.e)}) {
-  ${thenTransfers}
-}`;
+      ${thenTransfers}
+    }`;
 
-      if (t.elsePart) s += `else {
-  ${elseTransfers}
-}`;
+      if (t.elsePart) s += `\
+else {
+      ${elseTransfers}
+    }`;
 
       return s;
 
@@ -283,7 +284,7 @@ UNKNOWN target type ${t.type}`;
       return symbolToCode(t, instructionParams());
 
     case 'Slash':
-      return `${t.space.toLowerCase()}[${genExpr(t.addr)}]`;
+      return `this.${t.space.toLowerCase()}[${genExpr(t.addr)}]`;
 
     default:
       return `UNKNOWN target type ${t.type}`;

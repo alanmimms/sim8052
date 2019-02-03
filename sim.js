@@ -7,10 +7,9 @@ const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
-const vm = require('vm');
 const CPU = require('./cpu.js');
 
-const CODEGEN = require('./codegen');
+const {opFunctions} = require('./8052-insn');
 
 const {toHex1, toHex2, toHex4} = require('./simutils.js');
 
@@ -579,13 +578,9 @@ ${_.range(0, 8)
     this.fetchHistory[this.fetchHistoryX] = this.pc;
 
     const op = code[insnPC];
-    const ope = opcodes[op];
+    const oph = opFunctions[op];
     ++this.instructionsExecuted;
-
-    ope.script.runInContext(simContext, {
-      filename: 'generated code for simulator',
-      displayErrors: true,
-    });
+    oph.apply(this);
   },
 };
 
@@ -593,13 +588,6 @@ ${_.range(0, 8)
 // Stuff the SFR names into the `cpu` context so generated code can
 // use them.
 Object.keys(CPU.SFRs).forEach(sfr => cpu[sfr] = CPU[sfr]);
-
-
-// Create the execution context for the simulator's opcode
-// simulation functions
-const simContext = vm.createContext(cpu, {
-  name: 'simContext',
-});
 
 
 var lastX = 0;
@@ -1382,11 +1370,9 @@ node ${argv[0]} hex-file-name lst-file-name`);
 
 // Only start the thing if we are not loaded via require.
 if (require.main === module) {
-  const ast = CODEGEN.init();
-  opcodes = CODEGEN.generate(ast);
-
   setupSimulator();
-  
+
+
   console.log('[Control-\\ will interrupt execution and return to prompt]');
 
   if (process.stdin.setRawMode)
