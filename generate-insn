@@ -158,6 +158,8 @@ function codegenOpcode(h, op) {
       return 'this.' + e.id;
 
     case 'BIT':
+      return `this.BIT[${params[e.id]}]`;
+
     case 'DIR':
     case 'DIRSRC':
     case 'DIRDST':

@@ -146,6 +146,37 @@ const cpu = {
   }),
 
 
+  BIT: new Proxy(SFR, {
+
+    // Set bit of an SFR or IRAM location
+    set(target, bn, newValue) {
+      const {ra, bm} = getBitAddrMask(bn);
+      let v = cpu.DIR[ra];
+
+      if (newValue) {
+        v = v | bm;
+      } else {
+        v = v & ~bm;
+      }
+
+      cpu.DIR[ra] = v;
+      return true;
+    },
+
+    // Get bit of an SFR or IRAM location
+    get(target, bn) {
+      const {ra, bm} = getBitAddrMask(bn);
+      const v = +!!(cpu.DIR[ra] & bm);
+
+      // If we are spinning waiting for SCON.RI to go high we can
+      // introduce a bit of delay.
+      if (bn === sconBits.riBit && !v) cpu.mayDelay = true;
+
+      return v;
+    },
+  }),
+
+
   // Get/set low and high byte or page field of PC
   set pcLO(v) {
     cpu.pc &= ~0xFF;
@@ -401,39 +432,6 @@ const cpu = {
   }),
 
 
-  getBitAddrMask(bn) {
-    const bm = 1 << (bn & 0x07);
-    const ra = bn < 0x10 ? 0x20 + (bn >>> 3) : bn & 0xF8;
-    return {ra, bm};
-  },
-  
-
-  getBit(bn) {
-    const {ra, bm} = this.getBitAddrMask(bn);
-    const v = +!!(this.DIR[ra] & bm);
-
-    // If we are spinning waiting for SCON.RI to go high we can
-    // introduce a bit of delay.
-    if (bn === sconBits.riBit && !v) cpu.mayDelay = true;
-
-    return v;
-  },
-
-
-  putBit(bn, b) {
-    const {ra, bm} = this.getBitAddrMask(bn);
-    let v = this.DIR[ra];
-
-    if (b) {
-      v = v | bm;
-    } else {
-      v = v & ~bm;
-    }
-
-    this.DIR[ra] = v;
-  },
-
-
   bitName(bn) {
     bn = +bn;
 
@@ -591,6 +589,14 @@ ${_.range(0, 8)
     ope.opFunction.apply(this);
     ++this.instructionsExecuted;
   },
+};
+
+
+// Return the address and bit mask for a given bit number.
+function getBitAddrMask(bn) {
+  const bm = 1 << (bn & 0x07);
+  const ra = bn < 0x10 ? 0x20 + (bn >>> 3) : bn & 0xF8;
+  return {ra, bm};
 };
 
 
