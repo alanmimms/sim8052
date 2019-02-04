@@ -197,7 +197,7 @@ const cpu = {
   },
 
   get pcHI() {
-    return cpu.pc & 0xFF00;
+    return (cpu.pc & 0xFF00) >>> 8;
   },
 
 
@@ -356,8 +356,8 @@ const cpu = {
   },
 
 
-  doRRC(a, c) {
-    a = SFR[ACC];
+  doRRC() {
+    let a = SFR[ACC];
     let c = this.CY;
     this.CY = a & 1;
     a >>>= 1;

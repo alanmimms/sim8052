@@ -234,8 +234,6 @@ ${params.b1Value & 7}]`,
 
       if (!h[byte] || h[byte].type !== 'SYMBOL') return;
 
-      h.needPC0 = true;
-      
       switch (h[byte].sym) {
       case 'IMM':
       case 'DIR':
@@ -289,18 +287,18 @@ ${params.b1Value & 7}]`,
       return `${code} = (${genExpr(xfr.e)})${targetWidthMask}`;
 
     case 'If':
-      const thenTransfers = t.thenPart.map(x => genTransfer(x)).join('\n      ');
-      const elseTransfers = (t.elsePart || []).map(x => genTransfer(x)).join('\n      ');
+      const thenTransfers = t.thenPart.map(x => genTransfer(x)).join(';\n      ');
+      const elseTransfers = (t.elsePart || []).map(x => genTransfer(x)).join(';\n      ');
 
       let s = `\
 if (${genExpr(xfr.e)}) {
-      ${thenTransfers}
-    }`;
+        ${thenTransfers}
+      }`;
 
       if (t.elsePart) s += `\
 else {
-      ${elseTransfers}
-    }`;
+        ${elseTransfers}
+      }`;
 
       return s;
 
