@@ -137,12 +137,13 @@ const cpu = {
 
     // Set low nybble of IRAM location
     set(target, ea, value) {
+      ea = +ea;                 // Proxy always gets `property` parameter as string
       iram[ea] = iram[ea] & ~0x0F | value & 0x0F;
       return true;
     },
 
     // Get low nybble of IRAM location
-    get: (target, ea, value) => iram[ea] & 0x0F,
+    get: (target, ea, value) => iram[+ea] & 0x0F,
   }),
 
 
@@ -150,6 +151,8 @@ const cpu = {
 
     // Set bit of an SFR or IRAM location
     set(target, bn, newValue) {
+      bn = +bn;                 // Proxy always gets `property` parameter as string
+
       const {ra, bm} = getBitAddrMask(bn);
       let v = cpu.DIR[ra];
 
@@ -159,18 +162,23 @@ const cpu = {
         v = v & ~bm;
       }
 
+      console.log(`set bit ${toHex2(bn)}=${newValue} ra=${toHex2(ra)} bm=${toHex2(bm)} result=${toHex2(v)}`);
+
       cpu.DIR[ra] = v;
       return true;
     },
 
     // Get bit of an SFR or IRAM location
     get(target, bn) {
+      bn = +bn;                 // Proxy always gets `property` parameter as string
       const {ra, bm} = getBitAddrMask(bn);
       const v = +!!(cpu.DIR[ra] & bm);
 
       // If we are spinning waiting for SCON.RI to go high we can
       // introduce a bit of delay.
       if (bn === sconBits.riBit && !v) cpu.mayDelay = true;
+
+      console.log(`get bit ${toHex2(bn)} ra=${toHex2(ra)} bm=${toHex2(bm)} result=${toHex2(v)}`);
 
       return v;
     },
@@ -372,9 +380,11 @@ const cpu = {
   DIR: new Proxy(iram, {
 
     set(target, ea, value) {
+      ea = +ea;                 // Proxy always gets `property` parameter as string
 
       if (ea < 0x80) {
         iram[ea] = value;
+//        console.log(`set DIR ea=${toHex2(ea)}=${toHex2(value)}`);
       } else {
 
         switch (ea) {
@@ -385,10 +395,12 @@ const cpu = {
           this.DIR[SCON] |= sconBits.tiMask;
 
           // TODO: Make this do an interrupt
+          console.log(`set DIR ea=${toHex2(ea)}=${toHex2(value)}`);
           break;
 
         default:
           SFR[ea] = value;
+          console.log(`set DIR ea=${toHex2(ea)}=${toHex2(value)}`);
           break;
         }
       }
@@ -397,7 +409,13 @@ const cpu = {
     },
 
     get(target, ea) {
-      if (ea < 0x80) return iram[ea];
+      let v;
+
+      ea = +ea;                 // Proxy always gets `property` parameter as string
+
+      if (ea < 0x80) {
+        return iram[ea];
+      }        
 
       switch (ea) {
       case SBUF:
@@ -423,7 +441,6 @@ const cpu = {
 
       case SCON:
         return SFR[SCON] | +(sbufQueue.length !== 0) << sconBits.riShift;
-        break;
 
       default:
         return SFR[ea];
