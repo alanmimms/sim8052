@@ -140,10 +140,15 @@ function codegenOpcode(h, op) {
       return {w: 0, code: 'this.tmp'};
 
     case 'PC':
+      return {
+        w: widthOfField(e.field) || 16, 
+        code: `this.pc` + (e.field || ''),
+      };
+
     case 'DPTR':
       return {
         w: widthOfField(e.field) || 16, 
-        code: `this.${e.id.toLowerCase()}` + (e.field || ''),
+        code: `this.DPTR` + (e.field || ''),
       };
 
     case 'IMM':
@@ -169,7 +174,7 @@ function codegenOpcode(h, op) {
       return {w: 8, code: `this.DIR[${params[e.id]}]`};
 
     case 'A_PLUS_DPTR':
-      return `this.SFR[this.ACC] + this.dptr`;
+      return {w: 8, code: `this.SFR[this.ACC] + this.DPTR`};
 
     case 'A_PLUS_PC':
       return {w: 8, code: `this.SFR[this.ACC] + this.pc`};
@@ -327,8 +332,8 @@ UNKNOWN target type ${t.type}`;
   function genExpr(e) {
     if (typeof e === 'number') return e.toString(10);
 
-    if (!e) return `genExpr(null, ${op.mnemonic})`;
-    if (!e.type) return `empty type op=${op.mnemonic}`;
+    if (!e) return `OOPS genExpr(null)`;
+    if (!e.type) return `OOPS empty type`;
 
     switch (e.type) {
     case 'Code':
