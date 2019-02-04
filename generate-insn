@@ -120,59 +120,62 @@ function codegenOpcode(h, op) {
   }
 
 
+  // Returns {w: 'width to mask to, or zero to avoid masking',
+  //          code: 'code to access symbol'}.
   function symbolToCode(e, params) {
     const rsMaskCode = toHex2(CPU.pswBits.rs1Mask | CPU.pswBits.rs0Mask, '0x');
 
     switch (e.id) {
     case 'A':
       // TODO: Handle field NYBHI/NYBLO
-      return 'this.SFR[this.ACC]';
+      return {w: 8, code: 'this.SFR[this.ACC]'};
 
-    case 'ALU1':        return 'this.alu1';
-    case 'ALUC':        return 'this.aluC';
-    case 'B':           return 'this.SFR[this.B]';
-    case 'SP':          return 'this.SFR[this.SP]';
+    case 'ALU1':        return {w: 8, code: 'this.alu1'};
+    case 'ALUC':        return {w: 1, code: 'this.aluC'};
+    case 'B':           return {w: 8, code: 'this.SFR[this.B]'};
+    case 'SP':          return {w: 8, code: 'this.SFR[this.SP]'};
 
     case 'TMP':
       // TODO: Handle field NYBHI/NYBLO
-      return 'this.tmp';
+      return {w: 0, code: 'this.tmp'};
 
     case 'PC':
-      return 'this.pc' + (e.field || '');
-
     case 'DPTR':
-      return 'this.dptr' + (e.field || '');
+      return {
+        w: widthOfField(e.field) || 16, 
+        code: `this.${e.id.toLowerCase()}` + (e.field || ''),
+      };
 
     case 'IMM':
-      return params.IMM;
+      return {w: 16, code: params.IMM};
 
     case 'PAGE':
-      return params.PAGE;
+      return {w: 11, code: params.PAGE};
 
     case 'HILO':
-      return `${params.HI} << 8 | ${params.LO}`;
+      return {w: 16, code: `${params.HI} << 8 | ${params.LO}`};
 
     case 'CY':
     case 'OV':
     case 'AC':
-      return 'this.' + e.id;
+      return {w: 1, code: 'this.' + e.id};
 
     case 'BIT':
-      return `this.BIT[${params[e.id]}]`;
+      return {w: 1, code: `this.BIT[${params[e.id]}]`};
 
     case 'DIR':
     case 'DIRSRC':
     case 'DIRDST':
-      return `this.DIR[${params[e.id]}]`;
+      return {w: 8, code: `this.DIR[${params[e.id]}]`};
 
     case 'A_PLUS_DPTR':
       return `this.SFR[this.ACC] + this.dptr`;
 
     case 'A_PLUS_PC':
-      return `this.SFR[this.ACC] + this.pc`;
+      return {w: 8, code: `this.SFR[this.ACC] + this.pc`};
 
     case 'RELA':
-      return `this.toSigned(${params.RELA})`;
+      return {w: 16, code: `this.toSigned(${params.RELA})`};
 
     case 'R':
     case 'Ri':
@@ -181,11 +184,33 @@ function codegenOpcode(h, op) {
       // accessing it directly.
       //
       // TODO: Handle field NYBHI/NYBLO
-      return `this.iram[(this.SFR[this.PSW] & ${rsMaskCode}) + ${params.b1Value & 7}]`;
+      return {w: 8, 
+              code: `\
+this.iram[(this.SFR[this.PSW] & ${rsMaskCode}) + \
+${params.b1Value & 7}]`,
+             };
 
     default:
-      return `symbolToCode DEFAULT! (${e.id})`
+      return {w: 0, code: `symbolToCode DEFAULT! (${e.id})`};
     };
+  }
+
+
+  function widthOfField(field) {
+
+    switch (field) {
+    case 'PAGE': return 11;
+
+    case 'HI':
+    case 'LO':
+      return 8;
+
+    case 'NYBLO':
+    case 'NYBHI':
+      return 4;
+
+    default: return 0;
+    }
   }
 
 
@@ -253,7 +278,10 @@ function codegenOpcode(h, op) {
     switch (t.type) {
     case 'Var':
     case 'Slash':
-      return `${genTarget(t)} = ${genExpr(xfr.e)}`;
+      const {w, code} = genTarget(t);
+      const hexForWidth = w <= 8 ? toHex2 : toHex4;
+      const targetWidthMask = w === 0 ? '' : ' & 0x' + hexForWidth((1 << w) - 1);
+      return `${code} = (${genExpr(xfr.e)})${targetWidthMask}`;
 
     case 'If':
       const thenTransfers = t.thenPart.map(x => genTransfer(x)).join('\n      ');
@@ -288,10 +316,10 @@ UNKNOWN target type ${t.type}`;
       return symbolToCode(t, instructionParams());
 
     case 'Slash':
-      return `this.${t.space.toLowerCase()}[${genExpr(t.addr)}]`;
+      return {w: 8, code: `this.${t.space.toLowerCase()}[${genExpr(t.addr)}]`};
 
     default:
-      return `UNKNOWN target type ${t.type}`;
+      return {w: 0, code: `UNKNOWN target type ${t.type}`};
     }
   }
 
@@ -308,7 +336,7 @@ UNKNOWN target type ${t.type}`;
 
     case 'Slash':
     case 'Var':
-      return genTarget(e);
+      return genTarget(e).code;
 
     case 'PLUS':
       return genBinary(e, '+');
@@ -354,22 +382,6 @@ UNKNOWN target type ${t.type}`;
 
   function genBinary(e, operator) {
     return `(${genExpr(e.l)}) ${operator} (${genExpr(e.r)})`;
-  }
-
-
-  function bitWidthOfVar(v) {
-
-    switch (v) {
-    case 'DPTR':
-    case 'PC':
-      return 16;
-
-    case 'pcPAGE':
-      return 10;
-
-    default:
-      return 8;
-    }
   }
 }
 
