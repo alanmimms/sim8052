@@ -162,8 +162,6 @@ const cpu = {
         v = v & ~bm;
       }
 
-      console.log(`set bit ${toHex2(bn)}=${newValue} ra=${toHex2(ra)} bm=${toHex2(bm)} result=${toHex2(v)}`);
-
       cpu.DIR[ra] = v;
       return true;
     },
@@ -177,8 +175,6 @@ const cpu = {
       // If we are spinning waiting for SCON.RI to go high we can
       // introduce a bit of delay.
       if (bn === sconBits.riBit && !v) cpu.mayDelay = true;
-
-      console.log(`get bit ${toHex2(bn)} ra=${toHex2(ra)} bm=${toHex2(bm)} result=${toHex2(v)}`);
 
       return v;
     },
@@ -384,7 +380,6 @@ const cpu = {
 
       if (ea < 0x80) {
         iram[ea] = value;
-//        console.log(`set DIR ea=${toHex2(ea)}=${toHex2(value)}`);
       } else {
 
         switch (ea) {
@@ -392,15 +387,13 @@ const cpu = {
           process.stdout.write(String.fromCharCode(value));
 
           // Transmitting a character immediately signals TI saying it is done.
-          this.DIR[SCON] |= sconBits.tiMask;
+          cpu.SFR[SCON] |= sconBits.tiMask;
 
           // TODO: Make this do an interrupt
-          console.log(`set DIR ea=${toHex2(ea)}=${toHex2(value)}`);
           break;
 
         default:
           SFR[ea] = value;
-          console.log(`set DIR ea=${toHex2(ea)}=${toHex2(value)}`);
           break;
         }
       }
