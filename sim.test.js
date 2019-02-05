@@ -176,6 +176,50 @@ ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
   });
 
 
+//////////// CLR A ////////////
+test('CLR A', () => {
+  cpu.code[0x100] = 0xE4;       // CLR A
+  cpu.SFR[ACC] = 0x42;
+  cpu.SFR[PSW] = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x101);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(0);
+});
+
+//////////// CLR bit ////////////
+test('CLR bit', () => {
+  const bit = 0x42;
+  const acBase = 0xAA;
+  cpu.code[0x100] = 0xC2;       // CLR bit
+  cpu.code[0x101] = bit;
+  cpu.BIT[bit] = 1;
+  cpu.SFR[ACC] = acBase;
+  cpu.SFR[PSW] = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.BIT[bit]).toBe(0);
+});
+
+//////////// CLR C ////////////
+test('CLR A', () => {
+  cpu.code[0x100] = 0xC3;       // CLR C
+  cpu.SFR[ACC] = 0x42;
+  cpu.SFR[PSW] = 0;
+  cpu.CY = 1;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x101);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+});
+
 //////////// RLC ////////////
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.code[0x100] = 0x33;       // RLC A
