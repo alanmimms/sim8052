@@ -55,6 +55,34 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL', fromPage => {
 });
 
 
+//////////// AJMP ////////////
+describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
+
+  test(`AJMP from page${fromPage}`, () => {
+    const pageOffset = 0x24;
+    const jmpBase = fromPage * 0x100 + 0x42;
+    const spBase = 0x07;
+    const acBase = 0x42;
+
+    for (let toPage = 0; toPage < 8; ++toPage) {
+      const jmpTarget = (toPage * 0x100) + pageOffset;
+      cpu.code[jmpBase] = (toPage * 0x20) + 0x01;      // AJMP pageN
+      cpu.code[jmpBase + 1] = pageOffset;
+
+      cpu.SFR[ACC] = acBase;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[SP] = spBase;
+
+      cpu.run1(jmpBase);                       // AJMP
+      expect(cpu.pc).toBe(jmpTarget);
+      expect(cpu.SFR[PSW]).toBe(0);
+      expect(cpu.SFR[ACC]).toBe(acBase);
+      expect(cpu.SFR[SP]).toBe(spBase);
+    }
+  });
+});
+
+
 //////////// RLC ////////////
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.code[0x100] = 0x33;       // RLC A
