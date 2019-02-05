@@ -362,7 +362,7 @@ const cpu = {
 
   doDIV() {
     // DIV always clears CY. DIV sets OV on divide by 0.
-    const b = SFR[B];
+    let b = SFR[B];
     this.CY = 0;
 
     if (b === 0) {
