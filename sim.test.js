@@ -279,7 +279,7 @@ describe.each([
            cpu.SFR[ACC] = y;
            cpu.CY = inCY;
 
-           cpu.run1(0x100);              // ADD A,dir
+           cpu.run1(0x100);              // ADD A,R3
            expect(cpu.pc).toBe(0x101);
            expect(cpu.SFR[ACC]).toBe(addSum);
            expect(cpu.CY).toBe(addCY);
@@ -458,4 +458,90 @@ describe.each([
            expect(cpu.CY).toBe(daCY);
            expect(cpu.iram[dir]).toBe(x);
          })
+  });
+
+
+//////////////// ANL ////////////////
+describe.each([
+  // x     y    and
+  [0x00, 0x00, 0x00],
+  [0xFF, 0x00, 0x00],
+  [0xFF, 0xFF, 0xFF],
+  [0x00, 0xFF, 0x00],
+  [0x01, 0x05, 0x01],
+  [0x02, 0x05, 0x00],
+  [0x04, 0x05, 0x04],
+  [0x08, 0x05, 0x00],
+  [0x10, 0x05, 0x00],
+  [0x20, 0x05, 0x00],
+  [0x40, 0x05, 0x00],
+  [0x80, 0x05, 0x00],
+]) (
+  'ANL:',
+  (x, y, and)  => {
+    test(`ANL A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(and)}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x55;       // ANL A,dir
+           cpu.code[0x101] = dir;
+
+           cpu.iram[dir] = x;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+
+           cpu.run1(0x100);              // ANL A,dir
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.SFR[ACC]).toBe(and);
+           expect(cpu.CY).toBe(0);
+//           expect(cpu.AC).toBe(0);
+           expect(cpu.iram[dir]).toBe(x);
+         });
+    test(`ANL A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
+         () => {
+           cpu.SFR[PSW] = 0;
+           cpu.code[0x100] = 0x5B;       // ANL A,R3
+           cpu.iram[3] = x;              // R3
+           cpu.SFR[ACC] = y;
+
+           cpu.run1(0x100);              // ANL A,R3
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.SFR[ACC]).toBe(and);
+           expect(cpu.CY).toBe(0);
+//           expect(cpu.AC).toBe(0);
+           expect(cpu.iram[3]).toBe(x);
+         });
+    test(`ANL A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x57;       // ANL A,@R1
+           cpu.iram[1] = dir;            // Set R1=dir for @R1
+           cpu.iram[dir] = x;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+
+           cpu.run1(0x100);              // ANL A,@R1
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.SFR[ACC]).toBe(and);
+           expect(cpu.CY).toBe(0);
+//           expect(cpu.AC).toBe(0);
+           expect(cpu.iram[1]).toBe(dir);
+           expect(cpu.iram[dir]).toBe(x);
+         });
+    test(`ANL A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
+         () => {
+           const imm = x;
+           cpu.code[0x100] = 0x54;       // ANL A,#imm
+           cpu.code[0x101] = imm;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+
+           cpu.run1(0x100);              // ANL A,#imm
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.SFR[ACC]).toBe(and);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+         });
   });
