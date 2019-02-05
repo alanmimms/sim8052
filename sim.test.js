@@ -371,6 +371,47 @@ describe.each([
   });
 
 
+//////////// DIV AB ////////////
+describe.each([
+  // x     y    div   rem ov
+  [0x00, 0x00, 0x00, 0x00, 1],
+  [0x00, 0x01, 0x00, 0x00, 0],
+  [0x10, 0x02, 0x08, 0x00, 0],
+  [0x11, 0x02, 0x08, 0x01, 0],
+  [0x12, 0x02, 0x09, 0x00, 0],
+  [0x12, 0x13, 0x00, 0x12, 0],
+  [0x12, 0x00, 0x00, 0x00, 1],
+  [0x00, 0x00, 0x00, 0x00, 1],
+]) (
+  'DIV AB:',
+  (x, y, div, rem, ov)  => {
+    test(`\
+DIV AB A=${toHex2(x)}, B=${toHex2(y)}, \
+div=${toHex2(div)} rem=${toHex2(rem)}, ov=${ov}`,
+         () => {
+           cpu.code[0x100] = 0x84;       // DIV AB
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = x;
+           cpu.SFR[B] = y;
+           cpu.CY = 1;
+           cpu.OV = 0;
+           cpu.AC = 1;
+
+           cpu.run1(0x100);              // DIV AB
+           expect(cpu.pc).toBe(0x101);
+
+           if (!ov) {
+             expect(cpu.SFR[ACC]).toBe(div);
+             expect(cpu.SFR[B]).toBe(rem);
+           }
+
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(1);
+           expect(cpu.OV).toBe(ov);
+         });
+  });
+
+
 //////////// RLC ////////////
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.code[0x100] = 0x33;       // RLC A
