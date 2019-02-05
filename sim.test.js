@@ -299,6 +299,78 @@ test('CPL C=1', () => {
   expect(cpu.AC).toBe(0);
 });
 
+
+//////////// DEC ////////////
+describe.each([
+  // x    dec
+  [0x00, 0xFF],
+  [0x01, 0x00],
+  [0x80, 0x7F],
+  [0xFF, 0xFE],
+  [0xFE, 0xFD],
+]) (
+  'DEC:',
+  (x, dec)  => {
+    test(`DEC A A=${toHex2(x)}, result=${toHex2(dec)}`,
+         () => {
+           cpu.code[0x100] = 0x14;       // DEC A
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = x;
+
+           cpu.run1(0x100);              // DEC A
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.SFR[ACC]).toBe(dec);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`DEC R3, R3=${toHex2(x)} result=${toHex2(dec)}`,
+         () => {
+           cpu.code[0x100] = 0x1B;       // DEC R3
+           cpu.SFR[PSW] = 0;
+           cpu.iram[3] = x;
+
+           cpu.run1(0x100);              // DEC R3
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.iram[3]).toBe(dec);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`DEC dir, dir=${toHex2(x)} result=${toHex2(dec)}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x15;       // DEC dir
+           cpu.code[0x101] = dir;
+           cpu.SFR[PSW] = 0;
+           cpu.iram[dir] = x;
+
+           cpu.run1(0x100);              // DEC dir
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.iram[dir]).toBe(dec);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`DEC @R1 x=${toHex2(x)}, result=${toHex2(dec)}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x17;       // DEC @R1
+           cpu.SFR[PSW] = 0;
+           cpu.iram[dir] = x;
+           cpu.iram[1] = dir;            // R1
+
+           cpu.run1(0x100);              // DEC @R1
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.iram[1]).toBe(dir);
+           expect(cpu.iram[dir]).toBe(dec);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+  });
+
+
 //////////// RLC ////////////
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.code[0x100] = 0x33;       // RLC A
