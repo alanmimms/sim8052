@@ -133,18 +133,57 @@ const cpu = {
   branchHistoryX: -1,           // Always points to most recent entry
 
 
-  // Get/set low nybble of IRAM location
-  iramNYBLO: new Proxy(iram, {
+  // Get/set high nybble of tmp
+  get tmpNYBHI() {
+    return (cpu.tmp >>> 4) & 0x0F;
+  },
 
-    // Set low nybble of IRAM location
+  set tmpNYBHI(v) {
+    cpu.tmp &= ~0xF0;
+    cpu.tmp |= (v << 4) & 0xF0;
+    return true;
+  },
+
+
+  // Get/set low nybble of tmp
+  get tmpNYBLO() {
+    return cpu.tmp & 0x0F;
+  },
+
+  set tmpNYBLO(v) {
+    cpu.tmp &= ~0x0F;
+    cpu.tmp |= v & 0x0F;
+    return true;
+  },
+
+
+  // Get/set low nybble of SFR location
+  sfrNYBLO: new Proxy(SFR, {
+
+    // Set low nybble of SFR location
     set(target, ea, value) {
       ea = +ea;                 // Proxy always gets `property` parameter as string
-      iram[ea] = iram[ea] & ~0x0F | value & 0x0F;
+      SFR[ea] = SFR[ea] & ~0x0F | value & 0x0F;
       return true;
     },
 
-    // Get low nybble of IRAM location
-    get: (target, ea, value) => iram[+ea] & 0x0F,
+    // Get low nybble of SFR location
+    get: (target, ea, value) => SFR[+ea] & 0x0F,
+  }),
+
+
+  // Get/set high nybble of SFR location
+  sfrNYBHI: new Proxy(SFR, {
+
+    // Set low nybble of SFR location
+    set(target, ea, value) {
+      ea = +ea;                 // Proxy always gets `property` parameter as string
+      SFR[ea] = SFR[ea] & ~0xF0 | (value << 4) & 0xF0;
+      return true;
+    },
+
+    // Get high nybble of SFR location
+    get: (target, ea, value) => (SFR[+ea] & 0xF0) >>> 4,
   }),
 
 
@@ -269,20 +308,30 @@ const cpu = {
   },
 
 
+  doDA() {
+
+    if ((SFR[ACC] & 0x0F) > 9 || this.AC) {
+      if (SFR[ACC] + 0x06 > 0xFF) this.CY = 1
+      SFR[ACC] = (SFR[ACC] + 0x06) & 0xFF;
+    }
+  
+    if ((SFR[ACC] & 0xF0) > 0x90 || this.CY) {
+      if (SFR[ACC] + 0x60 > 0xFF) this.CY = 1;
+      SFR[ACC] = (SFR[ACC] + 0x60) & 0xFF;
+    }
+  },
+
+
   doADD() {
     const a = SFR[ACC]
     const b = this.alu1;
     const c = this.aluC;
 
-    const acValue = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
     const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
     const cyValue = +(a + b + c > 0xFF);
-    const ovValue = cyValue ^ c6Value;
-
-    SFR[PSW] &= ~mathMask;
-    SFR[PSW] |= ovValue << pswBits.ovShift |
-      acValue << pswBits.acShift |
-      cyValue << pswBits.cyShift;
+    this.AC = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
+    this.CY = cyValue;
+    this.OV = cyValue ^ c6Value;
     SFR[ACC] = a + b + c;
   },
 
@@ -294,16 +343,10 @@ const cpu = {
     const toSub = b + c;
     const result = (a - toSub) & 0xFF;
 
-    const cyValue = +(a < toSub);
-    const acValue = +((a & 0x0F) < (toSub & 0x0F) ||
-                      (c && ((b & 0x0F) == 0x0F)));
-    const ovValue = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
-                      (a > 0x7F && b < 0x80 && result < 0x80));
-
-    SFR[PSW] &= ~mathMask;
-    SFR[PSW] |= ovValue << pswBits.ovShift |
-      acValue << pswBits.acShift |
-      cyValue << pswBits.cyShift;
+    this.CY = +(a < toSub);
+    this.AC = +((a & 0x0F) < (toSub & 0x0F) || (c && ((b & 0x0F) == 0x0F)));
+    this.OV = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
+                (a > 0x7F && b < 0x80 && result < 0x80));
     SFR[ACC] = a - toSub;
   },
 
