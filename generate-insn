@@ -95,6 +95,12 @@ ${util.inspect(e, {depth: 99})}
 //   handler to avoid the `iram[(SFR[PSW] & 0x18) + i]` mess.
 // * Optimize transfers like `X = X + k` to be like `X += k`.
 function codegenOpcode(h, op) {
+
+  if (op !== 0 && h.transfers.length === 0) {
+    console.error(`Unimplemented opcode ${op}`);
+    return 'UNIMPLEMENTED OPCODE ${op}';
+  }
+
   h.pcIsAssigned = h.transfers.find(xfr => isVar(xfr.target, 'PC'));
 
   // Insert auto-increment of PC if it is not explicitly
@@ -107,16 +113,13 @@ function codegenOpcode(h, op) {
     });
   }
 
-  if (h.transfers.length === 0) return 'UNIMPLEMENTED OPCODE';
-
   return h.transfers.map(xfr => genTransfer(xfr));
 
 
   ////////////////////////////////////////////////////////////////
   // Return true if specified item is the named variable.
   function isVar(item, id) {
-    if (!item) return '/* isVar(null) */';
-    return (item.type === 'Var' && item.id === id);
+    return (item && item.type === 'Var' && item.id === id);
   }
 
 
@@ -127,8 +130,22 @@ function codegenOpcode(h, op) {
 
     switch (e.id) {
     case 'A':
-      // TODO: Handle field NYBHI/NYBLO
-      return {w: 8, code: 'this.SFR[this.ACC]'};
+
+      if (e.field) {
+
+        switch (e.field) {
+        case 'NYBLO':
+          return {w: 4, code: `this.sfrNYBLO[this.ACC]`};
+
+        case 'NYBHI':
+          return {w: 4, code: `this.sfrNYBHI[this.ACC]`};
+
+        default:
+          return {w: 0, code: `UNHANDLED A.field flavor ${e.field}`};
+        }
+      } else {
+        return {w: 8, code: 'this.SFR[this.ACC]'};
+      }
 
     case 'ALU1':        return {w: 8, code: 'this.alu1'};
     case 'ALUC':        return {w: 1, code: 'this.aluC'};
@@ -136,8 +153,21 @@ function codegenOpcode(h, op) {
     case 'SP':          return {w: 8, code: 'this.SFR[this.SP]'};
 
     case 'TMP':
-      // TODO: Handle field NYBHI/NYBLO
-      return {w: 0, code: 'this.tmp'};
+      if (e.field) {
+
+        switch (e.field) {
+        case 'NYBLO':
+          return {w: 4, code: `this.tmpNYBLO`};
+
+        case 'NYBHI':
+          return {w: 4, code: `this.tmpNYBHI`};
+
+        default:
+          return {w: 0, code: `UNHANDLED TMP.field flavor ${e.field}`};
+        }
+      } else {
+        return {w: 0, code: 'this.tmp'};
+      }
 
     case 'PC':
       return {
@@ -187,13 +217,30 @@ function codegenOpcode(h, op) {
       // We know we can use rsMask bits of PSW without doing a full
       // update of PSW with parity generation, etc., so do that by
       // accessing it directly.
-      //
-      // TODO: Handle field NYBHI/NYBLO
-      return {w: 8, 
-              code: `\
+      if (e.field) {
+
+        switch (e.field) {
+        case 'NYBLO':
+          return {w: 4, code: `\
+this.sfrNYBLO[(this.SFR[this.PSW] & ${rsMaskCode}) + \
+${params.b1Value & 7}]`};
+
+        case 'NYBHI':
+          return {w: 4, code: `\
+this.sfrNYBHI[(this.SFR[this.PSW] & ${rsMaskCode}) + \
+${params.b1Value & 7}]`};
+
+        default:
+          return {w: 0, code: `UNHANDLED R or Ri .field flavor ${e.field}`};
+        }
+      } else {
+        return {
+          w: 8,
+          code: `\
 this.iram[(this.SFR[this.PSW] & ${rsMaskCode}) + \
 ${params.b1Value & 7}]`,
-             };
+        };
+      }
 
     default:
       return {w: 0, code: `symbolToCode DEFAULT! (${e.id})`};
@@ -292,12 +339,12 @@ ${params.b1Value & 7}]`,
 
       let s = `\
 if (${genExpr(xfr.e)}) {
-        ${thenTransfers}
+        ${thenTransfers};
       }`;
 
       if (t.elsePart) s += `\
 else {
-        ${elseTransfers}
+        ${elseTransfers};
       }`;
 
       return s;
