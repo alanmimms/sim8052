@@ -494,7 +494,7 @@ describe.each([
            expect(cpu.pc).toBe(0x102);
            expect(cpu.SFR[ACC]).toBe(and);
            expect(cpu.CY).toBe(0);
-//           expect(cpu.AC).toBe(0);
+           expect(cpu.AC).toBe(0);
            expect(cpu.iram[dir]).toBe(x);
          });
     test(`ANL A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
@@ -525,7 +525,7 @@ describe.each([
            expect(cpu.pc).toBe(0x101);
            expect(cpu.SFR[ACC]).toBe(and);
            expect(cpu.CY).toBe(0);
-//           expect(cpu.AC).toBe(0);
+           expect(cpu.AC).toBe(0);
            expect(cpu.iram[1]).toBe(dir);
            expect(cpu.iram[dir]).toBe(x);
          });
@@ -579,3 +579,67 @@ describe.each([
            expect(cpu.AC).toBe(0);
          });
   });
+
+
+//////////////// ANL C,src ////////////////
+describe.each([
+  // x   y  and
+  [  0,  0,  0],
+  [  0,  1,  0],
+  [  1,  0,  0],
+  [  1,  1,  1],
+]) (
+  'ANL:',
+  (x, y, and)  => {
+    test(`ANL C,bit ${x}&${y}=${and}`,
+         () => {
+           const bit = 0x42;
+           cpu.code[0x100] = 0x82;       // ANL C,bit
+           cpu.code[0x101] = bit;
+           cpu.SFR[PSW] = 0;
+
+           cpu.BIT[bit] = y;
+           cpu.SFR[ACC] = 0;
+           cpu.CY = x;
+
+           cpu.run1(0x100);              // ANL C,bit
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.CY).toBe(and);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.SFR[ACC]).toBe(0);
+           expect(cpu.BIT[bit]).toBe(y);
+         });
+  });
+
+
+//////////////// ANL C,/src ////////////////
+describe.each([
+  // x   y  and
+  [  0,  0,  0],
+  [  0,  1,  0],
+  [  1,  0,  1],
+  [  1,  1,  0],
+]) (
+  'ANL:',
+  (x, y, and)  => {
+    test(`ANL C,/bit ${x}&/${y}=${and}`,
+         () => {
+           const bit = 0x42;
+           cpu.code[0x100] = 0xB0;       // ANL C,bit
+           cpu.code[0x101] = bit;
+           cpu.SFR[PSW] = 0;
+
+           cpu.BIT[bit] = y;
+           cpu.SFR[ACC] = 0;
+           cpu.CY = x;
+
+           cpu.run1(0x100);              // ANL C,bit
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.CY).toBe(and);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.SFR[ACC]).toBe(0);
+           expect(cpu.BIT[bit]).toBe(y);
+         });
+  });
+
+
