@@ -83,6 +83,99 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
 });
 
 
+//////////// CJNE ////////////
+describe.each([
+  // x    y     CY rela   jump
+  [0x00, 0x00,  0, 0x00,    0],
+  [0x00, 0x01,  1, 0x20,    1],
+  [0x01, 0x00,  0, 0x40,    1],
+  [0x42, 0x42,  0, 0x33,    0],
+  [0xFF, 0x00,  0, 0x60,    1],
+  [0x00, 0xFF,  1, 0x80,    1],
+  [0x00, 0xFF,  1, 0xF0,    1],
+]) (
+  'CJNE:',
+  (x, y, ltCY, rela, jump)  => {
+    test(`\
+CJNE A,dir,rel A=${toHex2(x)} dir=${toHex2(y)}, \
+ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0xB5;       // CJNE A,dir,rela
+           cpu.code[0x101] = dir;
+           cpu.code[0x102] = rela;
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = x;
+           cpu.iram[dir] = y;
+
+           cpu.run1(0x100);              // CJNE A,dir,rela
+           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+           expect(cpu.SFR[ACC]).toBe(x);
+           expect(cpu.iram[dir]).toBe(y);
+           expect(cpu.CY).toBe(ltCY);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`\
+CJNE A,#imm,rel A=${toHex2(x)} dir=${toHex2(y)}, \
+ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
+         () => {
+           const imm = y;
+           cpu.code[0x100] = 0xB4;       // CJNE A,dir,rela
+           cpu.code[0x101] = imm;
+           cpu.code[0x102] = rela;
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = x;
+
+           cpu.run1(0x100);              // CJNE A,#imm,rela
+           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+           expect(cpu.SFR[ACC]).toBe(x);
+           expect(cpu.CY).toBe(ltCY);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`\
+CJNE R3,#imm,rel A=${toHex2(x)} dir=${toHex2(y)}, \
+ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
+         () => {
+           const imm = y;
+           cpu.code[0x100] = 0xBB;       // CJNE R3,#imm,rela
+           cpu.code[0x101] = imm;
+           cpu.code[0x102] = rela;
+           cpu.SFR[PSW] = 0;
+           cpu.iram[3] = x;
+
+           cpu.run1(0x100);              // CJNE A,#imm,rela
+           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+           expect(cpu.iram[3]).toBe(x);
+           expect(cpu.CY).toBe(ltCY);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`\
+CJNE @R1,#imm,rel A=${toHex2(x)} dir=${toHex2(y)}, \
+ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
+         () => {
+           const imm = y;
+           const dir = 0x42;
+           cpu.code[0x100] = 0xBB;       // CJNE R3,#imm,rela
+           cpu.code[0x101] = imm;
+           cpu.code[0x102] = rela;
+           cpu.SFR[PSW] = 0;
+           cpu.iram[dir] = x;
+           cpu.iram[1] = dir;
+
+           cpu.run1(0x100);              // CJNE R3,#imm,rela
+           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+           expect(cpu.iram[1]).toBe(dir);
+           expect(cpu.iram[dir]).toBe(x);
+           expect(cpu.CY).toBe(ltCY);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+  });
+
+
 //////////// RLC ////////////
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.code[0x100] = 0x33;       // RLC A
