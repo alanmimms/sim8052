@@ -205,37 +205,39 @@ test('RRC CY=1 bit walk', () => {
 
 
 //////////////// DA ////////////////
-function testADDC_DA(x, y) {
-  const dir = 0x42;
-  cpu.code[0x100] = 0x35;       // ADDC A,dir
-  cpu.code[0x101] = dir;
-  cpu.code[0x102] = 0xD4;       // DA A
+describe.each([
+  //  x     y    sum  addCY addAC  daSum daCY
+  [0x00, 0x00, 0x00,  0,    0,   0x00,  0],
+  [0x02, 0x02, 0x04,  0,    0,   0x04,  0],
+  [0x64, 0x42, 0xA6,  0,    0,   0x06,  1],
+  [0x37, 0x41, 0x78,  0,    0,   0x78,  0],
+  [0x57, 0x74, 0xCB,  0,    0,   0x31,  1],
+  [0x77, 0x47, 0xBE,  0,    0,   0x24,  1],
+  [0x97, 0x97, 0x2E,  1,    0,   0x94,  1],
+  [0x99, 0x99, 0x32,  1,    1,   0x98,  1],
+  [0x08, 0x08, 0x10,  0,    1,   0x16,  0],
+]) (
+  'decimal addition: ADDC/DA %i+%i: addSum=%i,addCY=%i,addAC=%i, daSum=%i,daCY=%i',
+  (x, y, addSum, addCY, addAC, daSum, daCY)  => {
+    const dir = 0x42;
+    cpu.code[0x100] = 0x35;       // ADDC A,dir
+    cpu.code[0x101] = dir;
+    cpu.code[0x102] = 0xD4;       // DA A
 
-  cpu.iram[dir] = x;
+    cpu.iram[dir] = x;
 
-  const addcSum = x + y;
-  const bcdsum = +('0x' + (+x.toString(16) + +y.toString(16)));
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = y;
-  cpu.CY = 0;
+    cpu.SFR[PSW] = 0;
+    cpu.SFR[ACC] = y;
+    cpu.CY = 0;
 
-  cpu.run1(0x100);          // ADDC
-  expect(cpu.pc).toBe(0x102);
-  expect(cpu.SFR[ACC]).toBe(addcSum & 0xFF);
-  expect(cpu.CY).toBe(+(addcSum > 0xFF));
-  expect(cpu.AC).toBe(+((x & 0x0F) + (y & 0x0F) > 0x0F));
+    cpu.run1(0x100);          // ADDC
+    expect(cpu.pc).toBe(0x102);
+    expect(cpu.SFR[ACC]).toBe(addSum);
+    expect(cpu.CY).toBe(addCY);
+    expect(cpu.AC).toBe(addAC);
 
-  cpu.run1(cpu.pc);         // DA
-  expect(cpu.pc).toBe(0x103);
-  expect(cpu.CY).toBe(+(bcdsum >>> 8 != 0));
-  expect(cpu.SFR[ACC]).toBe(bcdsum & 0xFF);
-}
-
-
-test(`ADDC/DA 0x00+0x00=0x00,CY=0`, () => testADDC_DA(0x00, 0x00));
-test(`ADDC/DA 0x02+0x02=0x04,CY=0`, () => testADDC_DA(0x02, 0x02));
-test(`ADDC/DA 0x77+0x41=0x18,CY=1`, () => testADDC_DA(0x77, 0x41));
-test(`ADDC/DA 0x37+0x41=0x78,CY=0`, () => testADDC_DA(0x37, 0x41));
-test(`ADDC/DA 0x57+0x73=0x30,CY=1`, () => testADDC_DA(0x57, 0x73));
-test(`ADDC/DA 0x77+0x47=0x24,CY=1`, () => testADDC_DA(0x77, 0x47));
-test(`ADDC/DA 0x08+0x08=0x16,CY=0`, () => testADDC_DA(0x08, 0x08));
+    cpu.run1(cpu.pc);         // DA
+    expect(cpu.pc).toBe(0x103);
+    expect(cpu.SFR[ACC]).toBe(daSum);
+    expect(cpu.CY).toBe(daCY);
+  });
