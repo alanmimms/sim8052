@@ -118,13 +118,13 @@ CLR = 0b11000010 BIT "1:bit":
     BIT <- 0
 
 CPL = 0b11110100 "A":
-    A <- ~A
+    A <- A ^ 0xFF
 
 CPL = 0b10110010 BIT "1:bit":
-    BIT <- ~BIT
+    BIT <- BIT ^ 1
 
 CPL = 0b10110011 "C":
-    CY <- ~CY
+    CY <- CY ^ 1
 
 DA = 0b11010100 "A":
     { this.doDA() }
