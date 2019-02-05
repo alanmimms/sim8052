@@ -290,16 +290,16 @@ ${params.b1Value & 7}]`,
       case 'LO':
       case 'RELA':
       case 'BIT':
-        params[h[byte].sym] = `this.code[pc0 + ${offset}] /* ${h[byte].sym} */`;
+        params[h[byte].sym] = `this.code[pc0 + ${offset}]`;
         break;
 
       case 'PAGE':
-        params.PAGE = `${b1Value} << 8 | this.code[pc0 + ${offset}] /* PAGE */`;
+        params.PAGE = `${b1Value} << 8 | this.code[pc0 + ${offset}]`;
         break;
 
       default:
         console.log(`Unhandled Instruction byte symbol ${h[byte].sym}`);
-        code = `/* UNHANDLED ${h[byte].sym} */`;
+        code = `UNHANDLED ${h[byte].sym}`;
         break;
       }
     });
