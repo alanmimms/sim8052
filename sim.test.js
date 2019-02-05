@@ -208,8 +208,87 @@ test('CLR bit', () => {
 });
 
 //////////// CLR C ////////////
-test('CLR A', () => {
+test('CLR C', () => {
   cpu.code[0x100] = 0xC3;       // CLR C
+  cpu.SFR[ACC] = 0x42;
+  cpu.SFR[PSW] = 0;
+  cpu.CY = 1;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x101);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+});
+
+//////////// CPL A ////////////
+test('CPL A', () => {
+  const acBase = 0x42;
+  cpu.code[0x100] = 0xF4;       // CPL A
+  cpu.SFR[ACC] = acBase;
+  cpu.SFR[PSW] = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x101);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(acBase ^ 0xFF);
+});
+
+//////////// CPL bit ////////////
+test('CPL bit=1', () => {
+  const bit = 0x42;
+  const acBase = 0xAA;
+  cpu.code[0x100] = 0xB2;       // CPL bit
+  cpu.code[0x101] = bit;
+  cpu.BIT[bit] = 1;
+  cpu.SFR[ACC] = acBase;
+  cpu.SFR[PSW] = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.BIT[bit]).toBe(0);
+});
+
+//////////// CPL bit ////////////
+test('CPL bit=0', () => {
+  const bit = 0x42;
+  const acBase = 0xAA;
+  cpu.code[0x100] = 0xB2;       // CPL bit
+  cpu.code[0x101] = bit;
+  cpu.BIT[bit] = 0;
+  cpu.SFR[ACC] = acBase;
+  cpu.SFR[PSW] = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.BIT[bit]).toBe(1);
+});
+
+//////////// CPL C ////////////
+test('CPL C=0', () => {
+  const acBase = 0x42;
+  cpu.code[0x100] = 0xB3;       // CPL C
+  cpu.SFR[ACC] = 0x42;
+  cpu.SFR[PSW] = 0;
+  cpu.CY = 0;
+  cpu.SFR[ACC] = acBase;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x101);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+});
+
+//////////// CPL C ////////////
+test('CPL C=1', () => {
+  cpu.code[0x100] = 0xB3;       // CPL C
   cpu.SFR[ACC] = 0x42;
   cpu.SFR[PSW] = 0;
   cpu.CY = 1;
