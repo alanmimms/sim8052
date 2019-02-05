@@ -252,42 +252,42 @@ const cpu = {
 
 
   get CY() {
-    return +!!(this.psw & pswBits.cyMask);
+    return +!!(this.SFR[PSW] & pswBits.cyMask);
   },
 
   get AC() {
-    return +!!(this.psw & pswBits.acMask);
+    return +!!(this.SFR[PSW] & pswBits.acMask);
   },
 
   get OV() {
-    return +!!(this.psw & pswBits.ovMask);
+    return +!!(this.SFR[PSW] & pswBits.ovMask);
   },
 
 
   set CY(v) {
 
     if (v)
-      this.psw |= pswBits.cyMask;
+      this.SFR[PSW] |= pswBits.cyMask;
     else
-      this.psw &= ~pswBits.cyMask;
+      this.SFR[PSW] &= ~pswBits.cyMask;
   },
 
 
   set AC(v) {
 
     if (v)
-      this.psw |= pswBits.acMask;
+      this.SFR[PSW] |= pswBits.acMask;
     else
-      this.psw &= ~pswBits.acMask;
+      this.SFR[PSW] &= ~pswBits.acMask;
   },
 
 
   set OV(v) {
 
     if (v)
-      this.psw |= pswBits.ovMask;
+      this.SFR[PSW] |= pswBits.ovMask;
     else
-      this.psw &= ~pswBits.ovMask;
+      this.SFR[PSW] &= ~pswBits.ovMask;
   },
 
 
