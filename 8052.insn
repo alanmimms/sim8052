@@ -127,12 +127,7 @@ CPL = 0b10110011 "C":
     CY <- ~CY
 
 DA = 0b11010100 "A":
-    if A.NYBLO > 9 || AC then
-      A.NYBLO <- A.NYBLO + 6
-    endif
-    if A.NYBHI > 9 || CY then
-      A.NYBHI <- A.NYBHI + 6
-    endif
+    { this.doDA() }
 
 DEC = 0b00010100 "A":
     A <- A - 1
