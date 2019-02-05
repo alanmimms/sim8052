@@ -21,7 +21,7 @@ test('NOP', () => {
 });
 
 //////////// ACALL ////////////
-for (let fromPage = 0; fromPage < 8; ++fromPage) {
+describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL', fromPage => {
 
   test(`ACALL from page${fromPage}`, () => {
     const pageOffset = 0x24;
@@ -52,7 +52,7 @@ for (let fromPage = 0; fromPage < 8; ++fromPage) {
       cpu.code[callTarget] = 0x00;
     }
   });
-}
+});
 
 
 //////////// RLC ////////////
@@ -205,22 +205,104 @@ test('RRC CY=1 bit walk', () => {
 });
 
 
-//////////////// DA ////////////////
+//////////////// ADD ////////////////
 describe.each([
-  //  x     y    sum  addCY addAC  daSum daCY
-  [0x00, 0x00, 0x00,  0,    0,   0x00,  0],
-  [0x02, 0x02, 0x04,  0,    0,   0x04,  0],
-  [0x64, 0x42, 0xA6,  0,    0,   0x06,  1],
-  [0x37, 0x41, 0x78,  0,    0,   0x78,  0],
-  [0x57, 0x74, 0xCB,  0,    0,   0x31,  1],
-  [0x77, 0x47, 0xBE,  0,    0,   0x24,  1],
-  [0x97, 0x97, 0x2E,  1,    0,   0x94,  1],
-  [0x99, 0x99, 0x32,  1,    1,   0x98,  1],
-  [0x08, 0x08, 0x10,  0,    1,   0x16,  0],
+  // inCY  x     y    sum  addCY addAC
+  [   0, 0x00, 0x00, 0x00,  0,    0],
+  [   1, 0x00, 0x00, 0x00,  0,    0],
+  [   0, 0x02, 0x02, 0x04,  0,    0],
+  [   0, 0x64, 0x42, 0xA6,  0,    0],
+  [   0, 0x37, 0x41, 0x78,  0,    0],
+  [   0, 0x57, 0x74, 0xCB,  0,    0],
+  [   0, 0x77, 0x47, 0xBE,  0,    0],
+  [   0, 0x97, 0x97, 0x2E,  1,    0],
+  [   0, 0x99, 0x99, 0x32,  1,    1],
+  [   1, 0x99, 0x99, 0x32,  1,    1],
+  [   0, 0x88, 0x77, 0xFF,  0,    0],
+  [   1, 0x88, 0x77, 0xFF,  0,    0],
+  [   0, 0x08, 0x08, 0x10,  0,    1],
+]) (
+  'ADD:',
+  (inCY, x, y, addSum, addCY, addAC)  => {
+    test(`${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x25;       // ADD A,dir
+           cpu.code[0x101] = dir;
+
+           cpu.iram[dir] = x;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+           cpu.CY = inCY;
+
+           cpu.run1(0x100);          // ADD A,dir
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
+         });
+  });
+
+//////////////// ADDC ////////////////
+describe.each([
+  // inCY  x     y    sum  addCY addAC
+  [   0, 0x00, 0x00, 0x00,  0,    0],
+  [   1, 0x00, 0x00, 0x01,  0,    0],
+  [   0, 0x02, 0x02, 0x04,  0,    0],
+  [   0, 0x64, 0x42, 0xA6,  0,    0],
+  [   0, 0x37, 0x41, 0x78,  0,    0],
+  [   0, 0x57, 0x74, 0xCB,  0,    0],
+  [   0, 0x77, 0x47, 0xBE,  0,    0],
+  [   0, 0x97, 0x97, 0x2E,  1,    0],
+  [   0, 0x99, 0x99, 0x32,  1,    1],
+  [   1, 0x99, 0x99, 0x33,  1,    1],
+  [   0, 0x88, 0x77, 0xFF,  0,    0],
+  [   1, 0x88, 0x77, 0x00,  1,    1],
+  [   0, 0x08, 0x08, 0x10,  0,    1],
+]) (
+  'ADDC:',
+  (inCY, x, y, addSum, addCY, addAC)  => {
+    test(`${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x35;       // ADDC A,dir
+           cpu.code[0x101] = dir;
+
+           cpu.iram[dir] = x;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+           cpu.CY = inCY;
+
+           cpu.run1(0x100);          // ADDC A,dir
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
+         });
+  });
+
+//////////////// ADDC/DA ////////////////
+describe.each([
+  // inCY  x     y    sum  addCY addAC  daSum daCY
+  [   0, 0x00, 0x00, 0x00,  0,    0,   0x00,  0],
+  [   1, 0x00, 0x00, 0x01,  0,    0,   0x01,  0],
+  [   0, 0x02, 0x02, 0x04,  0,    0,   0x04,  0],
+  [   0, 0x64, 0x42, 0xA6,  0,    0,   0x06,  1],
+  [   0, 0x37, 0x41, 0x78,  0,    0,   0x78,  0],
+  [   0, 0x57, 0x74, 0xCB,  0,    0,   0x31,  1],
+  [   0, 0x77, 0x47, 0xBE,  0,    0,   0x24,  1],
+  [   0, 0x97, 0x97, 0x2E,  1,    0,   0x94,  1],
+  [   0, 0x99, 0x99, 0x32,  1,    1,   0x98,  1],
+  [   1, 0x99, 0x99, 0x33,  1,    1,   0x99,  1],
+  [   0, 0x88, 0x77, 0xFF,  0,    0,   0x65,  1],
+  [   1, 0x88, 0x77, 0x00,  1,    1,   0x66,  1],
+  [   0, 0x08, 0x08, 0x10,  0,    1,   0x16,  0],
 ]) (
   'decimal addition:',
-  (x, y, addSum, addCY, addAC, daSum, daCY)  => {
-    test(`${toHex2(x)}+${toHex2(y)}=${toHex2(daSum)},CY=${daCY}`,
+  (inCY, x, y, addSum, addCY, addAC, daSum, daCY)  => {
+    test(`${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(daSum)},CY=${daCY}`,
          () => {
            const dir = 0x42;
            cpu.code[0x100] = 0x35;       // ADDC A,dir
@@ -231,7 +313,7 @@ describe.each([
 
            cpu.SFR[PSW] = 0;
            cpu.SFR[ACC] = y;
-           cpu.CY = 0;
+           cpu.CY = inCY;
 
            cpu.run1(0x100);          // ADDC
            expect(cpu.pc).toBe(0x102);
