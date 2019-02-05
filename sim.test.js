@@ -1,4 +1,5 @@
 const SIM = require('./sim');
+const {toHex1, toHex2, toHex4} = require('./simutils');
 const CPU = require('./cpu');
 
 const cpu = SIM.cpu;
@@ -217,27 +218,30 @@ describe.each([
   [0x99, 0x99, 0x32,  1,    1,   0x98,  1],
   [0x08, 0x08, 0x10,  0,    1,   0x16,  0],
 ]) (
-  'decimal addition: ADDC/DA %i+%i: addSum=%i,addCY=%i,addAC=%i, daSum=%i,daCY=%i',
+  'decimal addition:',
   (x, y, addSum, addCY, addAC, daSum, daCY)  => {
-    const dir = 0x42;
-    cpu.code[0x100] = 0x35;       // ADDC A,dir
-    cpu.code[0x101] = dir;
-    cpu.code[0x102] = 0xD4;       // DA A
+    test(`${toHex2(x)}+${toHex2(y)}=${toHex2(daSum)},CY=${daCY}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x35;       // ADDC A,dir
+           cpu.code[0x101] = dir;
+           cpu.code[0x102] = 0xD4;       // DA A
 
-    cpu.iram[dir] = x;
+           cpu.iram[dir] = x;
 
-    cpu.SFR[PSW] = 0;
-    cpu.SFR[ACC] = y;
-    cpu.CY = 0;
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+           cpu.CY = 0;
 
-    cpu.run1(0x100);          // ADDC
-    expect(cpu.pc).toBe(0x102);
-    expect(cpu.SFR[ACC]).toBe(addSum);
-    expect(cpu.CY).toBe(addCY);
-    expect(cpu.AC).toBe(addAC);
+           cpu.run1(0x100);          // ADDC
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
 
-    cpu.run1(cpu.pc);         // DA
-    expect(cpu.pc).toBe(0x103);
-    expect(cpu.SFR[ACC]).toBe(daSum);
-    expect(cpu.CY).toBe(daCY);
+           cpu.run1(cpu.pc);         // DA
+           expect(cpu.pc).toBe(0x103);
+           expect(cpu.SFR[ACC]).toBe(daSum);
+           expect(cpu.CY).toBe(daCY);
+         })
   });
