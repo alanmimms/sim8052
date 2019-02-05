@@ -224,7 +224,7 @@ describe.each([
 ]) (
   'ADD:',
   (inCY, x, y, addSum, addCY, addAC)  => {
-    test(`${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
+    test(`ADD A,dir ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
          () => {
            const dir = 0x42;
            cpu.code[0x100] = 0x25;       // ADD A,dir
@@ -236,7 +236,58 @@ describe.each([
            cpu.SFR[ACC] = y;
            cpu.CY = inCY;
 
-           cpu.run1(0x100);          // ADD A,dir
+           cpu.run1(0x100);              // ADD A,dir
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
+           expect(cpu.iram[dir]).toBe(x);
+         });
+    test(`ADD A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
+         () => {
+           cpu.SFR[PSW] = 0;
+           cpu.code[0x100] = 0x2B;       // ADD A,R3
+           cpu.iram[3] = x;              // R3
+           cpu.SFR[ACC] = y;
+           cpu.CY = inCY;
+
+           cpu.run1(0x100);              // ADD A,dir
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
+           expect(cpu.iram[3]).toBe(x);
+         });
+    test(`ADD A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x27;       // ADD A,@R1
+           cpu.iram[1] = dir;            // Set R1=dir for @R1
+           cpu.iram[dir] = x;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+           cpu.CY = inCY;
+
+           cpu.run1(0x100);              // ADD A,@R1
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
+           expect(cpu.iram[1]).toBe(dir);
+           expect(cpu.iram[dir]).toBe(x);
+         });
+    test(`ADD A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
+         () => {
+           const imm = x;
+           cpu.code[0x100] = 0x24;       // ADD A,#imm
+           cpu.code[0x101] = imm;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+           cpu.CY = inCY;
+
+           cpu.run1(0x100);              // ADD A,#imm
            expect(cpu.pc).toBe(0x102);
            expect(cpu.SFR[ACC]).toBe(addSum);
            expect(cpu.CY).toBe(addCY);
@@ -275,7 +326,58 @@ describe.each([
            cpu.SFR[ACC] = y;
            cpu.CY = inCY;
 
-           cpu.run1(0x100);          // ADDC A,dir
+           cpu.run1(0x100);              // ADDC A,dir
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
+           expect(cpu.iram[dir]).toBe(x);
+         });
+    test(`ADDC A,Rn ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`,
+         () => {
+           cpu.SFR[PSW] = 0;
+           cpu.code[0x100] = 0x3B;       // ADDC A,R3
+           cpu.iram[3] = x;              // R3
+           cpu.SFR[ACC] = y;
+           cpu.CY = inCY;
+
+           cpu.run1(0x100);              // ADDC A,R3
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
+           expect(cpu.iram[3]).toBe(x);
+         });
+    test(`ADDC A,@Ri ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x37;       // ADDC A,@R1
+           cpu.iram[1] = dir;            // Set R1=dir for @R1
+           cpu.iram[dir] = x;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+           cpu.CY = inCY;
+
+           cpu.run1(0x100);              // ADDC A,dir
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.CY).toBe(addCY);
+           expect(cpu.AC).toBe(addAC);
+           expect(cpu.iram[1]).toBe(dir);
+           expect(cpu.iram[dir]).toBe(x);
+         });
+    test(`ADDC A,#imm ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`,
+         () => {
+           const imm = x;
+           cpu.code[0x100] = 0x34;       // ADDC A,#imm
+           cpu.code[0x101] = imm;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+           cpu.CY = inCY;
+
+           cpu.run1(0x100);              // ADDC A,#imm
            expect(cpu.pc).toBe(0x102);
            expect(cpu.SFR[ACC]).toBe(addSum);
            expect(cpu.CY).toBe(addCY);
@@ -320,10 +422,12 @@ describe.each([
            expect(cpu.SFR[ACC]).toBe(addSum);
            expect(cpu.CY).toBe(addCY);
            expect(cpu.AC).toBe(addAC);
+           expect(cpu.iram[dir]).toBe(x);
 
            cpu.run1(cpu.pc);         // DA
            expect(cpu.pc).toBe(0x103);
            expect(cpu.SFR[ACC]).toBe(daSum);
            expect(cpu.CY).toBe(daCY);
+           expect(cpu.iram[dir]).toBe(x);
          })
   });

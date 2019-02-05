@@ -18,7 +18,7 @@ ADD = 0b00100101 DIR "A,1:direct":
     { this.doADD() }
 
 ADD = 0b0010011I "A,1:@Ri":
-    ALU1 <- IMM/Ri
+    ALU1 <- IRAM/Ri
     ALUC <- 0
     { this.doADD() }
 
