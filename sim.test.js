@@ -544,4 +544,38 @@ describe.each([
            expect(cpu.CY).toBe(0);
            expect(cpu.AC).toBe(0);
          });
+    test(`ANL dir,A ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x52;       // ANL dir,A
+           cpu.code[0x101] = dir;
+
+           cpu.SFR[PSW] = 0;
+           cpu.iram[dir] = x;
+           cpu.SFR[ACC] = y;
+
+           cpu.run1(0x100);              // ANL dir,A
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.SFR[ACC]).toBe(y);
+           expect(cpu.iram[dir]).toBe(and);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+         });
+    test(`ANL dir,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
+         () => {
+           const dir = 0x42;
+           const imm = x;
+           cpu.code[0x100] = 0x53;       // ANL dir,#imm
+           cpu.code[0x101] = dir;
+           cpu.code[0x102] = imm;
+
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = y;
+
+           cpu.run1(0x100);              // ANL dir,#imm
+           expect(cpu.pc).toBe(0x103);
+           expect(cpu.SFR[ACC]).toBe(y);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+         });
   });
