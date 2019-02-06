@@ -351,6 +351,78 @@ test(`JNB bit,rel bit=1`, () => {
 });
 
 
+//////////// JC ////////////
+test(`JC rel CY=0`, () => {
+  const acBase = 0x55;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x40;       // JC rela
+  cpu.code[0x101] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+  cpu.CY = 0;
+
+  cpu.run1(0x100);              // JC rela
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+test(`JC rel CY=1`, () => {
+  const acBase = 0x55;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x40;       // JC rela
+  cpu.code[0x102] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+  cpu.CY = 1;
+
+  cpu.run1(0x100);              // JC rela
+  expect(cpu.pc).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+
+//////////// JNC ////////////
+test(`JNC rel CY=0`, () => {
+  const acBase = 0x55;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x50;       // JNC rela
+  cpu.code[0x101] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+  cpu.CY = 0;
+
+  cpu.run1(0x100);              // JNC rela
+  expect(cpu.pc).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+test(`JNC rel CY=1`, () => {
+  const acBase = 0x55;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x50;       // JNC rela
+  cpu.code[0x102] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+  cpu.CY = 1;
+
+  cpu.run1(0x100);              // JNC rela
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+
 //////////// CLR A ////////////
 test('CLR A', () => {
   cpu.code[0x100] = 0xE4;       // CLR A
