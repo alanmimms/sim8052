@@ -423,6 +423,74 @@ test(`JNC rel CY=1`, () => {
 });
 
 
+//////////// JZ ////////////
+test(`JZ rel AC=55`, () => {
+  const acBase = 0x55;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x60;       // JZ rela
+  cpu.code[0x101] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+
+  cpu.run1(0x100);              // JZ rela
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+test(`JZ rel AC=00`, () => {
+  const acBase = 0x00;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x60;       // JZ rela
+  cpu.code[0x102] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+
+  cpu.run1(0x100);              // JZ rela
+  expect(cpu.pc).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+
+//////////// JNZ ////////////
+test(`JNZ rel AC=55`, () => {
+  const acBase = 0x55;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x70;       // JNZ rela
+  cpu.code[0x101] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+
+  cpu.run1(0x100);              // JNZ rela
+  expect(cpu.pc).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+test(`JNZ rel AC=00`, () => {
+  const acBase = 0x00;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x70;       // JNZ rela
+  cpu.code[0x102] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+
+  cpu.run1(0x100);              // JNZ rela
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+
 //////////// CLR A ////////////
 test('CLR A', () => {
   cpu.code[0x100] = 0xE4;       // CLR A
