@@ -176,6 +176,58 @@ ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
   });
 
 
+//////////// DJNZ ////////////
+describe.each([
+  // x    y    jump
+  [0x02, 0x01,  1],
+  [0x01, 0x00,  0],
+  [0x00, 0xFF,  1],
+  [0x80, 0x7F,  1],
+]) (
+  'DJNZ:',
+  (x, y, jump)  => {
+    test(`DJNZ dir,rel dir=${toHex2(y)}, jump=${jump}`,
+         () => {
+           const dir = 0x42;
+           const acBase = 0xAA;
+           const rela = -0x10 & 0xFF;
+           cpu.code[0x100] = 0xD5;       // DJNZ dir,rela
+           cpu.code[0x101] = dir;
+           cpu.code[0x102] = rela;
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = acBase;
+           cpu.iram[dir] = x;
+
+           cpu.run1(0x100);              // DJNZ dir,rela
+           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+           expect(cpu.SFR[ACC]).toBe(acBase);
+           expect(cpu.iram[dir]).toBe(y);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`\
+DJNZ R3,rel R3=${toHex2(y)}, jump=${jump}`,
+         () => {
+           const acBase = 0xAA;
+           const rela = -0x10 & 0xFF;
+           cpu.code[0x100] = 0xDB;       // DJNZ R3,rela
+           cpu.code[0x101] = rela;
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = acBase;
+           cpu.iram[3] = x;
+
+           cpu.run1(0x100);              // DJNZ R3,rela
+           expect(cpu.pc).toBe(jump ? 0x102 + cpu.toSigned(rela) : 0x102);
+           expect(cpu.iram[3]).toBe(y);
+           expect(cpu.SFR[ACC]).toBe(acBase);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+  });
+
+
 //////////// CLR A ////////////
 test('CLR A', () => {
   cpu.code[0x100] = 0xE4;       // CLR A
