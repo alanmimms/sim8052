@@ -153,7 +153,7 @@ DJNZ = 0b11011RRR RELA "Ri,1:rela":
     endif
 
 DJNZ = 0b11010101 DIR RELA "1:direct,2:rela":
-    PC <- PC + 2
+    PC <- PC + 3
     DIR <- DIR - 1
     if DIR > 0 || DIR < 0
     then
