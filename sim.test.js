@@ -246,7 +246,6 @@ test(`JB bit,rel bit=0`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-
 test(`JB bit,rel bit=1`, () => {
   const bit = 0x42;
   const acBase = 0x55;
@@ -260,6 +259,48 @@ test(`JB bit,rel bit=1`, () => {
 
   cpu.run1(0x100);              // JB bit,rela
   expect(cpu.pc).toBe(0x103 + cpu.toSigned(rela));
+  expect(cpu.BIT[bit]).toBe(1);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+
+//////////// JNB ////////////b
+test(`JNB bit,rel bit=0`, () => {
+  const bit = 0x42;
+  const acBase = 0x55;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x30;       // JNB bit,rela
+  cpu.code[0x101] = bit;
+  cpu.code[0x102] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+  cpu.BIT[bit] = 0;
+
+  cpu.run1(0x100);              // JNB bit,rela
+  expect(cpu.pc).toBe(0x103 + cpu.toSigned(rela));
+  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+test(`JNB bit,rel bit=1`, () => {
+  const bit = 0x42;
+  const acBase = 0x55;
+  const rela = -0x13 & 0xFF;
+  cpu.code[0x100] = 0x30;       // JNB bit,rela
+  cpu.code[0x101] = bit;
+  cpu.code[0x102] = rela;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = acBase;
+  cpu.BIT[bit] = 1;
+
+  cpu.run1(0x100);              // JNB bit,rela
+  expect(cpu.pc).toBe(0x103);
   expect(cpu.BIT[bit]).toBe(1);
   expect(cpu.SFR[ACC]).toBe(acBase);
   expect(cpu.CY).toBe(0);
