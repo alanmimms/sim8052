@@ -535,6 +535,38 @@ describe.each([
   });
 
 
+//////////// INC DPTR ////////////
+describe.each([
+  // x    inc
+  [0xFFFF, 0x0000],
+  [0xFF00, 0xFF01],
+  [0x0000, 0x0001],
+  [0x7FFF, 0x8000],
+  [0x00FE, 0x00FF],
+  [0x00FF, 0x0100],
+  [0x00FD, 0x00FE],
+]) (
+  'INC DPTR:',
+  (x, inc)  => {
+    test(`INC DPTR DPTR=${toHex2(x)}, result=${toHex2(inc)}`,
+         () => {
+           const acBase = 0xAA;
+           cpu.code[0x100] = 0xA3;       // INC DPTR
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = acBase;
+           cpu.DPTR = x;
+
+           cpu.run1(0x100);              // INC DPTR
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.DPTR).toBe(inc);
+           expect(cpu.SFR[ACC]).toBe(acBase);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+  });
+
+
 //////////// DIV AB ////////////
 describe.each([
   // x     y    div   rem ov
