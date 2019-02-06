@@ -464,6 +464,118 @@ div=${toHex2(div)} rem=${toHex2(rem)}, ov=${ov}`,
   });
 
 
+//////////// INC ////////////
+describe.each([
+  // x    inc
+  [0xFF, 0x00],
+  [0x00, 0x01],
+  [0x7F, 0x80],
+  [0xFE, 0xFF],
+  [0xFD, 0xFE],
+]) (
+  'INC:',
+  (x, inc)  => {
+    test(`INC A A=${toHex2(x)}, result=${toHex2(inc)}`,
+         () => {
+           cpu.code[0x100] = 0x04;       // INC A
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = x;
+
+           cpu.run1(0x100);              // INC A
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.SFR[ACC]).toBe(inc);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`INC R3, R3=${toHex2(x)} result=${toHex2(inc)}`,
+         () => {
+           cpu.code[0x100] = 0x0B;       // INC R3
+           cpu.SFR[PSW] = 0;
+           cpu.iram[3] = x;
+
+           cpu.run1(0x100);              // INC R3
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.iram[3]).toBe(inc);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`INC dir, dir=${toHex2(x)} result=${toHex2(inc)}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x05;       // INC dir
+           cpu.code[0x101] = dir;
+           cpu.SFR[PSW] = 0;
+           cpu.iram[dir] = x;
+
+           cpu.run1(0x100);              // INC dir
+           expect(cpu.pc).toBe(0x102);
+           expect(cpu.iram[dir]).toBe(inc);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+    test(`INC @R1 x=${toHex2(x)}, result=${toHex2(inc)}`,
+         () => {
+           const dir = 0x42;
+           cpu.code[0x100] = 0x07;       // INC @R1
+           cpu.SFR[PSW] = 0;
+           cpu.iram[dir] = x;
+           cpu.iram[1] = dir;            // R1
+
+           cpu.run1(0x100);              // INC @R1
+           expect(cpu.pc).toBe(0x101);
+           expect(cpu.iram[1]).toBe(dir);
+           expect(cpu.iram[dir]).toBe(inc);
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(0);
+           expect(cpu.OV).toBe(0);
+         });
+  });
+
+
+//////////// DIV AB ////////////
+describe.each([
+  // x     y    div   rem ov
+  [0x00, 0x00, 0x00, 0x00, 1],
+  [0x00, 0x01, 0x00, 0x00, 0],
+  [0x10, 0x02, 0x08, 0x00, 0],
+  [0x11, 0x02, 0x08, 0x01, 0],
+  [0x12, 0x02, 0x09, 0x00, 0],
+  [0x12, 0x13, 0x00, 0x12, 0],
+  [0x12, 0x00, 0x00, 0x00, 1],
+  [0x00, 0x00, 0x00, 0x00, 1],
+]) (
+  'DIV AB:',
+  (x, y, div, rem, ov)  => {
+    test(`\
+DIV AB A=${toHex2(x)}, B=${toHex2(y)}, \
+div=${toHex2(div)} rem=${toHex2(rem)}, ov=${ov}`,
+         () => {
+           cpu.code[0x100] = 0x84;       // DIV AB
+           cpu.SFR[PSW] = 0;
+           cpu.SFR[ACC] = x;
+           cpu.SFR[B] = y;
+           cpu.CY = 1;
+           cpu.OV = 0;
+           cpu.AC = 1;
+
+           cpu.run1(0x100);              // DIV AB
+           expect(cpu.pc).toBe(0x101);
+
+           if (!ov) {
+             expect(cpu.SFR[ACC]).toBe(div);
+             expect(cpu.SFR[B]).toBe(rem);
+           }
+
+           expect(cpu.CY).toBe(0);
+           expect(cpu.AC).toBe(1);
+           expect(cpu.OV).toBe(ov);
+         });
+  });
+
+
 //////////// RLC ////////////
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.code[0x100] = 0x33;       // RLC A
