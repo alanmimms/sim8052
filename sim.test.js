@@ -21,10 +21,10 @@ test('NOP', () => {
   expect(cpu.SFR[ACC]).toBe(0x42);
 });
 
-//////////// ACALL ////////////
-describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL', fromPage => {
+//////////// ACALL/RET ////////////
+describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL/RET', fromPage => {
 
-  test(`ACALL from page${fromPage}`, () => {
+  test(`page${fromPage}`, () => {
     const pageOffset = 0x24;
     const callBase = fromPage * 0x100 + 0x42;
 
@@ -58,7 +58,7 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL', fromPage => {
 });
 
 
-//////////// LCALL ////////////
+//////////// LCALL/RETI ////////////
 describe.each([
 // callBase   newPC
   [0x8765,   0x0000],
@@ -67,7 +67,7 @@ describe.each([
   [0x89FE,   0xFFFE],
   [0x8AFF,   0xFFFF],
   [0x8BFD,   0x7FFF],
-])('LCALL', (callBase, newPC) => {
+])('LCALL/RETI', (callBase, newPC) => {
   test(`${toHex4(callBase)} --> ${toHex4(newPC)}`, () => {
     const retPC = (callBase + 3) & 0xFFFF;
     const acBase = 0x43;
@@ -77,7 +77,7 @@ describe.each([
     cpu.code[callBase] = 0x12;      // LCALL
     cpu.code[callBase + 1] = newPC >>> 8;
     cpu.code[callBase + 2] = newPC & 0xFF;
-    cpu.code[newPC] = 0x22;         // RET
+    cpu.code[newPC] = 0x32;         // RETI
 
     cpu.SFR[ACC] = acBase;
     cpu.SFR[PSW] = 0;
