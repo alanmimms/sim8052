@@ -2375,6 +2375,27 @@ describe('XCH', () => {
 });
 
 
+describe('XCHD', () => {
+
+  test('A,@R1', () => {
+    const dir = 0x42;
+    clearIRAM();
+    cpu.code[0x100] = 0xD7;     // XCHD A,@R1
+    cpu.iram[1] = dir;
+    cpu.iram[dir] = 0x75;
+    cpu.SFR[ACC] = 0x32;
+    cpu.SFR[PSW] = 0;
+
+    cpu.run1(0x100);            // XCHD
+    expect(cpu.pc).toBe(0x101);
+    expect(cpu.iram[1]).toBe(dir);
+    expect(cpu.iram[dir]).toBe(0x72);
+    expect(cpu.SFR[ACC]).toBe(0x35);
+    expect(cpu.SFR[PSW]).toBe(0);
+  });
+});
+
+
 function clearCode() {
   cpu.code.fill(0x00, 0x00, cpu.code.length);
 }
