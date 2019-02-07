@@ -302,13 +302,13 @@ MOVC = 0b10000011 "A,@A+PC":
     A <- CODE/A_PLUS_PC
 
 MOVX = 0b1110001I "A,@Ri":
-    A <- XRAM/IRAM/Ri
+    A <- XRAM/P2_atRi
 
 MOVX = 0b11100000 "A,@DPTR":
     A <- XRAM/DPTR
 
 MOVX = 0b1111001I "@Ri,A":
-    XRAM/IRAM/Ri <- A
+    XRAM/P2_atRi <- A
 
 MOVX = 0b11110000 "@DPTR,A":
     XRAM/DPTR <- A

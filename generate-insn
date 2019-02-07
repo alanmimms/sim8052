@@ -209,6 +209,14 @@ function codegenOpcode(h, op) {
     case 'A_PLUS_PC':
       return {w: 8, code: `(this.SFR[this.ACC] + this.pc) & 0xFFFF`};
 
+    case 'P2_atRi':
+        return {
+          w: 16,
+          code: `\
+this.SFR[P2] << 8 | this.iram[(this.SFR[this.PSW] & ${rsMaskCode}) + \
+${params.b1Value & 7}]`,
+        };
+
     case 'RELA':
       return {w: 16, code: `this.toSigned(${params.RELA})`};
 
