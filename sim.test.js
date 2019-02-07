@@ -803,7 +803,7 @@ describe.each([
   'MOVC',
   (a, y, entAddr, newA)  => {
     test(`A,@A+DPTR a=${toHex2(a)},dptr=${toHex4(y)},entAddr=${toHex4(entAddr)},newA=${toHex2(newA)} `, () => {
-      cpu.code.fill(0xFA, 0x00, cpu.code.length);
+      clearCode();
       clearIRAM();
       cpu.code[0x100] = 0x93;       // MOVC A,@A+DPTR
       cpu.SFR[PSW] = 0;
@@ -822,7 +822,7 @@ describe.each([
     });
 
     test(`A,@A+PC a=${toHex2(a)},pc=${toHex4(y)},entAddr=${toHex4(entAddr)},newA=${toHex2(newA)} `, () => {
-      cpu.code.fill(0xAF, 0x00, cpu.code.length);
+      clearCode();
       clearIRAM();
       cpu.code[y-1] = 0x83;     // MOVC A,@A+PC
       cpu.SFR[PSW] = 0;
@@ -835,6 +835,101 @@ describe.each([
       expect(cpu.SFR[ACC]).toBe(newA);
       expect(cpu.code[entAddr]).toBe(newA);
       expect(cpu.DPTR).toBe(0x1111);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+  });
+
+
+//////////// MOVX ////////////
+describe.each([
+  // addr    v
+  [0x12A6, 0x73],
+  [0x4354, 0x96],
+  [0x8013, 0x23],
+  [0x8100, 0x17],
+  [0x0048, 0x87],
+]) (
+  'MOVX',
+  (addr, v)  => {
+    test(`A,@R1 addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
+      clearCode();
+      clearIRAM();
+      clearXRAM();
+      cpu.code[0x100] = 0xE3;       // MOVX A,@R1
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = 0x99;
+      cpu.SFR[P2] = addr >>> 8;
+      cpu.iram[1] = addr & 0xFF;
+      cpu.xram[addr] = v;
+
+      cpu.run1(0x100);              // MOVX
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(v);
+      expect(cpu.SFR[P2]).toBe(addr >>> 8);
+      expect(cpu.iram[1]).toBe(addr & 0xFF);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+
+    test(`A,@DPTR addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
+      clearCode();
+      clearIRAM();
+      clearXRAM();
+      cpu.code[0x100] = 0xE0;       // MOVX A,@DPTR
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = 0x99;
+      cpu.DPTR = addr;
+      cpu.xram[addr] = v;
+
+      cpu.run1(0x100);              // MOVX
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(v);
+      expect(cpu.DPTR).toBe(addr);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+
+    test(`@R1,A addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
+      clearCode();
+      clearIRAM();
+      clearXRAM();
+      cpu.code[0x100] = 0xF3;       // MOVX @R1,A
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = v;
+      cpu.SFR[P2] = addr >>> 8;
+      cpu.iram[1] = addr & 0xFF;
+      cpu.xram[addr] = v;
+
+      cpu.run1(0x100);              // MOVX
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(v);
+      expect(cpu.SFR[P2]).toBe(addr >>> 8);
+      expect(cpu.iram[1]).toBe(addr & 0xFF);
+      expect(cpu.xram[addr]).toBe(v);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+
+    test(`@DPTR,A addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
+      clearCode();
+      clearIRAM();
+      clearXRAM();
+      cpu.code[0x100] = 0xF0;       // MOVX @R1,A
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = v;
+      cpu.DPTR = addr;
+      cpu.xram[addr] = 0xBB;
+
+      cpu.run1(0x100);              // MOVX
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(v);
+      expect(cpu.DPTR).toBe(addr);
+      expect(cpu.xram[addr]).toBe(v);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
@@ -1765,6 +1860,16 @@ describe.each([
         expect(cpu.BIT[bit]).toBe(y);
       });
     });
+
+
+function clearCode() {
+  cpu.code.fill(0x00, 0x00, cpu.code.length);
+}
+
+
+function clearXRAM() {
+  cpu.xram.fill(0x00, 0x00, cpu.xram.length);
+}
 
 
 function clearIRAM() {
