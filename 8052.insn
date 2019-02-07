@@ -388,18 +388,22 @@ SJMP = 0b10000000 RELA "1:rela":
 
 SUBB = 0b10011RRR "A,Ri":
     ALU1 <- R
+    ALUC <- CY
     { this.doSUBB() }
 
 SUBB = 0b10010101 DIR "A,1:direct":
     ALU1 <- DIR
+    ALUC <- CY
     { this.doSUBB() }
 
 SUBB = 0b1001011I "A,@Ri":
     ALU1 <- IRAM/Ri
+    ALUC <- CY
     { this.doSUBB() }
 
 SUBB = 0b10010100 IMM "A,1:immed":
     ALU1 <- IMM
+    ALUC <- CY
     { this.doSUBB() }
 
 SWAP = 0b11000100 "A":
