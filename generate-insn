@@ -204,10 +204,10 @@ function codegenOpcode(h, op) {
       return {w: 8, code: `this.DIR[${params[e.id]}]`};
 
     case 'A_PLUS_DPTR':
-      return {w: 8, code: `this.SFR[this.ACC] + this.DPTR`};
+      return {w: 8, code: `(this.SFR[this.ACC] + this.DPTR) & 0xFFFF`};
 
     case 'A_PLUS_PC':
-      return {w: 8, code: `this.SFR[this.ACC] + this.pc`};
+      return {w: 8, code: `(this.SFR[this.ACC] + this.pc) & 0xFFFF`};
 
     case 'RELA':
       return {w: 16, code: `this.toSigned(${params.RELA})`};
