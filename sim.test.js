@@ -984,6 +984,41 @@ test('CLR C', () => {
   expect(cpu.AC).toBe(0);
 });
 
+
+//////////// SETB bit ////////////
+test('SETB bit', () => {
+  const bit = 0x42;
+  const acBase = 0xAA;
+  clearIRAM();
+  cpu.code[0x100] = 0xD2;       // SETB bit
+  cpu.code[0x101] = bit;
+  cpu.BIT[bit] = 0;
+  cpu.SFR[ACC] = acBase;
+  cpu.SFR[PSW] = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.BIT[bit]).toBe(1);
+});
+
+//////////// SETB C ////////////
+test('SETB C', () => {
+  clearIRAM();
+  cpu.code[0x100] = 0xD3;       // SETB C
+  cpu.SFR[ACC] = 0x42;
+  cpu.SFR[PSW] = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.pc).toBe(0x101);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.AC).toBe(0);
+});
+
+
+
 //////////// CPL A ////////////
 test('CPL A', () => {
   const acBase = 0x42;
