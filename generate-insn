@@ -213,7 +213,7 @@ function codegenOpcode(h, op) {
         return {
           w: 16,
           code: `\
-this.SFR[P2] << 8 | this.iram[(this.SFR[this.PSW] & ${rsMaskCode}) + \
+this.SFR[this.P2] << 8 | this.iram[(this.SFR[this.PSW] & ${rsMaskCode}) + \
 ${params.b1Value & 7}]`,
         };
 
