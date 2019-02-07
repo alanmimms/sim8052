@@ -2295,6 +2295,35 @@ describe.each([
   });
 
 
+//////////////// SWAP ////////////////
+describe.each([
+  //    x   swap
+  [   0x00, 0x00],
+  [   0x01, 0x10],
+  [   0x10, 0x01],
+  [   0xF0, 0x0F],
+  [   0xF8, 0x8F],
+  [   0x22, 0x22],
+  [   0x12, 0x21],
+]) ('SWAP',
+  (x, swap)  => {
+    test(`${toHex2(x)}=${toHex2(swap)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0xC4;       // SWAP A
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
+
+      cpu.run1(0x100);              // SWAP A
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(swap);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.OV).toBe(0);
+      expect(cpu.AC).toBe(0);
+    });
+  });
+
+
 function clearCode() {
   cpu.code.fill(0x00, 0x00, cpu.code.length);
 }
