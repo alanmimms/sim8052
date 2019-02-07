@@ -298,6 +298,7 @@ MOVC = 0b10010011 "A,@A+DPTR":
     A <- CODE/A_PLUS_DPTR
 
 MOVC = 0b10000011 "A,@A+PC":
+    PC <- PC + 1
     A <- CODE/A_PLUS_PC
 
 MOVX = 0b1110001I "A,@Ri":
