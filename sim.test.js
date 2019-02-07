@@ -2198,6 +2198,103 @@ describe('PUSH', () => {
 });
 
 
+//////////////// SUBB ////////////////
+describe.each([
+  // inCY  x     y   diff  cy  ov  ac
+  [   0, 0x00, 0x00, 0x00,  0,  0,  0],
+  [   1, 0x00, 0x00, 0xFF,  1,  0,  1],
+  [   1, 0x00, 0xFF, 0x00,  1,  0,  1],
+  [   0, 0x02, 0x02, 0x00,  0,  0,  0],
+  [   1, 0x02, 0x02, 0xFF,  1,  0,  1],
+  [   0, 0x64, 0x42, 0x22,  0,  0,  0],
+  [   0, 0x37, 0x41, 0xF6,  1,  0,  0],
+  [   0, 0x77, 0x47, 0x30,  0,  0,  0],
+  [   0, 0x97, 0x97, 0x00,  0,  0,  0],
+  [   0, 0x99, 0x9A, 0xFF,  1,  0,  1],
+  [   1, 0x99, 0x66, 0x32,  0,  1,  0],
+  [   0, 0x88, 0x77, 0x11,  0,  1,  0],
+  [   0, 0x10, 0x08, 0x08,  0,  0,  1],
+]) ('SUBB',
+  (inCY, x, y, diff, cy, ov, ac)  => {
+    test(`${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)}, CY=${cy},OV=${ov},AC=${ac}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x95;       // SUBB A,dir
+      cpu.code[0x101] = dir;
+
+      cpu.iram[dir] = y;
+
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
+      cpu.CY = inCY;
+
+      cpu.run1(0x100);              // SUBB A,dir
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(diff);
+      expect(cpu.CY).toBe(cy);
+      expect(cpu.OV).toBe(ov);
+      expect(cpu.AC).toBe(ac);
+      expect(cpu.iram[dir]).toBe(y);
+    });
+
+    test(`A,Rn ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
+      clearIRAM();
+      cpu.SFR[PSW] = 0;
+      cpu.code[0x100] = 0x9B;       // SUBB A,R3
+      cpu.iram[3] = y;              // R3
+      cpu.SFR[ACC] = x;
+      cpu.CY = inCY;
+
+      cpu.run1(0x100);              // SUBB A,R3
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(diff);
+      expect(cpu.CY).toBe(cy);
+      expect(cpu.OV).toBe(ov);
+      expect(cpu.AC).toBe(ac);
+      expect(cpu.iram[3]).toBe(y);
+    });
+
+    test(`A,@Ri ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x97;       // SUBB A,@R1
+      cpu.iram[1] = dir;            // Set R1=dir for @R1
+      cpu.iram[dir] = y;
+
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
+      cpu.CY = inCY;
+
+      cpu.run1(0x100);              // SUBB A,dir
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(diff);
+      expect(cpu.CY).toBe(cy);
+      expect(cpu.OV).toBe(ov);
+      expect(cpu.AC).toBe(ac);
+      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[dir]).toBe(y);
+    });
+
+    test(`SUBB A,#imm ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
+      const imm = y;
+      clearIRAM();
+      cpu.code[0x100] = 0x94;       // SUBB A,#imm
+      cpu.code[0x101] = imm;
+
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
+      cpu.CY = inCY;
+
+      cpu.run1(0x100);              // SUBB A,#imm
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(diff);
+      expect(cpu.CY).toBe(cy);
+      expect(cpu.OV).toBe(ov);
+      expect(cpu.AC).toBe(ac);
+    });
+  });
+
+
 function clearCode() {
   cpu.code.fill(0x00, 0x00, cpu.code.length);
 }
