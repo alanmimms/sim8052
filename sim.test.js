@@ -55,6 +55,45 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL', fromPage => {
 });
 
 
+//////////// LCALL ////////////
+describe.each([
+// callBase   newPC
+  [0x8765,   0x0000],
+  [0x8765,   0x0001],
+  [0x88FD,   0x1234],
+  [0x89FE,   0xFFFE],
+  [0x8AFF,   0xFFFF],
+  [0x8BFD,   0x7FFF],
+])('LCALL', (callBase, newPC) => {
+  test(`${toHex4(callBase)} --> ${toHex4(newPC)}`, () => {
+    const retPC = (callBase + 3) & 0xFFFF;
+    const acBase = 0x43;
+    const spBase = 7;
+    cpu.code[callBase] = 0x12;      // LCALL
+    cpu.code[callBase + 1] = newPC >>> 8;
+    cpu.code[callBase + 2] = newPC & 0xFF;
+    cpu.code[newPC] = 0x22;         // RET
+
+    cpu.SFR[ACC] = acBase;
+    cpu.SFR[PSW] = 0;
+    cpu.SFR[SP] = spBase;
+
+    cpu.run1(callBase);             // LCALL
+    expect(cpu.pc).toBe(newPC);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(acBase);
+    expect(cpu.SFR[SP]).toBe(spBase + 2);
+    expect(cpu.iram[spBase+2]).toBe(retPC >>> 8);
+    expect(cpu.iram[spBase+1]).toBe(retPC & 0xFF);
+    cpu.run1(newPC);                // RET
+    expect(cpu.pc).toBe(retPC);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(acBase);
+    expect(cpu.SFR[SP]).toBe(spBase);
+  });
+});
+
+
 //////////// AJMP ////////////
 describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
 
@@ -489,6 +528,34 @@ test(`JNZ rel AC=00`, () => {
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
 });
+
+
+//////////// JMP @A+DPTR ////////////
+describe.each([
+  // A    DPTR   newPC
+  [0x02, 0x1234, 0x1236],
+  [0x00, 0x4321, 0x4321],
+  [0x02, 0x8001, 0x8003],
+  [0xFF, 0x8001, 0x8100],
+  [0xFF, 0xFF55, 0x0054],
+]) (
+  'JMP @A+DPTR:',
+  (a, dptr, newPC)  => {
+    test(`JMP @A+DPTR`, () => {
+      cpu.code[0x100] = 0x73;       // JMP @A+DPTR
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = a;
+      cpu.DPTR = dptr;
+
+      cpu.run1(0x100);              // JMP @A+DPTR
+      expect(cpu.pc).toBe(newPC);
+      expect(cpu.SFR[ACC]).toBe(a);
+      expect(cpu.DPTR).toBe(dptr);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+  });
 
 
 //////////// CLR A ////////////
