@@ -791,6 +791,57 @@ test(`MOV DPTR,#data16`, () => {
 });
 
 
+//////////// MOVC A,@A+DPTR ////////////
+describe.each([
+  // a      y   entAddr newA
+  [0x72, 0x1234, 0x12A6, 0x73],
+  [0x33, 0x4321, 0x4354, 0x96],
+  [0x12, 0x8001, 0x8013, 0x23],
+  [0xFF, 0x8001, 0x8100, 0x17],
+  [0xF3, 0xFF55, 0x0048, 0x87],
+]) (
+  'MOVC',
+  (a, y, entAddr, newA)  => {
+    test(`A,@A+DPTR a=${toHex2(a)},dptr=${toHex4(y)},entAddr=${toHex4(entAddr)},newA=${toHex2(newA)} `, () => {
+      cpu.code.fill(0xFA, 0x00, cpu.code.length);
+      clearIRAM();
+      cpu.code[0x100] = 0x93;       // MOVC A,@A+DPTR
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = a;
+      cpu.DPTR = y;
+      cpu.code[entAddr] = newA;
+
+      cpu.run1(0x100);              // MOVC
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(newA);
+      expect(cpu.code[entAddr]).toBe(newA);
+      expect(cpu.DPTR).toBe(y);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+
+    test(`A,@A+PC a=${toHex2(a)},pc=${toHex4(y)},entAddr=${toHex4(entAddr)},newA=${toHex2(newA)} `, () => {
+      cpu.code.fill(0xAF, 0x00, cpu.code.length);
+      clearIRAM();
+      cpu.code[y-1] = 0x83;     // MOVC A,@A+PC
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = a;
+      cpu.DPTR = 0x1111;
+      cpu.code[entAddr] = newA;
+
+      cpu.run1(y-1);              // MOVC
+      expect(cpu.pc).toBe(y);
+      expect(cpu.SFR[ACC]).toBe(newA);
+      expect(cpu.code[entAddr]).toBe(newA);
+      expect(cpu.DPTR).toBe(0x1111);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+  });
+
+
 //////////// CLR A ////////////
 test('CLR A', () => {
   clearIRAM();
