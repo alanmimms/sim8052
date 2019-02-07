@@ -132,6 +132,34 @@ describe.each([
 });
 
 
+//////////// SJMP ////////////
+describe.each([
+// callBase  rela   newPC
+  [0x8765,   0xF0, 0x8757],
+  [0x8765,   0xFF, 0x8766],
+  [0x88FD,   0x00, 0x88FF],
+  [0xFFFE,   0x01, 0x0001],
+  [0xFFFE,   0x02, 0x0002],
+  [0xFFF0,   0x03, 0xFFF5],
+])('SJMP', (pc, rela, newPC) => {
+  test(`${toHex4(pc)} --> ${toHex4(newPC)}`, () => {
+    const basePC = (pc + 2) & 0xFFFF;
+    const acBase = 0x43;
+
+    clearIRAM();
+    cpu.code[pc] = 0x80;      // SJMP
+    cpu.code[pc + 1] = rela;
+    cpu.SFR[ACC] = acBase;
+    cpu.SFR[PSW] = 0;
+
+    cpu.run1(pc);             // SJMP
+    expect(cpu.pc).toBe(newPC);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(acBase);
+  });
+});
+
+
 //////////// AJMP ////////////
 describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
 
