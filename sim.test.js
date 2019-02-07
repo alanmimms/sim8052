@@ -2151,6 +2151,128 @@ describe.each([
     });
 
 
+//////////////// XRL ////////////////
+describe.each([
+  // x     y    xor
+  [0x00, 0x00, 0x00],
+  [0xFF, 0x00, 0xFF],
+  [0xFF, 0xFF, 0x00],
+  [0x00, 0xFF, 0xFF],
+  [0x01, 0x05, 0x04],
+  [0x02, 0x05, 0x07],
+  [0x04, 0x05, 0x01],
+  [0x08, 0x05, 0x0D],
+  [0x10, 0x05, 0x15],
+]) (
+  'XRL',
+  (x, y, xor)  => {
+
+    test(`A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(xor)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x65;       // XRL A,dir
+      cpu.code[0x101] = dir;
+      cpu.iram[dir] = x;
+
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
+
+      cpu.run1(0x100);              // XRL A,dir
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(xor);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.iram[dir]).toBe(x);
+    });
+
+    test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(xor)}`, () => {
+      cpu.SFR[PSW] = 0;
+      cpu.code[0x100] = 0x6B;       // XRL A,R3
+      cpu.iram[3] = x;              // R3
+      cpu.SFR[ACC] = y;
+
+      cpu.run1(0x100);              // XRL A,R3
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(xor);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.iram[3]).toBe(x);
+    });
+
+    test(`A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(xor)}`, () => {
+      const dir = 0x62;
+      clearIRAM();
+      cpu.code[0x100] = 0x67;       // XRL A,@R1
+      cpu.iram[1] = dir;            // Set R1=dir for @R1
+      cpu.iram[dir] = x;
+
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
+
+      cpu.run1(0x100);              // XRL A,@R1
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(xor);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[dir]).toBe(x);
+    });
+
+    test(`A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(xor)}`, () => {
+      const imm = x;
+      clearIRAM();
+      cpu.code[0x100] = 0x64;       // XRL A,#imm
+      cpu.code[0x101] = imm;
+
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
+
+      cpu.run1(0x100);              // XRL A,#imm
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(xor);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+    });
+
+    test(`dir,A ${toHex2(x)}+${toHex2(y)}=${toHex2(xor)}`, () => {
+      const dir = 0x62;
+      clearIRAM();
+      cpu.code[0x100] = 0x62;       // XRL dir,A
+      cpu.code[0x101] = dir;
+
+      cpu.SFR[PSW] = 0;
+      cpu.iram[dir] = x;
+      cpu.SFR[ACC] = y;
+
+      cpu.run1(0x100);              // XRL dir,A
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(y);
+      expect(cpu.iram[dir]).toBe(xor);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+    });
+
+    test(`XRL dir,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(xor)}`, () => {
+      const dir = 0x62;
+      const imm = x;
+      clearIRAM();
+      cpu.code[0x100] = 0x63;       // XRL dir,#imm
+      cpu.code[0x101] = dir;
+      cpu.code[0x102] = imm;
+      cpu.iram[dir] = y;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = 0xDA;
+
+      cpu.run1(0x100);              // XRL dir,#imm
+      expect(cpu.pc).toBe(0x103);
+      expect(cpu.SFR[ACC]).toBe(0xDA);
+      expect(cpu.iram[dir]).toBe(xor);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+    });
+  });
+
+
 describe('POP', () => {
 
   test('dir', () => {
