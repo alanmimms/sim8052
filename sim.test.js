@@ -1140,6 +1140,45 @@ describe.each([
   });
 
 
+//////////// MUL AB ////////////
+describe.each([
+  // x     y   prodB prodA ov
+  [0x00, 0x00, 0x00, 0x00,  0],
+  [0x00, 0x72, 0x00, 0x00,  0],
+  [0x50, 0xA0, 0x32, 0x00,  1],
+  [0x12, 0x34, 0x03, 0xA8,  1],
+  [0xFF, 0x71, 0x70, 0x8F,  1],
+  [0xFF, 0xFF, 0xFE, 0x01,  1],
+  [0xFF, 0x00, 0x00, 0x00,  0],
+  [0x00, 0xFF, 0x00, 0x00,  0],
+  [0xFF, 0x01, 0x00, 0xFF,  0],
+  [0x01, 0xFF, 0x00, 0xFF,  0],
+  [0xFF, 0x02, 0x01, 0xFE,  1],
+  [0x02, 0xFF, 0x01, 0xFE,  1],
+]) (
+  'MUL AB',
+  (x, y, prodB, prodA, ov)  => {
+    test(`A=${toHex2(x)},B=${toHex2(y)}, prodA=${toHex2(prodA)},prodB=${toHex2(prodB)},ov=${ov}`, () => {
+      clearIRAM();
+      cpu.code[0x100] = 0xA4;       // MUL AB
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
+      cpu.SFR[B] = y;
+      cpu.CY = 1;
+      cpu.OV = 0;
+      cpu.AC = 1;
+
+      cpu.run1(0x100);              // MUL AB
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(prodA);
+      expect(cpu.SFR[B]).toBe(prodB);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(1);
+      expect(cpu.OV).toBe(ov);
+    });
+  });
+
+
 //////////// DIV AB ////////////
 describe.each([
   // x     y    div   rem ov
