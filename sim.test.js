@@ -2324,6 +2324,57 @@ describe.each([
   });
 
 
+describe('XCH', () => {
+
+  test('A,R3', () => {
+    clearIRAM();
+    cpu.code[0x100] = 0xCB;     // XCH A,R3
+    cpu.iram[3] = 0x73;
+    cpu.SFR[ACC] = 0x32;
+    cpu.SFR[PSW] = 0;
+
+    cpu.run1(0x100);            // XCH
+    expect(cpu.pc).toBe(0x101);
+    expect(cpu.iram[3]).toBe(0x32);
+    expect(cpu.SFR[ACC]).toBe(0x73);
+    expect(cpu.SFR[PSW]).toBe(0);
+  });
+
+  test('A,dir', () => {
+    const dir = 0x42;
+    clearIRAM();
+    cpu.code[0x100] = 0xC5;     // XCH A,dir
+    cpu.code[0x101] = dir;
+    cpu.iram[dir] = 0x73;
+    cpu.SFR[ACC] = 0x32;
+    cpu.SFR[PSW] = 0;
+
+    cpu.run1(0x100);            // XCH
+    expect(cpu.pc).toBe(0x102);
+    expect(cpu.iram[dir]).toBe(0x32);
+    expect(cpu.SFR[ACC]).toBe(0x73);
+    expect(cpu.SFR[PSW]).toBe(0);
+  });
+
+  test('A,@R1', () => {
+    const dir = 0x42;
+    clearIRAM();
+    cpu.code[0x100] = 0xC7;     // XCH A,@R1
+    cpu.iram[1] = dir;
+    cpu.iram[dir] = 0x73;
+    cpu.SFR[ACC] = 0x32;
+    cpu.SFR[PSW] = 0;
+
+    cpu.run1(0x100);            // XCH
+    expect(cpu.pc).toBe(0x101);
+    expect(cpu.iram[1]).toBe(dir);
+    expect(cpu.iram[dir]).toBe(0x32);
+    expect(cpu.SFR[ACC]).toBe(0x73);
+    expect(cpu.SFR[PSW]).toBe(0);
+  });
+});
+
+
 function clearCode() {
   cpu.code.fill(0x00, 0x00, cpu.code.length);
 }
