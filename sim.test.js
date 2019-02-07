@@ -390,7 +390,7 @@ test(`JBC bit,rel bit=1`, () => {
 });
 
 
-//////////// JNB ////////////b
+//////////// JNB ////////////
 test(`JNB bit,rel bit=0`, () => {
   const bit = 0x42;
   const acBase = 0x55;
@@ -727,6 +727,67 @@ describe('MOV', () => {
     expect(cpu.SFR[ACC]).toBe(0xAA);
     expect(cpu.iram[3]).toBe(v);
   });
+});
+
+
+//////////// MOV bit ////////////
+test(`MOV C,sbit=0`, () => {
+  const bit = 0x42;
+  clearIRAM();
+  cpu.code[0x100] = 0xA2;       // MOV C,sbit
+  cpu.code[0x101] = bit;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = 0xAA;
+  cpu.CY = 0;
+  cpu.BIT[bit] = 0;
+
+  cpu.run1(0x100);              // MOV
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.SFR[ACC]).toBe(0xAA);
+  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+test(`MOV C,sbit=1`, () => {
+  const bit = 0x42;
+  clearIRAM();
+  cpu.code[0x100] = 0x92;       // MOV dbit,C
+  cpu.code[0x101] = bit;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = 0xAA;
+  cpu.CY = 1;
+  cpu.BIT[bit] = 0;
+
+  cpu.run1(0x100);              // MOV
+  expect(cpu.pc).toBe(0x102);
+  expect(cpu.SFR[ACC]).toBe(0xAA);
+  expect(cpu.BIT[bit]).toBe(1);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+
+//////////////// MOV DPTR,#imm16 ////////////////
+test(`MOV DPTR,#data16`, () => {
+  const d = 0x1234;
+  clearIRAM();
+  cpu.code[0x100] = 0x90;       // MOV DPTR,#imm
+  cpu.code[0x101] = d >>> 8;
+  cpu.code[0x102] = d & 0xFF;
+  cpu.SFR[PSW] = 0;
+  cpu.SFR[ACC] = 0xAA;
+  cpu.DPTR = 0x9977;
+
+  cpu.run1(0x100);              // MOV
+  expect(cpu.pc).toBe(0x103);
+  expect(cpu.DPTR).toBe(d);
+  expect(cpu.SFR[ACC]).toBe(0xAA);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
 });
 
 
