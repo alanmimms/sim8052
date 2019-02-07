@@ -303,6 +303,16 @@ const cpu = {
   },
 
 
+  doXCHD() {
+    const a = SFR[ACC];
+    const b = this.alu1;
+    SFR[ACC] &= 0xF0;
+    SFR[ACC] |= b & 0x0F;
+    this.alu1 &= 0xF0;
+    this.alu1 |= a & 0x0F;
+  },
+
+
   doRETI() {
     if (this.ipl >= 0) this.ipl = this.ipl - 1;
   },

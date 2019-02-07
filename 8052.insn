@@ -427,9 +427,9 @@ XCH = 0b1100011I "A,@Ri":
     IRAM/Ri <- TMP
 
 XCHD = 0b1101011I "A,@Ri":
-    TMP <- A
-    A.NYBLO <- IRAM/Ri.NYBLO
-    IRAM/Ri.NYBLO <- TMP.NYBLO
+    ALU1 <- IRAM/Ri
+    { this.doXCHD() }
+    IRAM/Ri <- ALU1
 
 XRL = 0b01101RRR "A,Ri":
     A <- A ^ R
