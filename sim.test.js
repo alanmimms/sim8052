@@ -10,6 +10,7 @@ Object.keys(CPU.SFRs).forEach(name => global[name] = CPU.SFRs[name]);
 
 //////////// NOP ////////////
 test('NOP', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x00;       // NOP
   cpu.SFR[ACC] = 0x42;
   cpu.SFR[PSW] = 0;
@@ -26,6 +27,8 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL', fromPage => {
   test(`ACALL from page${fromPage}`, () => {
     const pageOffset = 0x24;
     const callBase = fromPage * 0x100 + 0x42;
+
+    clearIRAM();
 
     for (let toPage = 0; toPage < 8; ++toPage) {
       const callTarget = (toPage * 0x100) + pageOffset;
@@ -69,6 +72,8 @@ describe.each([
     const retPC = (callBase + 3) & 0xFFFF;
     const acBase = 0x43;
     const spBase = 7;
+
+    clearIRAM();
     cpu.code[callBase] = 0x12;      // LCALL
     cpu.code[callBase + 1] = newPC >>> 8;
     cpu.code[callBase + 2] = newPC & 0xFF;
@@ -108,6 +113,8 @@ describe.each([
     const retPC = (callBase + 3) & 0xFFFF;
     const acBase = 0x43;
     const spBase = 7;
+
+    clearIRAM();
     cpu.code[callBase] = 0x02;      // LJMP
     cpu.code[callBase + 1] = newPC >>> 8;
     cpu.code[callBase + 2] = newPC & 0xFF;
@@ -133,6 +140,8 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
     const jmpBase = fromPage * 0x100 + 0x42;
     const spBase = 0x07;
     const acBase = 0x42;
+
+    clearIRAM();
 
     for (let toPage = 0; toPage < 8; ++toPage) {
       const jmpTarget = (toPage * 0x100) + pageOffset;
@@ -164,85 +173,80 @@ describe.each([
   [0x00, 0xFF,  1, 0x80,    1],
   [0x00, 0xFF,  1, 0xF0,    1],
 ]) (
-  'CJNE:',
+  'CJNE',
   (x, y, ltCY, rela, jump)  => {
-    test(`\
-CJNE A,dir,rel A=${toHex2(x)} dir=${toHex2(y)}, \
-ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0xB5;       // CJNE A,dir,rela
-           cpu.code[0x101] = dir;
-           cpu.code[0x102] = rela;
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = x;
-           cpu.iram[dir] = y;
+    test(`A,dir,rel A=${toHex2(x)} dir=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0xB5;       // CJNE A,dir,rela
+      cpu.code[0x101] = dir;
+      cpu.code[0x102] = rela;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
+      cpu.iram[dir] = y;
 
-           cpu.run1(0x100);              // CJNE A,dir,rela
-           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
-           expect(cpu.SFR[ACC]).toBe(x);
-           expect(cpu.iram[dir]).toBe(y);
-           expect(cpu.CY).toBe(ltCY);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`\
-CJNE A,#imm,rel A=${toHex2(x)} dir=${toHex2(y)}, \
-ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
-         () => {
-           const imm = y;
-           cpu.code[0x100] = 0xB4;       // CJNE A,dir,rela
-           cpu.code[0x101] = imm;
-           cpu.code[0x102] = rela;
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = x;
+      cpu.run1(0x100);              // CJNE A,dir,rela
+      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.SFR[ACC]).toBe(x);
+      expect(cpu.iram[dir]).toBe(y);
+      expect(cpu.CY).toBe(ltCY);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
 
-           cpu.run1(0x100);              // CJNE A,#imm,rela
-           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
-           expect(cpu.SFR[ACC]).toBe(x);
-           expect(cpu.CY).toBe(ltCY);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`\
-CJNE R3,#imm,rel A=${toHex2(x)} dir=${toHex2(y)}, \
-ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
-         () => {
-           const imm = y;
-           cpu.code[0x100] = 0xBB;       // CJNE R3,#imm,rela
-           cpu.code[0x101] = imm;
-           cpu.code[0x102] = rela;
-           cpu.SFR[PSW] = 0;
-           cpu.iram[3] = x;
+    test(`A,#imm,rel A=${toHex2(x)} imm=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
+      const imm = y;
+      clearIRAM();
+      cpu.code[0x100] = 0xB4;       // CJNE A,dir,rela
+      cpu.code[0x101] = imm;
+      cpu.code[0x102] = rela;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
 
-           cpu.run1(0x100);              // CJNE A,#imm,rela
-           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
-           expect(cpu.iram[3]).toBe(x);
-           expect(cpu.CY).toBe(ltCY);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`\
-CJNE @R1,#imm,rel A=${toHex2(x)} dir=${toHex2(y)}, \
-ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`,
-         () => {
-           const imm = y;
-           const dir = 0x42;
-           cpu.code[0x100] = 0xBB;       // CJNE R3,#imm,rela
-           cpu.code[0x101] = imm;
-           cpu.code[0x102] = rela;
-           cpu.SFR[PSW] = 0;
-           cpu.iram[dir] = x;
-           cpu.iram[1] = dir;
+      cpu.run1(0x100);              // CJNE A,#imm,rela
+      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.SFR[ACC]).toBe(x);
+      expect(cpu.CY).toBe(ltCY);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
 
-           cpu.run1(0x100);              // CJNE R3,#imm,rela
-           expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
-           expect(cpu.iram[1]).toBe(dir);
-           expect(cpu.iram[dir]).toBe(x);
-           expect(cpu.CY).toBe(ltCY);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
+    test(`R3,#imm,rel R3=${toHex2(x)} imm=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
+      const imm = y;
+      clearIRAM();
+      cpu.code[0x100] = 0xBB;       // CJNE R3,#imm,rela
+      cpu.code[0x101] = imm;
+      cpu.code[0x102] = rela;
+      cpu.SFR[PSW] = 0;
+      cpu.iram[3] = x;
+
+      cpu.run1(0x100);              // CJNE A,#imm,rela
+      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.iram[3]).toBe(x);
+      expect(cpu.CY).toBe(ltCY);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+
+    test(`@R1,#imm,rel @R1=${toHex2(x)} imm=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
+      const imm = y;
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0xB7;       // CJNE R3,#imm,rela
+      cpu.code[0x101] = imm;
+      cpu.code[0x102] = rela;
+      cpu.SFR[PSW] = 0;
+      cpu.iram[dir] = x;
+      cpu.iram[1] = dir;
+
+      cpu.run1(0x100);              // CJNE R3,#imm,rela
+      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[dir]).toBe(x);
+      expect(cpu.CY).toBe(ltCY);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
   });
 
 
@@ -254,12 +258,13 @@ describe.each([
   [0x00, 0xFF,  1],
   [0x80, 0x7F,  1],
 ]) (
-  'DJNZ:',
+  'DJNZ',
   (x, y, jump)  => {
     test(`DJNZ dir,rel dir=${toHex2(y)}, jump=${jump}`, () => {
       const dir = 0x42;
       const acBase = 0xAA;
       const rela = -0x10 & 0xFF;
+      clearIRAM();
       cpu.code[0x100] = 0xD5;       // DJNZ dir,rela
       cpu.code[0x101] = dir;
       cpu.code[0x102] = rela;
@@ -275,9 +280,11 @@ describe.each([
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
     });
+
     test(`DJNZ R3,rel R3=${toHex2(y)}, jump=${jump}`, () => {
       const acBase = 0xAA;
       const rela = -0x10 & 0xFF;
+      clearIRAM();
       cpu.code[0x100] = 0xDB;       // DJNZ R3,rela
       cpu.code[0x101] = rela;
       cpu.SFR[PSW] = 0;
@@ -300,6 +307,7 @@ test(`JB bit,rel bit=0`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x20;       // JB bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
@@ -320,6 +328,7 @@ test(`JB bit,rel bit=1`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x20;       // JB bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
@@ -342,6 +351,7 @@ test(`JBC bit,rel bit=0`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x10;       // JBC bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
@@ -362,6 +372,7 @@ test(`JBC bit,rel bit=1`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x10;       // JBC bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
@@ -384,6 +395,7 @@ test(`JNB bit,rel bit=0`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x30;       // JNB bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
@@ -404,6 +416,7 @@ test(`JNB bit,rel bit=1`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x30;       // JNB bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
@@ -425,6 +438,7 @@ test(`JNB bit,rel bit=1`, () => {
 test(`JC rel CY=0`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x40;       // JC rela
   cpu.code[0x101] = rela;
   cpu.SFR[PSW] = 0;
@@ -442,6 +456,7 @@ test(`JC rel CY=0`, () => {
 test(`JC rel CY=1`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x40;       // JC rela
   cpu.code[0x102] = rela;
   cpu.SFR[PSW] = 0;
@@ -461,6 +476,7 @@ test(`JC rel CY=1`, () => {
 test(`JNC rel CY=0`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x50;       // JNC rela
   cpu.code[0x101] = rela;
   cpu.SFR[PSW] = 0;
@@ -478,6 +494,7 @@ test(`JNC rel CY=0`, () => {
 test(`JNC rel CY=1`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x50;       // JNC rela
   cpu.code[0x102] = rela;
   cpu.SFR[PSW] = 0;
@@ -497,6 +514,7 @@ test(`JNC rel CY=1`, () => {
 test(`JZ rel AC=55`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x60;       // JZ rela
   cpu.code[0x101] = rela;
   cpu.SFR[PSW] = 0;
@@ -513,6 +531,7 @@ test(`JZ rel AC=55`, () => {
 test(`JZ rel AC=00`, () => {
   const acBase = 0x00;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x60;       // JZ rela
   cpu.code[0x102] = rela;
   cpu.SFR[PSW] = 0;
@@ -531,6 +550,7 @@ test(`JZ rel AC=00`, () => {
 test(`JNZ rel AC=55`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x70;       // JNZ rela
   cpu.code[0x101] = rela;
   cpu.SFR[PSW] = 0;
@@ -547,6 +567,7 @@ test(`JNZ rel AC=55`, () => {
 test(`JNZ rel AC=00`, () => {
   const acBase = 0x00;
   const rela = -0x13 & 0xFF;
+  clearIRAM();
   cpu.code[0x100] = 0x70;       // JNZ rela
   cpu.code[0x102] = rela;
   cpu.SFR[PSW] = 0;
@@ -570,9 +591,10 @@ describe.each([
   [0xFF, 0x8001, 0x8100],
   [0xFF, 0xFF55, 0x0054],
 ]) (
-  'JMP @A+DPTR:',
+  'JMP @A+DPTR',
   (a, dptr, newPC)  => {
     test(`JMP @A+DPTR`, () => {
+      clearIRAM();
       cpu.code[0x100] = 0x73;       // JMP @A+DPTR
       cpu.SFR[PSW] = 0;
       cpu.SFR[ACC] = a;
@@ -589,8 +611,128 @@ describe.each([
   });
 
 
+//////////// MOV ////////////
+describe('MOV', () => {
+
+  test(`A,R3`, () => {
+    const v = 0x43;
+    clearIRAM();
+    cpu.code[0x1000] = 0xEB;        // MOV A,R3
+    cpu.SFR[ACC] = 0xAA;
+    cpu.SFR[PSW] = 0;
+    cpu.iram[3] = v;
+
+    cpu.run1(0x1000);               // MOV
+    expect(cpu.pc).toBe(0x1001);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.iram[3]).toBe(v);
+  });
+
+  test(`A,dir`, () => {
+    const v = 0x43;
+    const dir = 0x42;
+    clearIRAM();
+    cpu.code[0x1000] = 0xE5;        // MOV A,dir
+    cpu.code[0x1001] = dir;
+    cpu.SFR[ACC] = 0xAA;
+    cpu.SFR[PSW] = 0;
+    cpu.iram[dir] = v;
+
+    cpu.run1(0x1000);               // MOV
+    expect(cpu.pc).toBe(0x1002);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.iram[dir]).toBe(v);
+  });
+
+  test(`A,@R1`, () => {
+    const v = 0x43;
+    const dir = 0x42;
+    clearIRAM();
+    cpu.code[0x1000] = 0xE7;        // MOV A,@R1
+    cpu.SFR[ACC] = 0xAA;
+    cpu.SFR[PSW] = 0;
+    cpu.iram[1] = dir;
+    cpu.iram[dir] = v;
+
+    cpu.run1(0x1000);               // MOV
+    expect(cpu.pc).toBe(0x1001);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.iram[dir]).toBe(v);
+    expect(cpu.iram[1]).toBe(dir);
+  });
+
+  test(`A,#imm`, () => {
+    const v = 0x43;
+    clearIRAM();
+    cpu.code[0x1000] = 0x74;        // MOV A,#imm
+    cpu.code[0x1001] = v;
+    cpu.SFR[ACC] = 0xAA;
+    cpu.SFR[PSW] = 0;
+
+    cpu.run1(0x1000);               // MOV
+    expect(cpu.pc).toBe(0x1002);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(v);
+  });
+
+  test(`R3,A`, () => {
+    const v = 0x43;
+    clearIRAM();
+    cpu.code[0x1000] = 0xFB;        // MOV R3,A
+    cpu.SFR[ACC] = v;
+    cpu.SFR[PSW] = 0;
+    cpu.iram[3] = 0xAA;
+
+    cpu.run1(0x1000);               // MOV
+    expect(cpu.pc).toBe(0x1001);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.iram[3]).toBe(v);
+  });
+
+  test(`R3,dir`, () => {
+    const v = 0x43;
+    const dir = 0x42;
+    clearIRAM();
+    cpu.code[0x1000] = 0xAB;        // MOV R3,dir
+    cpu.code[0x1001] = dir;
+    cpu.SFR[ACC] = 0xAA;
+    cpu.SFR[PSW] = 0;
+    cpu.iram[dir] = v;
+    cpu.iram[3] = 0x42;
+
+    cpu.run1(0x1000);               // MOV
+    expect(cpu.pc).toBe(0x1002);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(0xAA);
+    expect(cpu.iram[dir]).toBe(v);
+    expect(cpu.iram[3]).toBe(v);
+  });
+
+  test(`R3,#imm`, () => {
+    const v = 0x43;
+    clearIRAM();
+    cpu.code[0x1000] = 0x7B;        // MOV R3,#imm
+    cpu.code[0x1001] = v;
+    cpu.SFR[ACC] = 0xAA;
+    cpu.SFR[PSW] = 0;
+    cpu.iram[3] = 0x42;
+
+    cpu.run1(0x1000);               // MOV
+    expect(cpu.pc).toBe(0x1002);
+    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.SFR[ACC]).toBe(0xAA);
+    expect(cpu.iram[3]).toBe(v);
+  });
+});
+
+
 //////////// CLR A ////////////
 test('CLR A', () => {
+  clearIRAM();
   cpu.code[0x100] = 0xE4;       // CLR A
   cpu.SFR[ACC] = 0x42;
   cpu.SFR[PSW] = 0;
@@ -606,6 +748,7 @@ test('CLR A', () => {
 test('CLR bit', () => {
   const bit = 0x42;
   const acBase = 0xAA;
+  clearIRAM();
   cpu.code[0x100] = 0xC2;       // CLR bit
   cpu.code[0x101] = bit;
   cpu.BIT[bit] = 1;
@@ -622,6 +765,7 @@ test('CLR bit', () => {
 
 //////////// CLR C ////////////
 test('CLR C', () => {
+  clearIRAM();
   cpu.code[0x100] = 0xC3;       // CLR C
   cpu.SFR[ACC] = 0x42;
   cpu.SFR[PSW] = 0;
@@ -636,6 +780,7 @@ test('CLR C', () => {
 //////////// CPL A ////////////
 test('CPL A', () => {
   const acBase = 0x42;
+  clearIRAM();
   cpu.code[0x100] = 0xF4;       // CPL A
   cpu.SFR[ACC] = acBase;
   cpu.SFR[PSW] = 0;
@@ -651,6 +796,7 @@ test('CPL A', () => {
 test('CPL bit=1', () => {
   const bit = 0x42;
   const acBase = 0xAA;
+  clearIRAM();
   cpu.code[0x100] = 0xB2;       // CPL bit
   cpu.code[0x101] = bit;
   cpu.BIT[bit] = 1;
@@ -669,6 +815,7 @@ test('CPL bit=1', () => {
 test('CPL bit=0', () => {
   const bit = 0x42;
   const acBase = 0xAA;
+  clearIRAM();
   cpu.code[0x100] = 0xB2;       // CPL bit
   cpu.code[0x101] = bit;
   cpu.BIT[bit] = 0;
@@ -686,6 +833,7 @@ test('CPL bit=0', () => {
 //////////// CPL C ////////////
 test('CPL C=0', () => {
   const acBase = 0x42;
+  clearIRAM();
   cpu.code[0x100] = 0xB3;       // CPL C
   cpu.SFR[ACC] = 0x42;
   cpu.SFR[PSW] = 0;
@@ -701,6 +849,7 @@ test('CPL C=0', () => {
 
 //////////// CPL C ////////////
 test('CPL C=1', () => {
+  clearIRAM();
   cpu.code[0x100] = 0xB3;       // CPL C
   cpu.SFR[ACC] = 0x42;
   cpu.SFR[PSW] = 0;
@@ -722,65 +871,65 @@ describe.each([
   [0xFF, 0xFE],
   [0xFE, 0xFD],
 ]) (
-  'DEC:',
+  'DEC',
   (x, dec)  => {
-    test(`DEC A A=${toHex2(x)}, result=${toHex2(dec)}`,
-         () => {
-           cpu.code[0x100] = 0x14;       // DEC A
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = x;
+    test(`DEC A A=${toHex2(x)}, result=${toHex2(dec)}`, () => {
+      clearIRAM();
+      cpu.code[0x100] = 0x14;       // DEC A
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
 
-           cpu.run1(0x100);              // DEC A
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.SFR[ACC]).toBe(dec);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`DEC R3, R3=${toHex2(x)} result=${toHex2(dec)}`,
-         () => {
-           cpu.code[0x100] = 0x1B;       // DEC R3
-           cpu.SFR[PSW] = 0;
-           cpu.iram[3] = x;
+      cpu.run1(0x100);              // DEC A
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(dec);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+    test(`DEC R3, R3=${toHex2(x)} result=${toHex2(dec)}`, () => {
+      clearIRAM();
+      cpu.code[0x100] = 0x1B;       // DEC R3
+      cpu.SFR[PSW] = 0;
+      cpu.iram[3] = x;
 
-           cpu.run1(0x100);              // DEC R3
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.iram[3]).toBe(dec);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`DEC dir, dir=${toHex2(x)} result=${toHex2(dec)}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x15;       // DEC dir
-           cpu.code[0x101] = dir;
-           cpu.SFR[PSW] = 0;
-           cpu.iram[dir] = x;
+      cpu.run1(0x100);              // DEC R3
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.iram[3]).toBe(dec);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+    test(`DEC dir, dir=${toHex2(x)} result=${toHex2(dec)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x15;       // DEC dir
+      cpu.code[0x101] = dir;
+      cpu.SFR[PSW] = 0;
+      cpu.iram[dir] = x;
 
-           cpu.run1(0x100);              // DEC dir
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.iram[dir]).toBe(dec);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`DEC @R1 x=${toHex2(x)}, result=${toHex2(dec)}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x17;       // DEC @R1
-           cpu.SFR[PSW] = 0;
-           cpu.iram[dir] = x;
-           cpu.iram[1] = dir;            // R1
+      cpu.run1(0x100);              // DEC dir
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.iram[dir]).toBe(dec);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+    test(`DEC @R1 x=${toHex2(x)}, result=${toHex2(dec)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x17;       // DEC @R1
+      cpu.SFR[PSW] = 0;
+      cpu.iram[dir] = x;
+      cpu.iram[1] = dir;            // R1
 
-           cpu.run1(0x100);              // DEC @R1
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.iram[1]).toBe(dir);
-           expect(cpu.iram[dir]).toBe(dec);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
+      cpu.run1(0x100);              // DEC @R1
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[dir]).toBe(dec);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
   });
 
 
@@ -796,32 +945,30 @@ describe.each([
   [0x12, 0x00, 0x00, 0x00, 1],
   [0x00, 0x00, 0x00, 0x00, 1],
 ]) (
-  'DIV AB:',
+  'DIV AB',
   (x, y, div, rem, ov)  => {
-    test(`\
-DIV AB A=${toHex2(x)}, B=${toHex2(y)}, \
-div=${toHex2(div)} rem=${toHex2(rem)}, ov=${ov}`,
-         () => {
-           cpu.code[0x100] = 0x84;       // DIV AB
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = x;
-           cpu.SFR[B] = y;
-           cpu.CY = 1;
-           cpu.OV = 0;
-           cpu.AC = 1;
+    test(`A=${toHex2(x)}, B=${toHex2(y)}, div=${toHex2(div)} rem=${toHex2(rem)}, ov=${ov}`, () => {
+      clearIRAM();
+      cpu.code[0x100] = 0x84;       // DIV AB
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
+      cpu.SFR[B] = y;
+      cpu.CY = 1;
+      cpu.OV = 0;
+      cpu.AC = 1;
 
-           cpu.run1(0x100);              // DIV AB
-           expect(cpu.pc).toBe(0x101);
+      cpu.run1(0x100);              // DIV AB
+      expect(cpu.pc).toBe(0x101);
 
-           if (!ov) {
-             expect(cpu.SFR[ACC]).toBe(div);
-             expect(cpu.SFR[B]).toBe(rem);
-           }
+      if (!ov) {
+        expect(cpu.SFR[ACC]).toBe(div);
+        expect(cpu.SFR[B]).toBe(rem);
+      }
 
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(1);
-           expect(cpu.OV).toBe(ov);
-         });
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(1);
+      expect(cpu.OV).toBe(ov);
+    });
   });
 
 
@@ -834,65 +981,66 @@ describe.each([
   [0xFE, 0xFF],
   [0xFD, 0xFE],
 ]) (
-  'INC:',
+  'INC',
   (x, inc)  => {
-    test(`INC A A=${toHex2(x)}, result=${toHex2(inc)}`,
-         () => {
-           cpu.code[0x100] = 0x04;       // INC A
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = x;
+    test(`A A=${toHex2(x)}, result=${toHex2(inc)}`, () => {
+      clearIRAM();
+      cpu.code[0x100] = 0x04;       // INC A
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = x;
 
-           cpu.run1(0x100);              // INC A
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.SFR[ACC]).toBe(inc);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`INC R3, R3=${toHex2(x)} result=${toHex2(inc)}`,
-         () => {
-           cpu.code[0x100] = 0x0B;       // INC R3
-           cpu.SFR[PSW] = 0;
-           cpu.iram[3] = x;
+      cpu.run1(0x100);              // INC A
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(inc);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
 
-           cpu.run1(0x100);              // INC R3
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.iram[3]).toBe(inc);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`INC dir, dir=${toHex2(x)} result=${toHex2(inc)}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x05;       // INC dir
-           cpu.code[0x101] = dir;
-           cpu.SFR[PSW] = 0;
-           cpu.iram[dir] = x;
+    test(`R3, R3=${toHex2(x)} result=${toHex2(inc)}`, () => {
+      clearIRAM();
+      cpu.code[0x100] = 0x0B;       // INC R3
+      cpu.SFR[PSW] = 0;
+      cpu.iram[3] = x;
 
-           cpu.run1(0x100);              // INC dir
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.iram[dir]).toBe(inc);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-    test(`INC @R1 x=${toHex2(x)}, result=${toHex2(inc)}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x07;       // INC @R1
-           cpu.SFR[PSW] = 0;
-           cpu.iram[dir] = x;
-           cpu.iram[1] = dir;            // R1
+      cpu.run1(0x100);              // INC R3
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.iram[3]).toBe(inc);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+    test(`dir, dir=${toHex2(x)} result=${toHex2(inc)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x05;       // INC dir
+      cpu.code[0x101] = dir;
+      cpu.SFR[PSW] = 0;
+      cpu.iram[dir] = x;
 
-           cpu.run1(0x100);              // INC @R1
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.iram[1]).toBe(dir);
-           expect(cpu.iram[dir]).toBe(inc);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
+      cpu.run1(0x100);              // INC dir
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.iram[dir]).toBe(inc);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
+    test(`@R1 x=${toHex2(x)}, result=${toHex2(inc)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x07;       // INC @R1
+      cpu.SFR[PSW] = 0;
+      cpu.iram[dir] = x;
+      cpu.iram[1] = dir;            // R1
+
+      cpu.run1(0x100);              // INC @R1
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[dir]).toBe(inc);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
   });
 
 
@@ -907,70 +1055,30 @@ describe.each([
   [0x00FF, 0x0100],
   [0x00FD, 0x00FE],
 ]) (
-  'INC DPTR:',
+  'INC DPTR',
   (x, inc)  => {
-    test(`INC DPTR DPTR=${toHex2(x)}, result=${toHex2(inc)}`,
-         () => {
-           const acBase = 0xAA;
-           cpu.code[0x100] = 0xA3;       // INC DPTR
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = acBase;
-           cpu.DPTR = x;
+    test(`DPTR=${toHex2(x)}, result=${toHex2(inc)}`, () => {
+      const acBase = 0xAA;
+      clearIRAM();
+      cpu.code[0x100] = 0xA3;       // INC DPTR
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = acBase;
+      cpu.DPTR = x;
 
-           cpu.run1(0x100);              // INC DPTR
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.DPTR).toBe(inc);
-           expect(cpu.SFR[ACC]).toBe(acBase);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.OV).toBe(0);
-         });
-  });
-
-
-//////////// DIV AB ////////////
-describe.each([
-  // x     y    div   rem ov
-  [0x00, 0x00, 0x00, 0x00, 1],
-  [0x00, 0x01, 0x00, 0x00, 0],
-  [0x10, 0x02, 0x08, 0x00, 0],
-  [0x11, 0x02, 0x08, 0x01, 0],
-  [0x12, 0x02, 0x09, 0x00, 0],
-  [0x12, 0x13, 0x00, 0x12, 0],
-  [0x12, 0x00, 0x00, 0x00, 1],
-  [0x00, 0x00, 0x00, 0x00, 1],
-]) (
-  'DIV AB:',
-  (x, y, div, rem, ov)  => {
-    test(`\
-DIV AB A=${toHex2(x)}, B=${toHex2(y)}, \
-div=${toHex2(div)} rem=${toHex2(rem)}, ov=${ov}`,
-         () => {
-           cpu.code[0x100] = 0x84;       // DIV AB
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = x;
-           cpu.SFR[B] = y;
-           cpu.CY = 1;
-           cpu.OV = 0;
-           cpu.AC = 1;
-
-           cpu.run1(0x100);              // DIV AB
-           expect(cpu.pc).toBe(0x101);
-
-           if (!ov) {
-             expect(cpu.SFR[ACC]).toBe(div);
-             expect(cpu.SFR[B]).toBe(rem);
-           }
-
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(1);
-           expect(cpu.OV).toBe(ov);
-         });
+      cpu.run1(0x100);              // INC DPTR
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.DPTR).toBe(inc);
+      expect(cpu.SFR[ACC]).toBe(acBase);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.OV).toBe(0);
+    });
   });
 
 
 //////////// RLC ////////////
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.SFR[ACC] = 0x80;
   cpu.SFR[PSW] = 0;
@@ -984,6 +1092,7 @@ test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
 });
 
 test('RLC A=0x08,CY=0 = A=10,CY=0', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.SFR[ACC] = 0x08;
   cpu.SFR[PSW] = 0;
@@ -997,6 +1106,7 @@ test('RLC A=0x08,CY=0 = A=10,CY=0', () => {
 });
 
 test('RLC A=0x80,CY=1 = A=01,CY=1', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.SFR[ACC] = 0x80;
   cpu.SFR[PSW] = 0;
@@ -1010,6 +1120,7 @@ test('RLC A=0x80,CY=1 = A=01,CY=1', () => {
 });
 
 test('RLC A=0x08,CY=1 = A=11,CY=0', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.SFR[ACC] = 0x08;
   cpu.SFR[PSW] = 0;
@@ -1023,6 +1134,7 @@ test('RLC A=0x08,CY=1 = A=11,CY=0', () => {
 });
 
 test('RLC CY=1 bit walk', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.SFR[ACC] = 0x00;
   cpu.SFR[PSW] = 0;
@@ -1046,6 +1158,7 @@ test('RLC CY=1 bit walk', () => {
 
 //////////// RRC ////////////
 test('RRC A=0x01,CY=0 = A=00,CY=1', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.SFR[ACC] = 0x01;
   cpu.SFR[PSW] = 0;
@@ -1059,6 +1172,7 @@ test('RRC A=0x01,CY=0 = A=00,CY=1', () => {
 });
 
 test('RRC A=0x08,CY=0 = A=04,CY=0', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.SFR[ACC] = 0x08;
   cpu.SFR[PSW] = 0;
@@ -1072,6 +1186,7 @@ test('RRC A=0x08,CY=0 = A=04,CY=0', () => {
 });
 
 test('RRC A=0x80,CY=1 = A=C0,CY=0', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.SFR[ACC] = 0x80;
   cpu.SFR[PSW] = 0;
@@ -1085,6 +1200,7 @@ test('RRC A=0x80,CY=1 = A=C0,CY=0', () => {
 });
 
 test('RRC A=0x08,CY=1 = A=84,CY=0', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.SFR[ACC] = 0x08;
   cpu.SFR[PSW] = 0;
@@ -1098,6 +1214,7 @@ test('RRC A=0x08,CY=1 = A=84,CY=0', () => {
 });
 
 test('RRC CY=1 bit walk', () => {
+  clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.SFR[ACC] = 0x00;
   cpu.SFR[PSW] = 0;
@@ -1136,77 +1253,80 @@ describe.each([
   [   1, 0x88, 0x77, 0xFF,  0,    0],
   [   0, 0x08, 0x08, 0x10,  0,    1],
 ]) (
-  'ADD:',
+  'ADD',
   (inCY, x, y, addSum, addCY, addAC)  => {
-    test(`ADD A,dir ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x25;       // ADD A,dir
-           cpu.code[0x101] = dir;
+    test(`A,dir ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x25;       // ADD A,dir
+      cpu.code[0x101] = dir;
 
-           cpu.iram[dir] = x;
+      cpu.iram[dir] = x;
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
-           cpu.CY = inCY;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
+      cpu.CY = inCY;
 
-           cpu.run1(0x100);              // ADD A,dir
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.SFR[ACC]).toBe(addSum);
-           expect(cpu.CY).toBe(addCY);
-           expect(cpu.AC).toBe(addAC);
-           expect(cpu.iram[dir]).toBe(x);
-         });
-    test(`ADD A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
-         () => {
-           cpu.SFR[PSW] = 0;
-           cpu.code[0x100] = 0x2B;       // ADD A,R3
-           cpu.iram[3] = x;              // R3
-           cpu.SFR[ACC] = y;
-           cpu.CY = inCY;
+      cpu.run1(0x100);              // ADD A,dir
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.CY).toBe(addCY);
+      expect(cpu.AC).toBe(addAC);
+      expect(cpu.iram[dir]).toBe(x);
+    });
 
-           cpu.run1(0x100);              // ADD A,R3
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.SFR[ACC]).toBe(addSum);
-           expect(cpu.CY).toBe(addCY);
-           expect(cpu.AC).toBe(addAC);
-           expect(cpu.iram[3]).toBe(x);
-         });
-    test(`ADD A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x27;       // ADD A,@R1
-           cpu.iram[1] = dir;            // Set R1=dir for @R1
-           cpu.iram[dir] = x;
+    test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
+      clearIRAM();
+      cpu.SFR[PSW] = 0;
+      cpu.code[0x100] = 0x2B;       // ADD A,R3
+      cpu.iram[3] = x;              // R3
+      cpu.SFR[ACC] = y;
+      cpu.CY = inCY;
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
-           cpu.CY = inCY;
+      cpu.run1(0x100);              // ADD A,R3
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.CY).toBe(addCY);
+      expect(cpu.AC).toBe(addAC);
+      expect(cpu.iram[3]).toBe(x);
+    });
 
-           cpu.run1(0x100);              // ADD A,@R1
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.SFR[ACC]).toBe(addSum);
-           expect(cpu.CY).toBe(addCY);
-           expect(cpu.AC).toBe(addAC);
-           expect(cpu.iram[1]).toBe(dir);
-           expect(cpu.iram[dir]).toBe(x);
-         });
-    test(`ADD A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`,
-         () => {
-           const imm = x;
-           cpu.code[0x100] = 0x24;       // ADD A,#imm
-           cpu.code[0x101] = imm;
+    test(`A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x27;       // ADD A,@R1
+      cpu.iram[1] = dir;            // Set R1=dir for @R1
+      cpu.iram[dir] = x;
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
-           cpu.CY = inCY;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
+      cpu.CY = inCY;
 
-           cpu.run1(0x100);              // ADD A,#imm
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.SFR[ACC]).toBe(addSum);
-           expect(cpu.CY).toBe(addCY);
-           expect(cpu.AC).toBe(addAC);
-         });
+      cpu.run1(0x100);              // ADD A,@R1
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.CY).toBe(addCY);
+      expect(cpu.AC).toBe(addAC);
+      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[dir]).toBe(x);
+    });
+
+    test(`A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
+      const imm = x;
+      clearIRAM();
+      cpu.code[0x100] = 0x24;       // ADD A,#imm
+      cpu.code[0x101] = imm;
+
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
+      cpu.CY = inCY;
+
+      cpu.run1(0x100);              // ADD A,#imm
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.CY).toBe(addCY);
+      expect(cpu.AC).toBe(addAC);
+    });
   });
 
 //////////////// ADDC ////////////////
@@ -1226,11 +1346,11 @@ describe.each([
   [   1, 0x88, 0x77, 0x00,  1,    1],
   [   0, 0x08, 0x08, 0x10,  0,    1],
 ]) (
-  'ADDC:',
+  'ADDC',
   (inCY, x, y, addSum, addCY, addAC)  => {
-    test(`${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`,
-         () => {
+    test(`${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
            const dir = 0x42;
+      clearIRAM();
            cpu.code[0x100] = 0x35;       // ADDC A,dir
            cpu.code[0x101] = dir;
 
@@ -1247,8 +1367,9 @@ describe.each([
            expect(cpu.AC).toBe(addAC);
            expect(cpu.iram[dir]).toBe(x);
          });
-    test(`ADDC A,Rn ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`,
-         () => {
+
+    test(`A,Rn ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
+  clearIRAM();
            cpu.SFR[PSW] = 0;
            cpu.code[0x100] = 0x3B;       // ADDC A,R3
            cpu.iram[3] = x;              // R3
@@ -1262,9 +1383,10 @@ describe.each([
            expect(cpu.AC).toBe(addAC);
            expect(cpu.iram[3]).toBe(x);
          });
-    test(`ADDC A,@Ri ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`,
-         () => {
+
+    test(`A,@Ri ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
            const dir = 0x42;
+  clearIRAM();
            cpu.code[0x100] = 0x37;       // ADDC A,@R1
            cpu.iram[1] = dir;            // Set R1=dir for @R1
            cpu.iram[dir] = x;
@@ -1281,9 +1403,10 @@ describe.each([
            expect(cpu.iram[1]).toBe(dir);
            expect(cpu.iram[dir]).toBe(x);
          });
-    test(`ADDC A,#imm ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`,
-         () => {
+
+    test(`ADDC A,#imm ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
            const imm = x;
+  clearIRAM();
            cpu.code[0x100] = 0x34;       // ADDC A,#imm
            cpu.code[0x101] = imm;
 
@@ -1315,35 +1438,35 @@ describe.each([
   [   0, 0x88, 0x77, 0xFF,  0,    0,   0x65,  1],
   [   1, 0x88, 0x77, 0x00,  1,    1,   0x66,  1],
   [   0, 0x08, 0x08, 0x10,  0,    1,   0x16,  0],
-]) (
-  'decimal addition:',
+]) ('decimal addition',
   (inCY, x, y, addSum, addCY, addAC, daSum, daCY)  => {
-    test(`${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(daSum)},CY=${daCY}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x35;       // ADDC A,dir
-           cpu.code[0x101] = dir;
-           cpu.code[0x102] = 0xD4;       // DA A
 
-           cpu.iram[dir] = x;
+    test(`${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(daSum)},CY=${daCY}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x35;       // ADDC A,dir
+      cpu.code[0x101] = dir;
+      cpu.code[0x102] = 0xD4;       // DA A
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
-           cpu.CY = inCY;
+      cpu.iram[dir] = x;
 
-           cpu.run1(0x100);          // ADDC
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.SFR[ACC]).toBe(addSum);
-           expect(cpu.CY).toBe(addCY);
-           expect(cpu.AC).toBe(addAC);
-           expect(cpu.iram[dir]).toBe(x);
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
+      cpu.CY = inCY;
 
-           cpu.run1(cpu.pc);         // DA
-           expect(cpu.pc).toBe(0x103);
-           expect(cpu.SFR[ACC]).toBe(daSum);
-           expect(cpu.CY).toBe(daCY);
-           expect(cpu.iram[dir]).toBe(x);
-         })
+      cpu.run1(0x100);          // ADDC
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.CY).toBe(addCY);
+      expect(cpu.AC).toBe(addAC);
+      expect(cpu.iram[dir]).toBe(x);
+
+      cpu.run1(cpu.pc);         // DA
+      expect(cpu.pc).toBe(0x103);
+      expect(cpu.SFR[ACC]).toBe(daSum);
+      expect(cpu.CY).toBe(daCY);
+      expect(cpu.iram[dir]).toBe(x);
+    });
   });
 
 
@@ -1363,107 +1486,112 @@ describe.each([
   [0x40, 0x05, 0x00],
   [0x80, 0x05, 0x00],
 ]) (
-  'ANL:',
+  'ANL',
   (x, y, and)  => {
-    test(`ANL A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(and)}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x55;       // ANL A,dir
-           cpu.code[0x101] = dir;
 
-           cpu.iram[dir] = x;
+    test(`A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(and)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x55;       // ANL A,dir
+      cpu.code[0x101] = dir;
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
+      cpu.iram[dir] = x;
 
-           cpu.run1(0x100);              // ANL A,dir
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.SFR[ACC]).toBe(and);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.iram[dir]).toBe(x);
-         });
-    test(`ANL A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
-         () => {
-           cpu.SFR[PSW] = 0;
-           cpu.code[0x100] = 0x5B;       // ANL A,R3
-           cpu.iram[3] = x;              // R3
-           cpu.SFR[ACC] = y;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
 
-           cpu.run1(0x100);              // ANL A,R3
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.SFR[ACC]).toBe(and);
-           expect(cpu.CY).toBe(0);
-//           expect(cpu.AC).toBe(0);
-           expect(cpu.iram[3]).toBe(x);
-         });
-    test(`ANL A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x57;       // ANL A,@R1
-           cpu.iram[1] = dir;            // Set R1=dir for @R1
-           cpu.iram[dir] = x;
+      cpu.run1(0x100);              // ANL A,dir
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(and);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.iram[dir]).toBe(x);
+    });
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
+    test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+      cpu.SFR[PSW] = 0;
+      cpu.code[0x100] = 0x5B;       // ANL A,R3
+      cpu.iram[3] = x;              // R3
+      cpu.SFR[ACC] = y;
 
-           cpu.run1(0x100);              // ANL A,@R1
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.SFR[ACC]).toBe(and);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.iram[1]).toBe(dir);
-           expect(cpu.iram[dir]).toBe(x);
-         });
-    test(`ANL A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
-         () => {
-           const imm = x;
-           cpu.code[0x100] = 0x54;       // ANL A,#imm
-           cpu.code[0x101] = imm;
+      cpu.run1(0x100);              // ANL A,R3
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(and);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.iram[3]).toBe(x);
+    });
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
+    test(`A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x57;       // ANL A,@R1
+      cpu.iram[1] = dir;            // Set R1=dir for @R1
+      cpu.iram[dir] = x;
 
-           cpu.run1(0x100);              // ANL A,#imm
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.SFR[ACC]).toBe(and);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-         });
-    test(`ANL dir,A ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
-         () => {
-           const dir = 0x42;
-           cpu.code[0x100] = 0x52;       // ANL dir,A
-           cpu.code[0x101] = dir;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
 
-           cpu.SFR[PSW] = 0;
-           cpu.iram[dir] = x;
-           cpu.SFR[ACC] = y;
+      cpu.run1(0x100);              // ANL A,@R1
+      expect(cpu.pc).toBe(0x101);
+      expect(cpu.SFR[ACC]).toBe(and);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[dir]).toBe(x);
+    });
 
-           cpu.run1(0x100);              // ANL dir,A
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.SFR[ACC]).toBe(y);
-           expect(cpu.iram[dir]).toBe(and);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-         });
-    test(`ANL dir,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`,
-         () => {
-           const dir = 0x42;
-           const imm = x;
-           cpu.code[0x100] = 0x53;       // ANL dir,#imm
-           cpu.code[0x101] = dir;
-           cpu.code[0x102] = imm;
+    test(`A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+      const imm = x;
+      clearIRAM();
+      cpu.code[0x100] = 0x54;       // ANL A,#imm
+      cpu.code[0x101] = imm;
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
 
-           cpu.run1(0x100);              // ANL dir,#imm
-           expect(cpu.pc).toBe(0x103);
-           expect(cpu.SFR[ACC]).toBe(y);
-           expect(cpu.CY).toBe(0);
-           expect(cpu.AC).toBe(0);
-         });
+      cpu.run1(0x100);              // ANL A,#imm
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(and);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+    });
+
+    test(`dir,A ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+      const dir = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x52;       // ANL dir,A
+      cpu.code[0x101] = dir;
+
+      cpu.SFR[PSW] = 0;
+      cpu.iram[dir] = x;
+      cpu.SFR[ACC] = y;
+
+      cpu.run1(0x100);              // ANL dir,A
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.SFR[ACC]).toBe(y);
+      expect(cpu.iram[dir]).toBe(and);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+    });
+
+    test(`ANL dir,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+      const dir = 0x42;
+      const imm = x;
+      clearIRAM();
+      cpu.code[0x100] = 0x53;       // ANL dir,#imm
+      cpu.code[0x101] = dir;
+      cpu.code[0x102] = imm;
+
+      cpu.SFR[PSW] = 0;
+      cpu.SFR[ACC] = y;
+
+      cpu.run1(0x100);              // ANL dir,#imm
+      expect(cpu.pc).toBe(0x103);
+      expect(cpu.SFR[ACC]).toBe(y);
+      expect(cpu.CY).toBe(0);
+      expect(cpu.AC).toBe(0);
+    });
   });
 
 
@@ -1474,27 +1602,26 @@ describe.each([
   [  0,  1,  0],
   [  1,  0,  0],
   [  1,  1,  1],
-]) (
-  'ANL:',
+]) ('ANL',
   (x, y, and)  => {
-    test(`ANL C,bit ${x}&${y}=${and}`,
-         () => {
-           const bit = 0x42;
-           cpu.code[0x100] = 0x82;       // ANL C,bit
-           cpu.code[0x101] = bit;
-           cpu.SFR[PSW] = 0;
+    test(`C,bit ${x}&${y}=${and}`, () => {
+      const bit = 0x42;
+      clearIRAM();
+      cpu.code[0x100] = 0x82;       // ANL C,bit
+      cpu.code[0x101] = bit;
+      cpu.SFR[PSW] = 0;
 
-           cpu.BIT[bit] = y;
-           cpu.SFR[ACC] = 0;
-           cpu.CY = x;
+      cpu.BIT[bit] = y;
+      cpu.SFR[ACC] = 0;
+      cpu.CY = x;
 
-           cpu.run1(0x100);              // ANL C,bit
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.CY).toBe(and);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.SFR[ACC]).toBe(0);
-           expect(cpu.BIT[bit]).toBe(y);
-         });
+      cpu.run1(0x100);              // ANL C,bit
+      expect(cpu.pc).toBe(0x102);
+      expect(cpu.CY).toBe(and);
+      expect(cpu.AC).toBe(0);
+      expect(cpu.SFR[ACC]).toBe(0);
+      expect(cpu.BIT[bit]).toBe(y);
+    });
   });
 
 
@@ -1505,27 +1632,29 @@ describe.each([
   [  0,  1,  0],
   [  1,  0,  1],
   [  1,  1,  0],
-]) (
-  'ANL:',
-  (x, y, and)  => {
-    test(`ANL C,/bit ${x}&/${y}=${and}`,
-         () => {
-           const bit = 0x42;
-           cpu.code[0x100] = 0xB0;       // ANL C,bit
-           cpu.code[0x101] = bit;
-           cpu.SFR[PSW] = 0;
+]) ('ANL',
+    (x, y, and)  => {
+      test(`ANL C,/bit ${x}&/${y}=${and}`, () => {
+        const bit = 0x42;
+        clearIRAM();
+        cpu.code[0x100] = 0xB0;       // ANL C,bit
+        cpu.code[0x101] = bit;
+        cpu.SFR[PSW] = 0;
 
-           cpu.BIT[bit] = y;
-           cpu.SFR[ACC] = 0;
-           cpu.CY = x;
+        cpu.BIT[bit] = y;
+        cpu.SFR[ACC] = 0;
+        cpu.CY = x;
 
-           cpu.run1(0x100);              // ANL C,bit
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.CY).toBe(and);
-           expect(cpu.AC).toBe(0);
-           expect(cpu.SFR[ACC]).toBe(0);
-           expect(cpu.BIT[bit]).toBe(y);
-         });
-  });
+        cpu.run1(0x100);              // ANL C,bit
+        expect(cpu.pc).toBe(0x102);
+        expect(cpu.CY).toBe(and);
+        expect(cpu.AC).toBe(0);
+        expect(cpu.SFR[ACC]).toBe(0);
+        expect(cpu.BIT[bit]).toBe(y);
+      });
+    });
 
 
+function clearIRAM() {
+  cpu.iram.fill(0x00, 0x00, 0x80);
+}
