@@ -8,9 +8,9 @@ const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
-const CPU = require('./cpu.js');
+const CPU = require('./cpu-8052');
 
-const {toHex1, toHex2, toHex4} = require('./simutils.js');
+const {toHex1, toHex2, toHex4} = require('./simutils');
 
 
 // Table of opcode information and handlers for disassembly and

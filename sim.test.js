@@ -1,6 +1,6 @@
 const SIM = require('./sim');
 const {toHex1, toHex2, toHex4} = require('./simutils');
-const CPU = require('./cpu');
+const CPU = require('./cpu-8052');
 
 const cpu = SIM.cpu;
 
