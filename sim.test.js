@@ -12,13 +12,13 @@ Object.keys(CPU.SFRs).forEach(name => global[name] = CPU.SFRs[name]);
 test('NOP', () => {
   clearIRAM();
   cpu.code[0x100] = 0x00;       // NOP
-  cpu.SFR[ACC] = 0x42;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x42;
+  cpu.PSW = 0;
 
   cpu.run1(0x100);
   expect(cpu.pc).toBe(0x101);
-  expect(cpu.SFR[PSW]).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x42);
+  expect(cpu.PSW).toBe(0);
+  expect(cpu.ACC).toBe(0x42);
 });
 
 //////////// ACALL/RET ////////////
@@ -36,7 +36,7 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL/RET', fromPage => {
       cpu.code[callBase + 1] = pageOffset;
       cpu.code[callTarget] = 0x22;                      // RET
 
-      cpu.SFR[ACC] = 0x42;
+      cpu.ACC = 0x42;
       cpu.SFR[PSW] = 0;
       cpu.SFR[SP] = 0x07;
 
