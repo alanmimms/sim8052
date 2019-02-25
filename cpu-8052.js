@@ -131,50 +131,194 @@ module.exports.SFRs = SFRs;
 class CPU8052 {
 
   constructor(code, xram) {
-    this.code = code;
-    this.xram = xram;
-    this.iram = Buffer.alloc(0x100, 0x00, 'binary');
+    const C = this;
 
-    this.ops = {
+    C.code = code;
+    C.xram = xram;
+    C.iram = Buffer.alloc(0x100, 0x00, 'binary');
+
+    C.ops = {
       // ANL
-      [0x52]: opA_DIR(this, (a, b) => a & b),
+      [0x52]: opA_DIR(C, (a, b) => a & b),
 
       // ADD
-      [0x24]: aluA_IMM(this, this.doADD, false),
-      [0x25]: aluA_DIR(this, this.doADD, false),
-      [0x26]: aluA_Ri(this, 0, this.doADD, false),
-      [0x27]: aluA_Ri(this, 1, this.doADD, false),
-      [0x28]: aluA_R(this, 0, this.doADD, false),
-      [0x29]: aluA_R(this, 1, this.doADD, false),
-      [0x2A]: aluA_R(this, 2, this.doADD, false),
-      [0x2B]: aluA_R(this, 3, this.doADD, false),
-      [0x2C]: aluA_R(this, 4, this.doADD, false),
-      [0x2D]: aluA_R(this, 5, this.doADD, false),
-      [0x2E]: aluA_R(this, 6, this.doADD, false),
-      [0x2F]: aluA_R(this, 7, this.doADD, false),
+      [0x24]: aluA_IMM(C, doADD, false),
+      [0x25]: aluA_DIR(C, doADD, false),
+      [0x26]: aluA_Ri(C, 0, doADD, false),
+      [0x27]: aluA_Ri(C, 1, doADD, false),
+      [0x28]: aluA_R(C, 0, doADD, false),
+      [0x29]: aluA_R(C, 1, doADD, false),
+      [0x2A]: aluA_R(C, 2, doADD, false),
+      [0x2B]: aluA_R(C, 3, doADD, false),
+      [0x2C]: aluA_R(C, 4, doADD, false),
+      [0x2D]: aluA_R(C, 5, doADD, false),
+      [0x2E]: aluA_R(C, 6, doADD, false),
+      [0x2F]: aluA_R(C, 7, doADD, false),
 
       // ADDC
-      [0x34]: aluA_IMM(this, this.doADD, true),
-      [0x35]: aluA_DIR(this, this.doADD, true),
-      [0x36]: aluA_Ri(this, 0, this.doADD, true),
-      [0x37]: aluA_Ri(this, 1, this.doADD, true),
-      [0x38]: aluA_R(this, 0, this.doADD, true),
-      [0x39]: aluA_R(this, 1, this.doADD, true),
-      [0x3A]: aluA_R(this, 2, this.doADD, true),
-      [0x3B]: aluA_R(this, 3, this.doADD, true),
-      [0x3C]: aluA_R(this, 4, this.doADD, true),
-      [0x3D]: aluA_R(this, 5, this.doADD, true),
-      [0x3E]: aluA_R(this, 6, this.doADD, true),
-      [0x3F]: aluA_R(this, 7, this.doADD, true),
+      [0x34]: aluA_IMM(C, doADD, true),
+      [0x35]: aluA_DIR(C, doADD, true),
+      [0x36]: aluA_Ri(C, 0, doADD, true),
+      [0x37]: aluA_Ri(C, 1, doADD, true),
+      [0x38]: aluA_R(C, 0, doADD, true),
+      [0x39]: aluA_R(C, 1, doADD, true),
+      [0x3A]: aluA_R(C, 2, doADD, true),
+      [0x3B]: aluA_R(C, 3, doADD, true),
+      [0x3C]: aluA_R(C, 4, doADD, true),
+      [0x3D]: aluA_R(C, 5, doADD, true),
+      [0x3E]: aluA_R(C, 6, doADD, true),
+      [0x3F]: aluA_R(C, 7, doADD, true),
     };
 
-    this.reset();
+    C.reset();
+
+
+    function doADD(a, b, c) {
+      const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
+      const cyValue = +(a + b + c > 0xFF);
+      const result = (a + b + c) & 0xFF;
+      C.AC = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
+      C.CY = cyValue;
+      C.OV = cyValue ^ c6Value;
+      return result;
+    }
+
+
+    function doSUB(a, b, c) {
+      const toSub = b + c;
+      const result = (a - toSub) & 0xFF;
+      C.CY = +(a < toSub);
+      C.AC = +((a & 0x0F) < (toSub & 0x0F) || (c && ((b & 0x0F) == 0x0F)));
+      C.OV = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
+               (a > 0x7F && b < 0x80 && result < 0x80));
+      return result;
+    }
+
+
+    function doMUL(a, b) {
+      const result = a * b;
+      C.CY = 0;                // Always clears CY.
+      C.OV = +(result > 0xFF);
+      C.B = a >>> 8;
+      return result & 0xFF;
+    }
+
+
+    function doDIV(a, b) {
+      // DIV always clears CY. DIV sets OV on divide by 0.
+      C.CY = 0;
+
+      if (b === 0) {
+        C.OV = 1;
+      } else {
+        const curA = a;
+        a = Math.floor(curA / b);
+        b = curA % b;
+        C.B = b;
+      }
+
+      return a;
+    }
+
+
+    function doRL(a) {
+      a <<= 1;
+      a = a & 0xFF | a >>> 8;
+      return a;
+    }
+
+
+    function doRLC(a) {
+      let c = C.CY;
+      C.CY = a >>> 7;
+      a <<= 1;
+      return a | c;
+    }
+
+
+    function doRR(a) {
+      a = a >>> 1 | a << 7;
+      return a;
+    }
+
+
+    function doRRC(a) {
+      let c = C.CY;
+      C.CY = a & 1;
+      a >>>= 1;
+      a |= c << 7;
+      return a;
+    }
+
+
+    function toSigned(v) {
+      return v & 0x80 ? v - 0x100 : v;
+    }
+
+
+    function opA_DIR(C, op) {
+
+      return function() {
+        const ea = C.code[C.PC + 1];
+        C.PC += 2;
+        const b = C.getDIR(ea);
+        const v = op(C.ACC, b);
+        C.setDIR(ea, v);
+      }
+    }
+
+
+    function aluA_DIR(C, op, useCY) {
+
+      return function() {
+        const ea = C.code[C.PC + 1];
+        C.PC += 2;
+        const b = C.getDIR(ea);
+        const v = op(C.ACC, b, useCY ? C.CY : 0);
+        C.ACC = v;
+      }
+    }
+
+
+    function aluA_IMM(C, op, useCY) {
+
+      return function() {
+        const b = C.code[C.PC + 1];
+        C.PC += 2;
+        const v = op(C.ACC, b, useCY ? C.CY : 0);
+        C.ACC = v;
+      }
+    }
+
+
+
+    function aluA_R(C, r, op, useCY) {
+
+      return function() {
+        C.PC += 1;
+        const b = C.getR(r);
+        const v = op(C.ACC, b, useCY ? C.CY : 0);
+        C.ACC = v;
+      }
+    }
+
+
+    function aluA_Ri(C, r, op, useCY) {
+
+      return function() {
+        C.PC += 1;
+        const b = C.iram[C.getR(r)];
+        const v = op(C.ACC, b, useCY ? C.CY : 0);
+        C.ACC = v;
+      }
+    }
   };
 
-  run1(pc = this.PC) {
+
+  run1(pc = C.PC) {
     this.PC = pc;
     const op = this.code[pc];
-    this.ops[op](this);
+    this.ops[op].call(this);
   };
 
 
@@ -182,7 +326,7 @@ class CPU8052 {
   putR(r, v) { this.iram[r + (this.RS1 << 4 | this.RS0 << 3)] = v }
 
 
-  // TODO: the getDIR and setDIR accessors need to switch on address
+  // TODO: this.the getDIR and setDIR accessors need to switch on address
   // and access the appropriate SFRs member instance where needed.
   getDIR(ea) { return this.iram[ea] }
 
@@ -191,156 +335,16 @@ class CPU8052 {
   };
 
 
-  doADD(a, b, c) {
-    const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
-    const cyValue = +(a + b + c > 0xFF);
-    const result = (a + b + c) & 0xFF;
-    this.AC = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
-    this.CY = cyValue;
-    this.OV = cyValue ^ c6Value;
-    return result;
-  }
-
-
-  doSUB(a, b, c) {
-    const toSub = b + c;
-    const result = (a - toSub) & 0xFF;
-    this.CY = +(a < toSub);
-    this.AC = +((a & 0x0F) < (toSub & 0x0F) || (c && ((b & 0x0F) == 0x0F)));
-    this.OV = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
-                (a > 0x7F && b < 0x80 && result < 0x80));
-    return result;
-  }
-
-
-  doMUL(a, b) {
-    const result = a * b;
-    this.CY = 0;                // Always clears CY.
-    this.OV = +(result > 0xFF);
-    this.B = a >>> 8;
-    return result & 0xFF;
-  }
-
-
-  doDIV(a, b) {
-    // DIV always clears CY. DIV sets OV on divide by 0.
-    this.CY = 0;
-
-    if (b === 0) {
-      this.OV = 1;
-    } else {
-      const curA = a;
-      a = Math.floor(curA / b);
-      b = curA % b;
-      this.B = b;
-    }
-
-    return a;
-  }
-
-
-  doRL(a) {
-    a <<= 1;
-    a = a & 0xFF | a >>> 8;
-    return a;
-  }
-
-
-  doRLC(a) {
-    let c = this.CY;
-    this.CY = a >>> 7;
-    a <<= 1;
-    return a | c;
-  }
-
-
-  doRR(a) {
-    a = a >>> 1 | a << 7;
-    return a;
-  }
-
-
-  doRRC(a) {
-    let c = this.CY;
-    this.CY = a & 1;
-    a >>>= 1;
-    a |= c << 7;
-    return a;
-  }
-
-
-  toSigned(v) {
-    return v & 0x80 ? v - 0x100 : v;
-  }
-
-
   reset() {
     this.PC = 0;
     this.sbufQ = [];
     this.ipl = -1;
-    SFRs.forEach(sn => this[sn] = this[sn].resetValue);
+
+    Object.keys(SFRs).forEach(sn => this[sn] = SFRs[sn].resetValue);
   };
 };
 module.exports.CPU8052 = CPU8052;
 
-
-
-function opA_DIR(C, op) {
-
-  return function() {
-    const ea = C.code[C.PC + 1];
-    C.PC += 2;
-    const b = C.getDIR(ea);
-    const v = op(C.ACC, b);
-    C.setDIR(ea, v);
-  }
-}
-
-
-function aluA_DIR(C, op, useCY) {
-
-  return function() {
-    const ea = C.code[C.PC + 1];
-    C.PC += 2;
-    const b = C.getDIR(ea);
-    const v = op(C.ACC, b, useCY ? C.CY : 0);
-    C.ACC = v;
-  }
-}
-
-
-function aluA_IMM(C, op, useCY) {
-
-  return function() {
-    const b = C.code[C.PC + 1];
-    C.PC += 2;
-    const v = op(C.ACC, b, useCY ? C.CY : 0);
-    C.ACC = v;
-  }
-}
-
-
-
-function aluA_R(C, r, op, useCY) {
-
-  return function() {
-    C.PC += 1;
-    const b = C.getR(r);
-    const v = op(C.ACC, b, useCY ? C.CY : 0);
-    C.ACC = v;
-  }
-}
-
-
-function aluA_Ri(C, r, op, useCY) {
-
-  return function() {
-    C.PC += 1;
-    const b = C.iram[C.getR(r)];
-    const v = op(C.ACC, b, useCY ? C.CY : 0);
-    C.ACC = v;
-  }
-}
 
 
 if (require.main === module) {

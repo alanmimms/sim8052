@@ -1,22 +1,35 @@
 const SIM = require('./sim');
 const {toHex1, toHex2, toHex4} = require('./simutils');
-const CPU = require('./cpu-8052');
+const {SFRs, CPU8052} = require('./cpu-8052');
 
-const cpu = SIM.cpu;
+const CODESize = 65536;
+const XRAMSize = 65536;
+
+const code = Buffer.alloc(CODESize, 0x00, 'binary');
+const xram = Buffer.alloc(XRAMSize, 0x00, 'binary');
+
+const cpu = new CPU8052(code, xram);
+
 
 // Define each SFR address globally
-Object.keys(CPU.SFRs).forEach(name => global[name] = CPU.SFRs[name]);
+Object.keys(SFRs).forEach(name => global[name] = SFRs[name]);
+
+
+// Always start with a clean slate
+beforeEach(() => {
+  clearIRAM();
+  cpu.reset();
+});
 
 
 //////////// NOP ////////////
 test('NOP', () => {
-  clearIRAM();
   cpu.code[0x100] = 0x00;       // NOP
   cpu.ACC = 0x42;
   cpu.PSW = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.PSW).toBe(0);
   expect(cpu.ACC).toBe(0x42);
 });
@@ -37,19 +50,19 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL/RET', fromPage => {
       cpu.code[callTarget] = 0x22;                      // RET
 
       cpu.ACC = 0x42;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[SP] = 0x07;
+      cpu.PSW = 0;
+      cpu.SP = 0x07;
 
       cpu.run1(callBase);                       // CALL
-      expect(cpu.pc).toBe(callTarget);
-      expect(cpu.SFR[PSW]).toBe(0);
-      expect(cpu.SFR[ACC]).toBe(0x42);
-      expect(cpu.SFR[SP]).toBe(0x09);
+      expect(cpu.PC).toBe(callTarget);
+      expect(cpu.PSW).toBe(0);
+      expect(cpu.ACC).toBe(0x42);
+      expect(cpu.SP).toBe(0x09);
       cpu.run1(callTarget);                     // RET
-      expect(cpu.pc).toBe(callBase + 2);
-      expect(cpu.SFR[PSW]).toBe(0);
-      expect(cpu.SFR[ACC]).toBe(0x42);
-      expect(cpu.SFR[SP]).toBe(0x07);
+      expect(cpu.PC).toBe(callBase + 2);
+      expect(cpu.PSW).toBe(0);
+      expect(cpu.ACC).toBe(0x42);
+      expect(cpu.SP).toBe(0x07);
 
       // Clean out RET for next iter
       cpu.code[callTarget] = 0x00;
@@ -79,22 +92,22 @@ describe.each([
     cpu.code[callBase + 2] = newPC & 0xFF;
     cpu.code[newPC] = 0x32;         // RETI
 
-    cpu.SFR[ACC] = acBase;
-    cpu.SFR[PSW] = 0;
-    cpu.SFR[SP] = spBase;
+    cpu.ACC = acBase;
+    cpu.PSW = 0;
+    cpu.SP = spBase;
 
     cpu.run1(callBase);             // LCALL
-    expect(cpu.pc).toBe(newPC);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(acBase);
-    expect(cpu.SFR[SP]).toBe(spBase + 2);
+    expect(cpu.PC).toBe(newPC);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(acBase);
+    expect(cpu.SP).toBe(spBase + 2);
     expect(cpu.iram[spBase+2]).toBe(retPC >>> 8);
     expect(cpu.iram[spBase+1]).toBe(retPC & 0xFF);
     cpu.run1(newPC);                // RET
-    expect(cpu.pc).toBe(retPC);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(acBase);
-    expect(cpu.SFR[SP]).toBe(spBase);
+    expect(cpu.PC).toBe(retPC);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(acBase);
+    expect(cpu.SP).toBe(spBase);
   });
 });
 
@@ -119,15 +132,15 @@ describe.each([
     cpu.code[callBase + 1] = newPC >>> 8;
     cpu.code[callBase + 2] = newPC & 0xFF;
 
-    cpu.SFR[ACC] = acBase;
-    cpu.SFR[PSW] = 0;
-    cpu.SFR[SP] = spBase;
+    cpu.ACC = acBase;
+    cpu.PSW = 0;
+    cpu.SP = spBase;
 
     cpu.run1(callBase);             // JMP
-    expect(cpu.pc).toBe(newPC);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(acBase);
-    expect(cpu.SFR[SP]).toBe(spBase);
+    expect(cpu.PC).toBe(newPC);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(acBase);
+    expect(cpu.SP).toBe(spBase);
   });
 });
 
@@ -149,13 +162,13 @@ describe.each([
     clearIRAM();
     cpu.code[pc] = 0x80;      // SJMP
     cpu.code[pc + 1] = rela;
-    cpu.SFR[ACC] = acBase;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = acBase;
+    cpu.PSW = 0;
 
     cpu.run1(pc);             // SJMP
-    expect(cpu.pc).toBe(newPC);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(acBase);
+    expect(cpu.PC).toBe(newPC);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(acBase);
   });
 });
 
@@ -176,15 +189,15 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
       cpu.code[jmpBase] = (toPage * 0x20) + 0x01;      // AJMP pageN
       cpu.code[jmpBase + 1] = pageOffset;
 
-      cpu.SFR[ACC] = acBase;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[SP] = spBase;
+      cpu.ACC = acBase;
+      cpu.PSW = 0;
+      cpu.SP = spBase;
 
       cpu.run1(jmpBase);                       // AJMP
-      expect(cpu.pc).toBe(jmpTarget);
-      expect(cpu.SFR[PSW]).toBe(0);
-      expect(cpu.SFR[ACC]).toBe(acBase);
-      expect(cpu.SFR[SP]).toBe(spBase);
+      expect(cpu.PC).toBe(jmpTarget);
+      expect(cpu.PSW).toBe(0);
+      expect(cpu.ACC).toBe(acBase);
+      expect(cpu.SP).toBe(spBase);
     }
   });
 });
@@ -209,13 +222,13 @@ describe.each([
       cpu.code[0x100] = 0xB5;       // CJNE A,dir,rela
       cpu.code[0x101] = dir;
       cpu.code[0x102] = rela;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
+      cpu.PSW = 0;
+      cpu.ACC = x;
       cpu.iram[dir] = y;
 
       cpu.run1(0x100);              // CJNE A,dir,rela
-      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
-      expect(cpu.SFR[ACC]).toBe(x);
+      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.ACC).toBe(x);
       expect(cpu.iram[dir]).toBe(y);
       expect(cpu.CY).toBe(ltCY);
       expect(cpu.AC).toBe(0);
@@ -228,12 +241,12 @@ describe.each([
       cpu.code[0x100] = 0xB4;       // CJNE A,dir,rela
       cpu.code[0x101] = imm;
       cpu.code[0x102] = rela;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
+      cpu.PSW = 0;
+      cpu.ACC = x;
 
       cpu.run1(0x100);              // CJNE A,#imm,rela
-      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
-      expect(cpu.SFR[ACC]).toBe(x);
+      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.ACC).toBe(x);
       expect(cpu.CY).toBe(ltCY);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
@@ -245,11 +258,11 @@ describe.each([
       cpu.code[0x100] = 0xBB;       // CJNE R3,#imm,rela
       cpu.code[0x101] = imm;
       cpu.code[0x102] = rela;
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[3] = x;
 
       cpu.run1(0x100);              // CJNE A,#imm,rela
-      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
       expect(cpu.iram[3]).toBe(x);
       expect(cpu.CY).toBe(ltCY);
       expect(cpu.AC).toBe(0);
@@ -263,12 +276,12 @@ describe.each([
       cpu.code[0x100] = 0xB7;       // CJNE R3,#imm,rela
       cpu.code[0x101] = imm;
       cpu.code[0x102] = rela;
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[dir] = x;
       cpu.iram[1] = dir;
 
       cpu.run1(0x100);              // CJNE R3,#imm,rela
-      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
       expect(cpu.iram[1]).toBe(dir);
       expect(cpu.iram[dir]).toBe(x);
       expect(cpu.CY).toBe(ltCY);
@@ -296,13 +309,13 @@ describe.each([
       cpu.code[0x100] = 0xD5;       // DJNZ dir,rela
       cpu.code[0x101] = dir;
       cpu.code[0x102] = rela;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = acBase;
+      cpu.PSW = 0;
+      cpu.ACC = acBase;
       cpu.iram[dir] = x;
 
       cpu.run1(0x100);              // DJNZ dir,rela
-      expect(cpu.pc).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
-      expect(cpu.SFR[ACC]).toBe(acBase);
+      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.ACC).toBe(acBase);
       expect(cpu.iram[dir]).toBe(y);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -315,14 +328,14 @@ describe.each([
       clearIRAM();
       cpu.code[0x100] = 0xDB;       // DJNZ R3,rela
       cpu.code[0x101] = rela;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = acBase;
+      cpu.PSW = 0;
+      cpu.ACC = acBase;
       cpu.iram[3] = x;
 
       cpu.run1(0x100);              // DJNZ R3,rela
-      expect(cpu.pc).toBe(jump ? 0x102 + cpu.toSigned(rela) : 0x102);
+      expect(cpu.PC).toBe(jump ? 0x102 + cpu.toSigned(rela) : 0x102);
       expect(cpu.iram[3]).toBe(y);
-      expect(cpu.SFR[ACC]).toBe(acBase);
+      expect(cpu.ACC).toBe(acBase);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
@@ -339,14 +352,14 @@ test(`JB bit,rel bit=0`, () => {
   cpu.code[0x100] = 0x20;       // JB bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.BIT[bit] = 0;
 
   cpu.run1(0x100);              // JB bit,rela
-  expect(cpu.pc).toBe(0x103);
+  expect(cpu.PC).toBe(0x103);
   expect(cpu.BIT[bit]).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -360,14 +373,14 @@ test(`JB bit,rel bit=1`, () => {
   cpu.code[0x100] = 0x20;       // JB bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.BIT[bit] = 1;
 
   cpu.run1(0x100);              // JB bit,rela
-  expect(cpu.pc).toBe(0x103 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
   expect(cpu.BIT[bit]).toBe(1);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -383,14 +396,14 @@ test(`JBC bit,rel bit=0`, () => {
   cpu.code[0x100] = 0x10;       // JBC bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.BIT[bit] = 0;
 
   cpu.run1(0x100);              // JBC bit,rela
-  expect(cpu.pc).toBe(0x103);
+  expect(cpu.PC).toBe(0x103);
   expect(cpu.BIT[bit]).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -404,14 +417,14 @@ test(`JBC bit,rel bit=1`, () => {
   cpu.code[0x100] = 0x10;       // JBC bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.BIT[bit] = 1;
 
   cpu.run1(0x100);              // JBC bit,rela
-  expect(cpu.pc).toBe(0x103 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
   expect(cpu.BIT[bit]).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -427,14 +440,14 @@ test(`JNB bit,rel bit=0`, () => {
   cpu.code[0x100] = 0x30;       // JNB bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.BIT[bit] = 0;
 
   cpu.run1(0x100);              // JNB bit,rela
-  expect(cpu.pc).toBe(0x103 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
   expect(cpu.BIT[bit]).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -448,14 +461,14 @@ test(`JNB bit,rel bit=1`, () => {
   cpu.code[0x100] = 0x30;       // JNB bit,rela
   cpu.code[0x101] = bit;
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.BIT[bit] = 1;
 
   cpu.run1(0x100);              // JNB bit,rela
-  expect(cpu.pc).toBe(0x103);
+  expect(cpu.PC).toBe(0x103);
   expect(cpu.BIT[bit]).toBe(1);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -469,13 +482,13 @@ test(`JC rel CY=0`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x40;       // JC rela
   cpu.code[0x101] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.CY = 0;
 
   cpu.run1(0x100);              // JC rela
-  expect(cpu.pc).toBe(0x102);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.PC).toBe(0x102);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -487,13 +500,13 @@ test(`JC rel CY=1`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x40;       // JC rela
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.CY = 1;
 
   cpu.run1(0x100);              // JC rela
-  expect(cpu.pc).toBe(0x102 + cpu.toSigned(rela));
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.PC).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(1);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -507,13 +520,13 @@ test(`JNC rel CY=0`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x50;       // JNC rela
   cpu.code[0x101] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.CY = 0;
 
   cpu.run1(0x100);              // JNC rela
-  expect(cpu.pc).toBe(0x102 + cpu.toSigned(rela));
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.PC).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -525,13 +538,13 @@ test(`JNC rel CY=1`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x50;       // JNC rela
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
   cpu.CY = 1;
 
   cpu.run1(0x100);              // JNC rela
-  expect(cpu.pc).toBe(0x102);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.PC).toBe(0x102);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(1);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -545,12 +558,12 @@ test(`JZ rel AC=55`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x60;       // JZ rela
   cpu.code[0x101] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
 
   cpu.run1(0x100);              // JZ rela
-  expect(cpu.pc).toBe(0x102);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.PC).toBe(0x102);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -562,12 +575,12 @@ test(`JZ rel AC=00`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x60;       // JZ rela
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
 
   cpu.run1(0x100);              // JZ rela
-  expect(cpu.pc).toBe(0x102 + cpu.toSigned(rela));
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.PC).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -581,12 +594,12 @@ test(`JNZ rel AC=55`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x70;       // JNZ rela
   cpu.code[0x101] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
 
   cpu.run1(0x100);              // JNZ rela
-  expect(cpu.pc).toBe(0x102 + cpu.toSigned(rela));
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.PC).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -598,12 +611,12 @@ test(`JNZ rel AC=00`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x70;       // JNZ rela
   cpu.code[0x102] = rela;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
 
   cpu.run1(0x100);              // JNZ rela
-  expect(cpu.pc).toBe(0x102);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.PC).toBe(0x102);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -624,13 +637,13 @@ describe.each([
     test(`JMP @A+DPTR`, () => {
       clearIRAM();
       cpu.code[0x100] = 0x73;       // JMP @A+DPTR
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = a;
+      cpu.PSW = 0;
+      cpu.ACC = a;
       cpu.DPTR = dptr;
 
       cpu.run1(0x100);              // JMP @A+DPTR
-      expect(cpu.pc).toBe(newPC);
-      expect(cpu.SFR[ACC]).toBe(a);
+      expect(cpu.PC).toBe(newPC);
+      expect(cpu.ACC).toBe(a);
       expect(cpu.DPTR).toBe(dptr);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -646,14 +659,14 @@ describe('MOV', () => {
     const v = 0x43;
     clearIRAM();
     cpu.code[0x1000] = 0xEB;        // MOV A,R3
-    cpu.SFR[ACC] = 0xAA;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0xAA;
+    cpu.PSW = 0;
     cpu.iram[3] = v;
 
     cpu.run1(0x1000);               // MOV
-    expect(cpu.pc).toBe(0x1001);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.PC).toBe(0x1001);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(v);
     expect(cpu.iram[3]).toBe(v);
   });
 
@@ -663,14 +676,14 @@ describe('MOV', () => {
     clearIRAM();
     cpu.code[0x1000] = 0xE5;        // MOV A,dir
     cpu.code[0x1001] = dir;
-    cpu.SFR[ACC] = 0xAA;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0xAA;
+    cpu.PSW = 0;
     cpu.iram[dir] = v;
 
     cpu.run1(0x1000);               // MOV
-    expect(cpu.pc).toBe(0x1002);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.PC).toBe(0x1002);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(v);
     expect(cpu.iram[dir]).toBe(v);
   });
 
@@ -679,15 +692,15 @@ describe('MOV', () => {
     const dir = 0x42;
     clearIRAM();
     cpu.code[0x1000] = 0xE7;        // MOV A,@R1
-    cpu.SFR[ACC] = 0xAA;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0xAA;
+    cpu.PSW = 0;
     cpu.iram[1] = dir;
     cpu.iram[dir] = v;
 
     cpu.run1(0x1000);               // MOV
-    expect(cpu.pc).toBe(0x1001);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.PC).toBe(0x1001);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(v);
     expect(cpu.iram[dir]).toBe(v);
     expect(cpu.iram[1]).toBe(dir);
   });
@@ -697,27 +710,27 @@ describe('MOV', () => {
     clearIRAM();
     cpu.code[0x1000] = 0x74;        // MOV A,#imm
     cpu.code[0x1001] = v;
-    cpu.SFR[ACC] = 0xAA;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0xAA;
+    cpu.PSW = 0;
 
     cpu.run1(0x1000);               // MOV
-    expect(cpu.pc).toBe(0x1002);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.PC).toBe(0x1002);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(v);
   });
 
   test(`R3,A`, () => {
     const v = 0x43;
     clearIRAM();
     cpu.code[0x1000] = 0xFB;        // MOV R3,A
-    cpu.SFR[ACC] = v;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = v;
+    cpu.PSW = 0;
     cpu.iram[3] = 0xAA;
 
     cpu.run1(0x1000);               // MOV
-    expect(cpu.pc).toBe(0x1001);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(v);
+    expect(cpu.PC).toBe(0x1001);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(v);
     expect(cpu.iram[3]).toBe(v);
   });
 
@@ -727,15 +740,15 @@ describe('MOV', () => {
     clearIRAM();
     cpu.code[0x1000] = 0xAB;        // MOV R3,dir
     cpu.code[0x1001] = dir;
-    cpu.SFR[ACC] = 0xAA;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0xAA;
+    cpu.PSW = 0;
     cpu.iram[dir] = v;
     cpu.iram[3] = 0x42;
 
     cpu.run1(0x1000);               // MOV
-    expect(cpu.pc).toBe(0x1002);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(0xAA);
+    expect(cpu.PC).toBe(0x1002);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(0xAA);
     expect(cpu.iram[dir]).toBe(v);
     expect(cpu.iram[3]).toBe(v);
   });
@@ -745,14 +758,14 @@ describe('MOV', () => {
     clearIRAM();
     cpu.code[0x1000] = 0x7B;        // MOV R3,#imm
     cpu.code[0x1001] = v;
-    cpu.SFR[ACC] = 0xAA;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0xAA;
+    cpu.PSW = 0;
     cpu.iram[3] = 0x42;
 
     cpu.run1(0x1000);               // MOV
-    expect(cpu.pc).toBe(0x1002);
-    expect(cpu.SFR[PSW]).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(0xAA);
+    expect(cpu.PC).toBe(0x1002);
+    expect(cpu.PSW).toBe(0);
+    expect(cpu.ACC).toBe(0xAA);
     expect(cpu.iram[3]).toBe(v);
   });
 });
@@ -764,14 +777,14 @@ test(`MOV C,sbit=0`, () => {
   clearIRAM();
   cpu.code[0x100] = 0xA2;       // MOV C,sbit
   cpu.code[0x101] = bit;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = 0xAA;
+  cpu.PSW = 0;
+  cpu.ACC = 0xAA;
   cpu.CY = 0;
   cpu.BIT[bit] = 0;
 
   cpu.run1(0x100);              // MOV
-  expect(cpu.pc).toBe(0x102);
-  expect(cpu.SFR[ACC]).toBe(0xAA);
+  expect(cpu.PC).toBe(0x102);
+  expect(cpu.ACC).toBe(0xAA);
   expect(cpu.BIT[bit]).toBe(0);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -783,14 +796,14 @@ test(`MOV C,sbit=1`, () => {
   clearIRAM();
   cpu.code[0x100] = 0x92;       // MOV dbit,C
   cpu.code[0x101] = bit;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = 0xAA;
+  cpu.PSW = 0;
+  cpu.ACC = 0xAA;
   cpu.CY = 1;
   cpu.BIT[bit] = 0;
 
   cpu.run1(0x100);              // MOV
-  expect(cpu.pc).toBe(0x102);
-  expect(cpu.SFR[ACC]).toBe(0xAA);
+  expect(cpu.PC).toBe(0x102);
+  expect(cpu.ACC).toBe(0xAA);
   expect(cpu.BIT[bit]).toBe(1);
   expect(cpu.CY).toBe(1);
   expect(cpu.AC).toBe(0);
@@ -805,14 +818,14 @@ test(`MOV DPTR,#data16`, () => {
   cpu.code[0x100] = 0x90;       // MOV DPTR,#imm
   cpu.code[0x101] = d >>> 8;
   cpu.code[0x102] = d & 0xFF;
-  cpu.SFR[PSW] = 0;
-  cpu.SFR[ACC] = 0xAA;
+  cpu.PSW = 0;
+  cpu.ACC = 0xAA;
   cpu.DPTR = 0x9977;
 
   cpu.run1(0x100);              // MOV
-  expect(cpu.pc).toBe(0x103);
+  expect(cpu.PC).toBe(0x103);
   expect(cpu.DPTR).toBe(d);
-  expect(cpu.SFR[ACC]).toBe(0xAA);
+  expect(cpu.ACC).toBe(0xAA);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -834,14 +847,14 @@ describe.each([
       clearCode();
       clearIRAM();
       cpu.code[0x100] = 0x93;       // MOVC A,@A+DPTR
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = a;
+      cpu.PSW = 0;
+      cpu.ACC = a;
       cpu.DPTR = y;
       cpu.code[entAddr] = newA;
 
       cpu.run1(0x100);              // MOVC
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(newA);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(newA);
       expect(cpu.code[entAddr]).toBe(newA);
       expect(cpu.DPTR).toBe(y);
       expect(cpu.CY).toBe(0);
@@ -853,14 +866,14 @@ describe.each([
       clearCode();
       clearIRAM();
       cpu.code[y-1] = 0x83;     // MOVC A,@A+PC
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = a;
+      cpu.PSW = 0;
+      cpu.ACC = a;
       cpu.DPTR = 0x1111;
       cpu.code[entAddr] = newA;
 
       cpu.run1(y-1);              // MOVC
-      expect(cpu.pc).toBe(y);
-      expect(cpu.SFR[ACC]).toBe(newA);
+      expect(cpu.PC).toBe(y);
+      expect(cpu.ACC).toBe(newA);
       expect(cpu.code[entAddr]).toBe(newA);
       expect(cpu.DPTR).toBe(0x1111);
       expect(cpu.CY).toBe(0);
@@ -886,16 +899,16 @@ describe.each([
       clearIRAM();
       clearXRAM();
       cpu.code[0x100] = 0xE3;       // MOVX A,@R1
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = 0x99;
-      cpu.SFR[P2] = addr >>> 8;
+      cpu.PSW = 0;
+      cpu.ACC = 0x99;
+      cpu.P2 = addr >>> 8;
       cpu.iram[1] = addr & 0xFF;
       cpu.xram[addr] = v;
 
       cpu.run1(0x100);              // MOVX
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(v);
-      expect(cpu.SFR[P2]).toBe(addr >>> 8);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(v);
+      expect(cpu.P2).toBe(addr >>> 8);
       expect(cpu.iram[1]).toBe(addr & 0xFF);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -907,14 +920,14 @@ describe.each([
       clearIRAM();
       clearXRAM();
       cpu.code[0x100] = 0xE0;       // MOVX A,@DPTR
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = 0x99;
+      cpu.PSW = 0;
+      cpu.ACC = 0x99;
       cpu.DPTR = addr;
       cpu.xram[addr] = v;
 
       cpu.run1(0x100);              // MOVX
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(v);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(v);
       expect(cpu.DPTR).toBe(addr);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -926,16 +939,16 @@ describe.each([
       clearIRAM();
       clearXRAM();
       cpu.code[0x100] = 0xF3;       // MOVX @R1,A
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = v;
-      cpu.SFR[P2] = addr >>> 8;
+      cpu.PSW = 0;
+      cpu.ACC = v;
+      cpu.P2 = addr >>> 8;
       cpu.iram[1] = addr & 0xFF;
       cpu.xram[addr] = v;
 
       cpu.run1(0x100);              // MOVX
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(v);
-      expect(cpu.SFR[P2]).toBe(addr >>> 8);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(v);
+      expect(cpu.P2).toBe(addr >>> 8);
       expect(cpu.iram[1]).toBe(addr & 0xFF);
       expect(cpu.xram[addr]).toBe(v);
       expect(cpu.CY).toBe(0);
@@ -948,14 +961,14 @@ describe.each([
       clearIRAM();
       clearXRAM();
       cpu.code[0x100] = 0xF0;       // MOVX @R1,A
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = v;
+      cpu.PSW = 0;
+      cpu.ACC = v;
       cpu.DPTR = addr;
       cpu.xram[addr] = 0xBB;
 
       cpu.run1(0x100);              // MOVX
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(v);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(v);
       expect(cpu.DPTR).toBe(addr);
       expect(cpu.xram[addr]).toBe(v);
       expect(cpu.CY).toBe(0);
@@ -969,14 +982,14 @@ describe.each([
 test('CLR A', () => {
   clearIRAM();
   cpu.code[0x100] = 0xE4;       // CLR A
-  cpu.SFR[ACC] = 0x42;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x42;
+  cpu.PSW = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0);
+  expect(cpu.ACC).toBe(0);
 });
 
 //////////// CLR bit ////////////
@@ -987,14 +1000,14 @@ test('CLR bit', () => {
   cpu.code[0x100] = 0xC2;       // CLR bit
   cpu.code[0x101] = bit;
   cpu.BIT[bit] = 1;
-  cpu.SFR[ACC] = acBase;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = acBase;
+  cpu.PSW = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x102);
+  expect(cpu.PC).toBe(0x102);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.BIT[bit]).toBe(0);
 });
 
@@ -1002,12 +1015,12 @@ test('CLR bit', () => {
 test('CLR C', () => {
   clearIRAM();
   cpu.code[0x100] = 0xC3;       // CLR C
-  cpu.SFR[ACC] = 0x42;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x42;
+  cpu.PSW = 0;
   cpu.CY = 1;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
 });
@@ -1021,14 +1034,14 @@ test('SETB bit', () => {
   cpu.code[0x100] = 0xD2;       // SETB bit
   cpu.code[0x101] = bit;
   cpu.BIT[bit] = 0;
-  cpu.SFR[ACC] = acBase;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = acBase;
+  cpu.PSW = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x102);
+  expect(cpu.PC).toBe(0x102);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.BIT[bit]).toBe(1);
 });
 
@@ -1036,11 +1049,11 @@ test('SETB bit', () => {
 test('SETB C', () => {
   clearIRAM();
   cpu.code[0x100] = 0xD3;       // SETB C
-  cpu.SFR[ACC] = 0x42;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x42;
+  cpu.PSW = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
   expect(cpu.AC).toBe(0);
 });
@@ -1052,14 +1065,14 @@ test('CPL A', () => {
   const acBase = 0x42;
   clearIRAM();
   cpu.code[0x100] = 0xF4;       // CPL A
-  cpu.SFR[ACC] = acBase;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = acBase;
+  cpu.PSW = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase ^ 0xFF);
+  expect(cpu.ACC).toBe(acBase ^ 0xFF);
 });
 
 //////////// CPL bit ////////////
@@ -1070,14 +1083,14 @@ test('CPL bit=1', () => {
   cpu.code[0x100] = 0xB2;       // CPL bit
   cpu.code[0x101] = bit;
   cpu.BIT[bit] = 1;
-  cpu.SFR[ACC] = acBase;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = acBase;
+  cpu.PSW = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x102);
+  expect(cpu.PC).toBe(0x102);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.BIT[bit]).toBe(0);
 });
 
@@ -1089,14 +1102,14 @@ test('CPL bit=0', () => {
   cpu.code[0x100] = 0xB2;       // CPL bit
   cpu.code[0x101] = bit;
   cpu.BIT[bit] = 0;
-  cpu.SFR[ACC] = acBase;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = acBase;
+  cpu.PSW = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x102);
+  expect(cpu.PC).toBe(0x102);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
   expect(cpu.BIT[bit]).toBe(1);
 });
 
@@ -1105,28 +1118,28 @@ test('CPL C=0', () => {
   const acBase = 0x42;
   clearIRAM();
   cpu.code[0x100] = 0xB3;       // CPL C
-  cpu.SFR[ACC] = 0x42;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x42;
+  cpu.PSW = 0;
   cpu.CY = 0;
-  cpu.SFR[ACC] = acBase;
+  cpu.ACC = acBase;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
   expect(cpu.AC).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(acBase);
+  expect(cpu.ACC).toBe(acBase);
 });
 
 //////////// CPL C ////////////
 test('CPL C=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0xB3;       // CPL C
-  cpu.SFR[ACC] = 0x42;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x42;
+  cpu.PSW = 0;
   cpu.CY = 1;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
 });
@@ -1146,12 +1159,12 @@ describe.each([
     test(`DEC A A=${toHex2(x)}, result=${toHex2(dec)}`, () => {
       clearIRAM();
       cpu.code[0x100] = 0x14;       // DEC A
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
+      cpu.PSW = 0;
+      cpu.ACC = x;
 
       cpu.run1(0x100);              // DEC A
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(dec);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(dec);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
@@ -1159,11 +1172,11 @@ describe.each([
     test(`DEC R3, R3=${toHex2(x)} result=${toHex2(dec)}`, () => {
       clearIRAM();
       cpu.code[0x100] = 0x1B;       // DEC R3
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[3] = x;
 
       cpu.run1(0x100);              // DEC R3
-      expect(cpu.pc).toBe(0x101);
+      expect(cpu.PC).toBe(0x101);
       expect(cpu.iram[3]).toBe(dec);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -1174,11 +1187,11 @@ describe.each([
       clearIRAM();
       cpu.code[0x100] = 0x15;       // DEC dir
       cpu.code[0x101] = dir;
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[dir] = x;
 
       cpu.run1(0x100);              // DEC dir
-      expect(cpu.pc).toBe(0x102);
+      expect(cpu.PC).toBe(0x102);
       expect(cpu.iram[dir]).toBe(dec);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -1188,12 +1201,12 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x17;       // DEC @R1
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[dir] = x;
       cpu.iram[1] = dir;            // R1
 
       cpu.run1(0x100);              // DEC @R1
-      expect(cpu.pc).toBe(0x101);
+      expect(cpu.PC).toBe(0x101);
       expect(cpu.iram[1]).toBe(dir);
       expect(cpu.iram[dir]).toBe(dec);
       expect(cpu.CY).toBe(0);
@@ -1224,17 +1237,17 @@ describe.each([
     test(`A=${toHex2(x)},B=${toHex2(y)}, prodA=${toHex2(prodA)},prodB=${toHex2(prodB)},ov=${ov}`, () => {
       clearIRAM();
       cpu.code[0x100] = 0xA4;       // MUL AB
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
-      cpu.SFR[B] = y;
+      cpu.PSW = 0;
+      cpu.ACC = x;
+      cpu.B = y;
       cpu.CY = 1;
       cpu.OV = 0;
       cpu.AC = 1;
 
       cpu.run1(0x100);              // MUL AB
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(prodA);
-      expect(cpu.SFR[B]).toBe(prodB);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(prodA);
+      expect(cpu.B).toBe(prodB);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(1);
       expect(cpu.OV).toBe(ov);
@@ -1259,19 +1272,19 @@ describe.each([
     test(`A=${toHex2(x)}, B=${toHex2(y)}, div=${toHex2(div)} rem=${toHex2(rem)}, ov=${ov}`, () => {
       clearIRAM();
       cpu.code[0x100] = 0x84;       // DIV AB
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
-      cpu.SFR[B] = y;
+      cpu.PSW = 0;
+      cpu.ACC = x;
+      cpu.B = y;
       cpu.CY = 1;
       cpu.OV = 0;
       cpu.AC = 1;
 
       cpu.run1(0x100);              // DIV AB
-      expect(cpu.pc).toBe(0x101);
+      expect(cpu.PC).toBe(0x101);
 
       if (!ov) {
-        expect(cpu.SFR[ACC]).toBe(div);
-        expect(cpu.SFR[B]).toBe(rem);
+        expect(cpu.ACC).toBe(div);
+        expect(cpu.B).toBe(rem);
       }
 
       expect(cpu.CY).toBe(0);
@@ -1295,12 +1308,12 @@ describe.each([
     test(`A A=${toHex2(x)}, result=${toHex2(inc)}`, () => {
       clearIRAM();
       cpu.code[0x100] = 0x04;       // INC A
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
+      cpu.PSW = 0;
+      cpu.ACC = x;
 
       cpu.run1(0x100);              // INC A
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(inc);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(inc);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
@@ -1309,11 +1322,11 @@ describe.each([
     test(`R3, R3=${toHex2(x)} result=${toHex2(inc)}`, () => {
       clearIRAM();
       cpu.code[0x100] = 0x0B;       // INC R3
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[3] = x;
 
       cpu.run1(0x100);              // INC R3
-      expect(cpu.pc).toBe(0x101);
+      expect(cpu.PC).toBe(0x101);
       expect(cpu.iram[3]).toBe(inc);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -1324,11 +1337,11 @@ describe.each([
       clearIRAM();
       cpu.code[0x100] = 0x05;       // INC dir
       cpu.code[0x101] = dir;
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[dir] = x;
 
       cpu.run1(0x100);              // INC dir
-      expect(cpu.pc).toBe(0x102);
+      expect(cpu.PC).toBe(0x102);
       expect(cpu.iram[dir]).toBe(inc);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -1338,12 +1351,12 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x07;       // INC @R1
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[dir] = x;
       cpu.iram[1] = dir;            // R1
 
       cpu.run1(0x100);              // INC @R1
-      expect(cpu.pc).toBe(0x101);
+      expect(cpu.PC).toBe(0x101);
       expect(cpu.iram[1]).toBe(dir);
       expect(cpu.iram[dir]).toBe(inc);
       expect(cpu.CY).toBe(0);
@@ -1370,14 +1383,14 @@ describe.each([
       const acBase = 0xAA;
       clearIRAM();
       cpu.code[0x100] = 0xA3;       // INC DPTR
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = acBase;
+      cpu.PSW = 0;
+      cpu.ACC = acBase;
       cpu.DPTR = x;
 
       cpu.run1(0x100);              // INC DPTR
-      expect(cpu.pc).toBe(0x101);
+      expect(cpu.PC).toBe(0x101);
       expect(cpu.DPTR).toBe(inc);
-      expect(cpu.SFR[ACC]).toBe(acBase);
+      expect(cpu.ACC).toBe(acBase);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
@@ -1389,79 +1402,79 @@ describe.each([
 test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
-  cpu.SFR[ACC] = 0x80;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x80;
+  cpu.PSW = 0;
   cpu.CY = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x00);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x00);
 });
 
 test('RLC A=0x08,CY=0 = A=10,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
-  cpu.SFR[ACC] = 0x08;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x08;
+  cpu.PSW = 0;
   cpu.CY = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x10);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x10);
 });
 
 test('RLC A=0x80,CY=1 = A=01,CY=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
-  cpu.SFR[ACC] = 0x80;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x80;
+  cpu.PSW = 0;
   cpu.CY = 1;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x01);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x01);
 });
 
 test('RLC A=0x08,CY=1 = A=11,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
-  cpu.SFR[ACC] = 0x08;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x08;
+  cpu.PSW = 0;
   cpu.CY = 1;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x11);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x11);
 });
 
 test('RLC CY=1 bit walk', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
-  cpu.SFR[ACC] = 0x00;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x00;
+  cpu.PSW = 0;
   cpu.CY = 1;
 
   for (let k = 0; k < 8; ++k) {
     cpu.run1(0x100);
-    expect(cpu.pc).toBe(0x101);
+    expect(cpu.PC).toBe(0x101);
     expect(cpu.CY).toBe(0);
-    expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(0x01 << k);
+    expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+    expect(cpu.ACC).toBe(0x01 << k);
   }
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x00);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x00);
 });
 
 
@@ -1469,79 +1482,79 @@ test('RLC CY=1 bit walk', () => {
 test('RRC A=0x01,CY=0 = A=00,CY=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
-  cpu.SFR[ACC] = 0x01;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x01;
+  cpu.PSW = 0;
   cpu.CY = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x00);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x00);
 });
 
 test('RRC A=0x08,CY=0 = A=04,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
-  cpu.SFR[ACC] = 0x08;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x08;
+  cpu.PSW = 0;
   cpu.CY = 0;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x04);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x04);
 });
 
 test('RRC A=0x80,CY=1 = A=C0,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
-  cpu.SFR[ACC] = 0x80;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x80;
+  cpu.PSW = 0;
   cpu.CY = 1;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0xC0);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0xC0);
 });
 
 test('RRC A=0x08,CY=1 = A=84,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
-  cpu.SFR[ACC] = 0x08;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x08;
+  cpu.PSW = 0;
   cpu.CY = 1;
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x84);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x84);
 });
 
 test('RRC CY=1 bit walk', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
-  cpu.SFR[ACC] = 0x00;
-  cpu.SFR[PSW] = 0;
+  cpu.ACC = 0x00;
+  cpu.PSW = 0;
   cpu.CY = 1;
 
   for (let k = 0; k < 8; ++k) {
     cpu.run1(0x100);
-    expect(cpu.pc).toBe(0x101);
+    expect(cpu.PC).toBe(0x101);
     expect(cpu.CY).toBe(0);
-    expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-    expect(cpu.SFR[ACC]).toBe(0x80 >>> k);
+    expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+    expect(cpu.ACC).toBe(0x80 >>> k);
   }
 
   cpu.run1(0x100);
-  expect(cpu.pc).toBe(0x101);
+  expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.SFR[PSW] & ~CPU.pswBits.cyMask).toBe(0);
-  expect(cpu.SFR[ACC]).toBe(0x00);
+  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x00);
 });
 
 
@@ -1572,13 +1585,13 @@ describe.each([
 
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
       cpu.CY = inCY;
 
       cpu.run1(0x100);              // ADD A,dir
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
       expect(cpu.iram[dir]).toBe(x);
@@ -1586,15 +1599,15 @@ describe.each([
 
     test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
       clearIRAM();
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.code[0x100] = 0x2B;       // ADD A,R3
       cpu.iram[3] = x;              // R3
-      cpu.SFR[ACC] = y;
+      cpu.ACC = y;
       cpu.CY = inCY;
 
       cpu.run1(0x100);              // ADD A,R3
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
       expect(cpu.iram[3]).toBe(x);
@@ -1607,13 +1620,13 @@ describe.each([
       cpu.iram[1] = dir;            // Set R1=dir for @R1
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
       cpu.CY = inCY;
 
       cpu.run1(0x100);              // ADD A,@R1
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
       expect(cpu.iram[1]).toBe(dir);
@@ -1626,13 +1639,13 @@ describe.each([
       cpu.code[0x100] = 0x24;       // ADD A,#imm
       cpu.code[0x101] = imm;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
       cpu.CY = inCY;
 
       cpu.run1(0x100);              // ADD A,#imm
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
     });
@@ -1665,13 +1678,13 @@ describe.each([
 
            cpu.iram[dir] = x;
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
+           cpu.PSW = 0;
+           cpu.ACC = y;
            cpu.CY = inCY;
 
            cpu.run1(0x100);              // ADDC A,dir
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.PC).toBe(0x102);
+           expect(cpu.ACC).toBe(addSum);
            expect(cpu.CY).toBe(addCY);
            expect(cpu.AC).toBe(addAC);
            expect(cpu.iram[dir]).toBe(x);
@@ -1679,15 +1692,15 @@ describe.each([
 
     test(`A,Rn ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
   clearIRAM();
-           cpu.SFR[PSW] = 0;
+           cpu.PSW = 0;
            cpu.code[0x100] = 0x3B;       // ADDC A,R3
            cpu.iram[3] = x;              // R3
-           cpu.SFR[ACC] = y;
+           cpu.ACC = y;
            cpu.CY = inCY;
 
            cpu.run1(0x100);              // ADDC A,R3
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.PC).toBe(0x101);
+           expect(cpu.ACC).toBe(addSum);
            expect(cpu.CY).toBe(addCY);
            expect(cpu.AC).toBe(addAC);
            expect(cpu.iram[3]).toBe(x);
@@ -1700,13 +1713,13 @@ describe.each([
            cpu.iram[1] = dir;            // Set R1=dir for @R1
            cpu.iram[dir] = x;
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
+           cpu.PSW = 0;
+           cpu.ACC = y;
            cpu.CY = inCY;
 
            cpu.run1(0x100);              // ADDC A,dir
-           expect(cpu.pc).toBe(0x101);
-           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.PC).toBe(0x101);
+           expect(cpu.ACC).toBe(addSum);
            expect(cpu.CY).toBe(addCY);
            expect(cpu.AC).toBe(addAC);
            expect(cpu.iram[1]).toBe(dir);
@@ -1719,13 +1732,13 @@ describe.each([
            cpu.code[0x100] = 0x34;       // ADDC A,#imm
            cpu.code[0x101] = imm;
 
-           cpu.SFR[PSW] = 0;
-           cpu.SFR[ACC] = y;
+           cpu.PSW = 0;
+           cpu.ACC = y;
            cpu.CY = inCY;
 
            cpu.run1(0x100);              // ADDC A,#imm
-           expect(cpu.pc).toBe(0x102);
-           expect(cpu.SFR[ACC]).toBe(addSum);
+           expect(cpu.PC).toBe(0x102);
+           expect(cpu.ACC).toBe(addSum);
            expect(cpu.CY).toBe(addCY);
            expect(cpu.AC).toBe(addAC);
          });
@@ -1759,20 +1772,20 @@ describe.each([
 
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
       cpu.CY = inCY;
 
       cpu.run1(0x100);          // ADDC
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(addSum);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
       expect(cpu.iram[dir]).toBe(x);
 
-      cpu.run1(cpu.pc);         // DA
-      expect(cpu.pc).toBe(0x103);
-      expect(cpu.SFR[ACC]).toBe(daSum);
+      cpu.run1(cpu.PC);         // DA
+      expect(cpu.PC).toBe(0x103);
+      expect(cpu.ACC).toBe(daSum);
       expect(cpu.CY).toBe(daCY);
       expect(cpu.iram[dir]).toBe(x);
     });
@@ -1806,26 +1819,26 @@ describe.each([
 
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ANL A,dir
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(and);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(and);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[dir]).toBe(x);
     });
 
     test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.code[0x100] = 0x5B;       // ANL A,R3
       cpu.iram[3] = x;              // R3
-      cpu.SFR[ACC] = y;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ANL A,R3
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(and);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(and);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[3]).toBe(x);
@@ -1838,12 +1851,12 @@ describe.each([
       cpu.iram[1] = dir;            // Set R1=dir for @R1
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ANL A,@R1
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(and);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(and);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[1]).toBe(dir);
@@ -1856,12 +1869,12 @@ describe.each([
       cpu.code[0x100] = 0x54;       // ANL A,#imm
       cpu.code[0x101] = imm;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ANL A,#imm
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(and);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(and);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
     });
@@ -1872,13 +1885,13 @@ describe.each([
       cpu.code[0x100] = 0x52;       // ANL dir,A
       cpu.code[0x101] = dir;
 
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[dir] = x;
-      cpu.SFR[ACC] = y;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ANL dir,A
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(y);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(y);
       expect(cpu.iram[dir]).toBe(and);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -1891,13 +1904,13 @@ describe.each([
       cpu.code[0x100] = 0x53;       // ANL dir,#imm
       cpu.code[0x101] = dir;
       cpu.code[0x102] = imm;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = 0xBA;
+      cpu.PSW = 0;
+      cpu.ACC = 0xBA;
       cpu.iram[dir] = y;
 
       cpu.run1(0x100);              // ANL dir,#imm
-      expect(cpu.pc).toBe(0x103);
-      expect(cpu.SFR[ACC]).toBe(0xBA);
+      expect(cpu.PC).toBe(0x103);
+      expect(cpu.ACC).toBe(0xBA);
       expect(cpu.iram[dir]).toBe(and);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -1919,17 +1932,17 @@ describe.each([
       clearIRAM();
       cpu.code[0x100] = 0x82;       // ANL C,bit
       cpu.code[0x101] = bit;
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
 
       cpu.BIT[bit] = y;
-      cpu.SFR[ACC] = 0;
+      cpu.ACC = 0;
       cpu.CY = x;
 
       cpu.run1(0x100);              // ANL C,bit
-      expect(cpu.pc).toBe(0x102);
+      expect(cpu.PC).toBe(0x102);
       expect(cpu.CY).toBe(and);
       expect(cpu.AC).toBe(0);
-      expect(cpu.SFR[ACC]).toBe(0);
+      expect(cpu.ACC).toBe(0);
       expect(cpu.BIT[bit]).toBe(y);
     });
   });
@@ -1949,17 +1962,17 @@ describe.each([
         clearIRAM();
         cpu.code[0x100] = 0xB0;       // ANL C,bit
         cpu.code[0x101] = bit;
-        cpu.SFR[PSW] = 0;
+        cpu.PSW = 0;
 
         cpu.BIT[bit] = y;
-        cpu.SFR[ACC] = 0;
+        cpu.ACC = 0;
         cpu.CY = x;
 
         cpu.run1(0x100);              // ANL C,bit
-        expect(cpu.pc).toBe(0x102);
+        expect(cpu.PC).toBe(0x102);
         expect(cpu.CY).toBe(and);
         expect(cpu.AC).toBe(0);
-        expect(cpu.SFR[ACC]).toBe(0);
+        expect(cpu.ACC).toBe(0);
         expect(cpu.BIT[bit]).toBe(y);
       });
     });
@@ -1992,26 +2005,26 @@ describe.each([
 
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ORL A,dir
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(or);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(or);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[dir]).toBe(x);
     });
 
     test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(or)}`, () => {
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.code[0x100] = 0x4B;       // ORL A,R3
       cpu.iram[3] = x;              // R3
-      cpu.SFR[ACC] = y;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ORL A,R3
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(or);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(or);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[3]).toBe(x);
@@ -2024,12 +2037,12 @@ describe.each([
       cpu.iram[1] = dir;            // Set R1=dir for @R1
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ORL A,@R1
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(or);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(or);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[1]).toBe(dir);
@@ -2042,12 +2055,12 @@ describe.each([
       cpu.code[0x100] = 0x44;       // ORL A,#imm
       cpu.code[0x101] = imm;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ORL A,#imm
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(or);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(or);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
     });
@@ -2058,13 +2071,13 @@ describe.each([
       cpu.code[0x100] = 0x42;       // ORL dir,A
       cpu.code[0x101] = dir;
 
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[dir] = x;
-      cpu.SFR[ACC] = y;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // ORL dir,A
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(y);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(y);
       expect(cpu.iram[dir]).toBe(or);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -2078,12 +2091,12 @@ describe.each([
       cpu.code[0x101] = dir;
       cpu.code[0x102] = imm;
       cpu.iram[dir] = y;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = 0xDA;
+      cpu.PSW = 0;
+      cpu.ACC = 0xDA;
 
       cpu.run1(0x100);              // ORL dir,#imm
-      expect(cpu.pc).toBe(0x103);
-      expect(cpu.SFR[ACC]).toBe(0xDA);
+      expect(cpu.PC).toBe(0x103);
+      expect(cpu.ACC).toBe(0xDA);
       expect(cpu.iram[dir]).toBe(or);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -2105,17 +2118,17 @@ describe.each([
       clearIRAM();
       cpu.code[0x100] = 0x82;       // ORL C,bit
       cpu.code[0x101] = bit;
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
 
       cpu.BIT[bit] = y;
-      cpu.SFR[ACC] = 0;
+      cpu.ACC = 0;
       cpu.CY = x;
 
       cpu.run1(0x100);              // ORL C,bit
-      expect(cpu.pc).toBe(0x102);
+      expect(cpu.PC).toBe(0x102);
       expect(cpu.CY).toBe(or);
       expect(cpu.AC).toBe(0);
-      expect(cpu.SFR[ACC]).toBe(0);
+      expect(cpu.ACC).toBe(0);
       expect(cpu.BIT[bit]).toBe(y);
     });
   });
@@ -2135,17 +2148,17 @@ describe.each([
         clearIRAM();
         cpu.code[0x100] = 0xA0;       // ORL C,/bit
         cpu.code[0x101] = bit;
-        cpu.SFR[PSW] = 0;
+        cpu.PSW = 0;
 
         cpu.BIT[bit] = y;
-        cpu.SFR[ACC] = 0;
+        cpu.ACC = 0;
         cpu.CY = x;
 
         cpu.run1(0x100);              // ORL C,/bit
-        expect(cpu.pc).toBe(0x102);
+        expect(cpu.PC).toBe(0x102);
         expect(cpu.CY).toBe(or);
         expect(cpu.AC).toBe(0);
-        expect(cpu.SFR[ACC]).toBe(0);
+        expect(cpu.ACC).toBe(0);
         expect(cpu.BIT[bit]).toBe(y);
       });
     });
@@ -2174,26 +2187,26 @@ describe.each([
       cpu.code[0x101] = dir;
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // XRL A,dir
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(xor);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(xor);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[dir]).toBe(x);
     });
 
     test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(xor)}`, () => {
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.code[0x100] = 0x6B;       // XRL A,R3
       cpu.iram[3] = x;              // R3
-      cpu.SFR[ACC] = y;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // XRL A,R3
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(xor);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(xor);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[3]).toBe(x);
@@ -2206,12 +2219,12 @@ describe.each([
       cpu.iram[1] = dir;            // Set R1=dir for @R1
       cpu.iram[dir] = x;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // XRL A,@R1
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(xor);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(xor);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.iram[1]).toBe(dir);
@@ -2224,12 +2237,12 @@ describe.each([
       cpu.code[0x100] = 0x64;       // XRL A,#imm
       cpu.code[0x101] = imm;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = y;
+      cpu.PSW = 0;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // XRL A,#imm
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(xor);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(xor);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
     });
@@ -2240,13 +2253,13 @@ describe.each([
       cpu.code[0x100] = 0x62;       // XRL dir,A
       cpu.code[0x101] = dir;
 
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.iram[dir] = x;
-      cpu.SFR[ACC] = y;
+      cpu.ACC = y;
 
       cpu.run1(0x100);              // XRL dir,A
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(y);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(y);
       expect(cpu.iram[dir]).toBe(xor);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -2260,12 +2273,12 @@ describe.each([
       cpu.code[0x101] = dir;
       cpu.code[0x102] = imm;
       cpu.iram[dir] = y;
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = 0xDA;
+      cpu.PSW = 0;
+      cpu.ACC = 0xDA;
 
       cpu.run1(0x100);              // XRL dir,#imm
-      expect(cpu.pc).toBe(0x103);
-      expect(cpu.SFR[ACC]).toBe(0xDA);
+      expect(cpu.PC).toBe(0x103);
+      expect(cpu.ACC).toBe(0xDA);
       expect(cpu.iram[dir]).toBe(xor);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -2283,16 +2296,16 @@ describe('POP', () => {
     cpu.code[0x101] = dir;
     cpu.iram[spBase] = 0xFE;
     cpu.iram[dir] = 0xAA;
-    cpu.SFR[SP] = spBase;
-    cpu.SFR[PSW] = 0;
-    cpu.SFR[ACC] = 0xCD;
+    cpu.SP = spBase;
+    cpu.PSW = 0;
+    cpu.ACC = 0xCD;
 
     cpu.run1(0x100);            // POP
-    expect(cpu.pc).toBe(0x102);
-    expect(cpu.SFR[SP]).toBe(spBase - 1);
+    expect(cpu.PC).toBe(0x102);
+    expect(cpu.SP).toBe(spBase - 1);
     expect(cpu.iram[dir]).toBe(0xFE);
-    expect(cpu.SFR[ACC]).toBe(0xCD);
-    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.ACC).toBe(0xCD);
+    expect(cpu.PSW).toBe(0);
   });
 });
 
@@ -2306,16 +2319,16 @@ describe('PUSH', () => {
     cpu.code[0x100] = 0xC0;     // PUSH dir
     cpu.code[0x101] = dir;
     cpu.iram[dir] = 0x73;
-    cpu.SFR[SP] = spBase;
-    cpu.SFR[PSW] = 0;
-    cpu.SFR[ACC] = 0xCD;
+    cpu.SP = spBase;
+    cpu.PSW = 0;
+    cpu.ACC = 0xCD;
 
     cpu.run1(0x100);            // POP
-    expect(cpu.pc).toBe(0x102);
-    expect(cpu.SFR[SP]).toBe(spBase + 1);
+    expect(cpu.PC).toBe(0x102);
+    expect(cpu.SP).toBe(spBase + 1);
     expect(cpu.iram[spBase + 1]).toBe(0x73);
-    expect(cpu.SFR[ACC]).toBe(0xCD);
-    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.ACC).toBe(0xCD);
+    expect(cpu.PSW).toBe(0);
   });
 });
 
@@ -2346,13 +2359,13 @@ describe.each([
 
       cpu.iram[dir] = y;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
+      cpu.PSW = 0;
+      cpu.ACC = x;
       cpu.CY = inCY;
 
       cpu.run1(0x100);              // SUBB A,dir
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(diff);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(diff);
       expect(cpu.CY).toBe(cy);
       expect(cpu.OV).toBe(ov);
       expect(cpu.AC).toBe(ac);
@@ -2361,15 +2374,15 @@ describe.each([
 
     test(`A,Rn ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
       clearIRAM();
-      cpu.SFR[PSW] = 0;
+      cpu.PSW = 0;
       cpu.code[0x100] = 0x9B;       // SUBB A,R3
       cpu.iram[3] = y;              // R3
-      cpu.SFR[ACC] = x;
+      cpu.ACC = x;
       cpu.CY = inCY;
 
       cpu.run1(0x100);              // SUBB A,R3
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(diff);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(diff);
       expect(cpu.CY).toBe(cy);
       expect(cpu.OV).toBe(ov);
       expect(cpu.AC).toBe(ac);
@@ -2383,13 +2396,13 @@ describe.each([
       cpu.iram[1] = dir;            // Set R1=dir for @R1
       cpu.iram[dir] = y;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
+      cpu.PSW = 0;
+      cpu.ACC = x;
       cpu.CY = inCY;
 
       cpu.run1(0x100);              // SUBB A,dir
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(diff);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(diff);
       expect(cpu.CY).toBe(cy);
       expect(cpu.OV).toBe(ov);
       expect(cpu.AC).toBe(ac);
@@ -2403,13 +2416,13 @@ describe.each([
       cpu.code[0x100] = 0x94;       // SUBB A,#imm
       cpu.code[0x101] = imm;
 
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
+      cpu.PSW = 0;
+      cpu.ACC = x;
       cpu.CY = inCY;
 
       cpu.run1(0x100);              // SUBB A,#imm
-      expect(cpu.pc).toBe(0x102);
-      expect(cpu.SFR[ACC]).toBe(diff);
+      expect(cpu.PC).toBe(0x102);
+      expect(cpu.ACC).toBe(diff);
       expect(cpu.CY).toBe(cy);
       expect(cpu.OV).toBe(ov);
       expect(cpu.AC).toBe(ac);
@@ -2433,12 +2446,12 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0xC4;       // SWAP A
-      cpu.SFR[PSW] = 0;
-      cpu.SFR[ACC] = x;
+      cpu.PSW = 0;
+      cpu.ACC = x;
 
       cpu.run1(0x100);              // SWAP A
-      expect(cpu.pc).toBe(0x101);
-      expect(cpu.SFR[ACC]).toBe(swap);
+      expect(cpu.PC).toBe(0x101);
+      expect(cpu.ACC).toBe(swap);
       expect(cpu.CY).toBe(0);
       expect(cpu.OV).toBe(0);
       expect(cpu.AC).toBe(0);
@@ -2452,14 +2465,14 @@ describe('XCH', () => {
     clearIRAM();
     cpu.code[0x100] = 0xCB;     // XCH A,R3
     cpu.iram[3] = 0x73;
-    cpu.SFR[ACC] = 0x32;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0x32;
+    cpu.PSW = 0;
 
     cpu.run1(0x100);            // XCH
-    expect(cpu.pc).toBe(0x101);
+    expect(cpu.PC).toBe(0x101);
     expect(cpu.iram[3]).toBe(0x32);
-    expect(cpu.SFR[ACC]).toBe(0x73);
-    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.ACC).toBe(0x73);
+    expect(cpu.PSW).toBe(0);
   });
 
   test('A,dir', () => {
@@ -2468,14 +2481,14 @@ describe('XCH', () => {
     cpu.code[0x100] = 0xC5;     // XCH A,dir
     cpu.code[0x101] = dir;
     cpu.iram[dir] = 0x73;
-    cpu.SFR[ACC] = 0x32;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0x32;
+    cpu.PSW = 0;
 
     cpu.run1(0x100);            // XCH
-    expect(cpu.pc).toBe(0x102);
+    expect(cpu.PC).toBe(0x102);
     expect(cpu.iram[dir]).toBe(0x32);
-    expect(cpu.SFR[ACC]).toBe(0x73);
-    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.ACC).toBe(0x73);
+    expect(cpu.PSW).toBe(0);
   });
 
   test('A,@R1', () => {
@@ -2484,15 +2497,15 @@ describe('XCH', () => {
     cpu.code[0x100] = 0xC7;     // XCH A,@R1
     cpu.iram[1] = dir;
     cpu.iram[dir] = 0x73;
-    cpu.SFR[ACC] = 0x32;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0x32;
+    cpu.PSW = 0;
 
     cpu.run1(0x100);            // XCH
-    expect(cpu.pc).toBe(0x101);
+    expect(cpu.PC).toBe(0x101);
     expect(cpu.iram[1]).toBe(dir);
     expect(cpu.iram[dir]).toBe(0x32);
-    expect(cpu.SFR[ACC]).toBe(0x73);
-    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.ACC).toBe(0x73);
+    expect(cpu.PSW).toBe(0);
   });
 });
 
@@ -2505,15 +2518,15 @@ describe('XCHD', () => {
     cpu.code[0x100] = 0xD7;     // XCHD A,@R1
     cpu.iram[1] = dir;
     cpu.iram[dir] = 0x75;
-    cpu.SFR[ACC] = 0x32;
-    cpu.SFR[PSW] = 0;
+    cpu.ACC = 0x32;
+    cpu.PSW = 0;
 
     cpu.run1(0x100);            // XCHD
-    expect(cpu.pc).toBe(0x101);
+    expect(cpu.PC).toBe(0x101);
     expect(cpu.iram[1]).toBe(dir);
     expect(cpu.iram[dir]).toBe(0x72);
-    expect(cpu.SFR[ACC]).toBe(0x35);
-    expect(cpu.SFR[PSW]).toBe(0);
+    expect(cpu.ACC).toBe(0x35);
+    expect(cpu.PSW).toBe(0);
   });
 });
 
