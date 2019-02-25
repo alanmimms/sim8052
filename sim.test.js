@@ -23,7 +23,7 @@ beforeEach(() => {
 
 
 //////////// NOP ////////////
-test('NOP', () => {
+test('op:NOP', () => {
   cpu.code[0x100] = 0x00;       // NOP
   cpu.ACC = 0x42;
   cpu.PSW = 0;
@@ -35,7 +35,7 @@ test('NOP', () => {
 });
 
 //////////// ACALL/RET ////////////
-describe.each([0, 1, 2, 3, 4, 5, 6, 7])('ACALL/RET', fromPage => {
+describe.each([0, 1, 2, 3, 4, 5, 6, 7])('op:ACALL/op:RET', fromPage => {
 
   test(`page${fromPage}`, () => {
     const pageOffset = 0x24;
@@ -80,7 +80,7 @@ describe.each([
   [0x89FE,   0xFFFE],
   [0x8AFF,   0xFFFF],
   [0x8BFD,   0x7FFF],
-])('LCALL/RETI', (callBase, newPC) => {
+])('op:LCALL/op:RETI', (callBase, newPC) => {
   test(`${toHex4(callBase)} --> ${toHex4(newPC)}`, () => {
     const retPC = (callBase + 3) & 0xFFFF;
     const acBase = 0x43;
@@ -121,7 +121,7 @@ describe.each([
   [0x89FE,   0xFFFE],
   [0x8AFF,   0xFFFF],
   [0x8BFD,   0x7FFF],
-])('LJMP', (callBase, newPC) => {
+])('op:LJMP', (callBase, newPC) => {
   test(`${toHex4(callBase)} --> ${toHex4(newPC)}`, () => {
     const retPC = (callBase + 3) & 0xFFFF;
     const acBase = 0x43;
@@ -154,7 +154,7 @@ describe.each([
   [0xFFFE,   0x01, 0x0001],
   [0xFFFE,   0x02, 0x0002],
   [0xFFF0,   0x03, 0xFFF5],
-])('SJMP', (pc, rela, newPC) => {
+])('op:SJMP', (pc, rela, newPC) => {
   test(`${toHex4(pc)} --> ${toHex4(newPC)}`, () => {
     const basePC = (pc + 2) & 0xFFFF;
     const acBase = 0x43;
@@ -176,7 +176,7 @@ describe.each([
 //////////// AJMP ////////////
 describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
 
-  test(`AJMP from page${fromPage}`, () => {
+  test(`op:AJMP from page${fromPage}`, () => {
     const pageOffset = 0x24;
     const jmpBase = fromPage * 0x100 + 0x42;
     const spBase = 0x07;
@@ -214,7 +214,7 @@ describe.each([
   [0x00, 0xFF,  1, 0x80,    1],
   [0x00, 0xFF,  1, 0xF0,    1],
 ]) (
-  'CJNE',
+  'op:CJNE',
   (x, y, ltCY, rela, jump)  => {
     test(`A,dir,rel A=${toHex2(x)} dir=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
       const dir = 0x42;
@@ -298,8 +298,7 @@ describe.each([
   [0x01, 0x00,  0],
   [0x00, 0xFF,  1],
   [0x80, 0x7F,  1],
-]) (
-  'DJNZ',
+]) ('op:DJNZ',
   (x, y, jump)  => {
     test(`DJNZ dir,rel dir=${toHex2(y)}, jump=${jump}`, () => {
       const dir = 0x42;
@@ -344,7 +343,7 @@ describe.each([
 
 
 //////////// JB ////////////
-test(`JB bit,rel bit=0`, () => {
+test(`op:JB bit,rel bit=0`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
@@ -365,7 +364,7 @@ test(`JB bit,rel bit=0`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`JB bit,rel bit=1`, () => {
+test(`op:JB bit,rel bit=1`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
@@ -388,7 +387,7 @@ test(`JB bit,rel bit=1`, () => {
 
 
 //////////// JBC ////////////
-test(`JBC bit,rel bit=0`, () => {
+test(`op:JBC bit,rel bit=0`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
@@ -409,7 +408,7 @@ test(`JBC bit,rel bit=0`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`JBC bit,rel bit=1`, () => {
+test(`op:JBC bit,rel bit=1`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
@@ -432,7 +431,7 @@ test(`JBC bit,rel bit=1`, () => {
 
 
 //////////// JNB ////////////
-test(`JNB bit,rel bit=0`, () => {
+test(`op:JNB bit,rel bit=0`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
@@ -453,7 +452,7 @@ test(`JNB bit,rel bit=0`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`JNB bit,rel bit=1`, () => {
+test(`op:JNB bit,rel bit=1`, () => {
   const bit = 0x42;
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
@@ -476,7 +475,7 @@ test(`JNB bit,rel bit=1`, () => {
 
 
 //////////// JC ////////////
-test(`JC rel CY=0`, () => {
+test(`op:JC rel CY=0`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
   clearIRAM();
@@ -494,7 +493,7 @@ test(`JC rel CY=0`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`JC rel CY=1`, () => {
+test(`op:JC rel CY=1`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
   clearIRAM();
@@ -514,7 +513,7 @@ test(`JC rel CY=1`, () => {
 
 
 //////////// JNC ////////////
-test(`JNC rel CY=0`, () => {
+test(`op:JNC rel CY=0`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
   clearIRAM();
@@ -532,7 +531,7 @@ test(`JNC rel CY=0`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`JNC rel CY=1`, () => {
+test(`op:JNC rel CY=1`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
   clearIRAM();
@@ -552,7 +551,7 @@ test(`JNC rel CY=1`, () => {
 
 
 //////////// JZ ////////////
-test(`JZ rel AC=55`, () => {
+test(`op:JZ rel AC=55`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
   clearIRAM();
@@ -569,7 +568,7 @@ test(`JZ rel AC=55`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`JZ rel AC=00`, () => {
+test(`op:JZ rel AC=00`, () => {
   const acBase = 0x00;
   const rela = -0x13 & 0xFF;
   clearIRAM();
@@ -588,7 +587,7 @@ test(`JZ rel AC=00`, () => {
 
 
 //////////// JNZ ////////////
-test(`JNZ rel AC=55`, () => {
+test(`op:JNZ rel AC=55`, () => {
   const acBase = 0x55;
   const rela = -0x13 & 0xFF;
   clearIRAM();
@@ -605,7 +604,7 @@ test(`JNZ rel AC=55`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`JNZ rel AC=00`, () => {
+test(`op:JNZ rel AC=00`, () => {
   const acBase = 0x00;
   const rela = -0x13 & 0xFF;
   clearIRAM();
@@ -631,8 +630,7 @@ describe.each([
   [0x02, 0x8001, 0x8003],
   [0xFF, 0x8001, 0x8100],
   [0xFF, 0xFF55, 0x0054],
-]) (
-  'JMP @A+DPTR',
+]) ('op:JMP @A+DPTR',
   (a, dptr, newPC)  => {
     test(`JMP @A+DPTR`, () => {
       clearIRAM();
@@ -653,7 +651,7 @@ describe.each([
 
 
 //////////// MOV ////////////
-describe('MOV', () => {
+describe('op:MOV', () => {
 
   test(`A,R3`, () => {
     const v = 0x43;
@@ -772,7 +770,7 @@ describe('MOV', () => {
 
 
 //////////// MOV bit ////////////
-test(`MOV C,sbit=0`, () => {
+test(`op:MOV C,sbit=0`, () => {
   const bit = 0x42;
   clearIRAM();
   cpu.code[0x100] = 0xA2;       // MOV C,sbit
@@ -791,7 +789,7 @@ test(`MOV C,sbit=0`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`MOV C,sbit=1`, () => {
+test(`op:MOV C,sbit=1`, () => {
   const bit = 0x42;
   clearIRAM();
   cpu.code[0x100] = 0x92;       // MOV dbit,C
@@ -812,7 +810,7 @@ test(`MOV C,sbit=1`, () => {
 
 
 //////////////// MOV DPTR,#imm16 ////////////////
-test(`MOV DPTR,#data16`, () => {
+test(`op:MOV DPTR,#data16`, () => {
   const d = 0x1234;
   clearIRAM();
   cpu.code[0x100] = 0x90;       // MOV DPTR,#imm
@@ -840,8 +838,7 @@ describe.each([
   [0x12, 0x8001, 0x8013, 0x23],
   [0xFF, 0x8001, 0x8100, 0x17],
   [0xF3, 0xFF55, 0x0048, 0x87],
-]) (
-  'MOVC',
+]) ('op:MOVC',
   (a, y, entAddr, newA)  => {
     test(`A,@A+DPTR a=${toHex2(a)},dptr=${toHex4(y)},entAddr=${toHex4(entAddr)},newA=${toHex2(newA)} `, () => {
       clearCode();
@@ -891,8 +888,7 @@ describe.each([
   [0x8013, 0x23],
   [0x8100, 0x17],
   [0x0048, 0x87],
-]) (
-  'MOVX',
+]) ('op:MOVX',
   (addr, v)  => {
     test(`A,@R1 addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
       clearCode();
@@ -979,7 +975,7 @@ describe.each([
 
 
 //////////// CLR A ////////////
-test('CLR A', () => {
+test('op:CLR A', () => {
   clearIRAM();
   cpu.code[0x100] = 0xE4;       // CLR A
   cpu.ACC = 0x42;
@@ -993,7 +989,7 @@ test('CLR A', () => {
 });
 
 //////////// CLR bit ////////////
-test('CLR bit', () => {
+test('op:CLR bit', () => {
   const bit = 0x42;
   const acBase = 0xAA;
   clearIRAM();
@@ -1012,7 +1008,7 @@ test('CLR bit', () => {
 });
 
 //////////// CLR C ////////////
-test('CLR C', () => {
+test('op:CLR C', () => {
   clearIRAM();
   cpu.code[0x100] = 0xC3;       // CLR C
   cpu.ACC = 0x42;
@@ -1027,7 +1023,7 @@ test('CLR C', () => {
 
 
 //////////// SETB bit ////////////
-test('SETB bit', () => {
+test('op:SETB bit', () => {
   const bit = 0x42;
   const acBase = 0xAA;
   clearIRAM();
@@ -1046,7 +1042,7 @@ test('SETB bit', () => {
 });
 
 //////////// SETB C ////////////
-test('SETB C', () => {
+test('op:SETB C', () => {
   clearIRAM();
   cpu.code[0x100] = 0xD3;       // SETB C
   cpu.ACC = 0x42;
@@ -1061,7 +1057,7 @@ test('SETB C', () => {
 
 
 //////////// CPL A ////////////
-test('CPL A', () => {
+test('op:CPL A', () => {
   const acBase = 0x42;
   clearIRAM();
   cpu.code[0x100] = 0xF4;       // CPL A
@@ -1076,7 +1072,7 @@ test('CPL A', () => {
 });
 
 //////////// CPL bit ////////////
-test('CPL bit=1', () => {
+test('op:CPL bit=1', () => {
   const bit = 0x42;
   const acBase = 0xAA;
   clearIRAM();
@@ -1095,7 +1091,7 @@ test('CPL bit=1', () => {
 });
 
 //////////// CPL bit ////////////
-test('CPL bit=0', () => {
+test('op:CPL bit=0', () => {
   const bit = 0x42;
   const acBase = 0xAA;
   clearIRAM();
@@ -1114,7 +1110,7 @@ test('CPL bit=0', () => {
 });
 
 //////////// CPL C ////////////
-test('CPL C=0', () => {
+test('op:CPL C=0', () => {
   const acBase = 0x42;
   clearIRAM();
   cpu.code[0x100] = 0xB3;       // CPL C
@@ -1131,7 +1127,7 @@ test('CPL C=0', () => {
 });
 
 //////////// CPL C ////////////
-test('CPL C=1', () => {
+test('op:CPL C=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0xB3;       // CPL C
   cpu.ACC = 0x42;
@@ -1153,8 +1149,7 @@ describe.each([
   [0x80, 0x7F],
   [0xFF, 0xFE],
   [0xFE, 0xFD],
-]) (
-  'DEC',
+]) ('op:DEC',
   (x, dec)  => {
     test(`DEC A A=${toHex2(x)}, result=${toHex2(dec)}`, () => {
       clearIRAM();
@@ -1231,8 +1226,7 @@ describe.each([
   [0x01, 0xFF, 0x00, 0xFF,  0],
   [0xFF, 0x02, 0x01, 0xFE,  1],
   [0x02, 0xFF, 0x01, 0xFE,  1],
-]) (
-  'MUL AB',
+]) ('op:MUL AB',
   (x, y, prodB, prodA, ov)  => {
     test(`A=${toHex2(x)},B=${toHex2(y)}, prodA=${toHex2(prodA)},prodB=${toHex2(prodB)},ov=${ov}`, () => {
       clearIRAM();
@@ -1266,8 +1260,7 @@ describe.each([
   [0x12, 0x13, 0x00, 0x12, 0],
   [0x12, 0x00, 0x00, 0x00, 1],
   [0x00, 0x00, 0x00, 0x00, 1],
-]) (
-  'DIV AB',
+]) ('op:DIV AB',
   (x, y, div, rem, ov)  => {
     test(`A=${toHex2(x)}, B=${toHex2(y)}, div=${toHex2(div)} rem=${toHex2(rem)}, ov=${ov}`, () => {
       clearIRAM();
@@ -1302,8 +1295,7 @@ describe.each([
   [0x7F, 0x80],
   [0xFE, 0xFF],
   [0xFD, 0xFE],
-]) (
-  'INC',
+]) ('op:INC',
   (x, inc)  => {
     test(`A A=${toHex2(x)}, result=${toHex2(inc)}`, () => {
       clearIRAM();
@@ -1376,8 +1368,7 @@ describe.each([
   [0x00FE, 0x00FF],
   [0x00FF, 0x0100],
   [0x00FD, 0x00FE],
-]) (
-  'INC DPTR',
+]) ('op:INC DPTR',
   (x, inc)  => {
     test(`DPTR=${toHex2(x)}, result=${toHex2(inc)}`, () => {
       const acBase = 0xAA;
@@ -1399,7 +1390,7 @@ describe.each([
 
 
 //////////// RLC ////////////
-test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
+test('op:RLC A=0x80,CY=0 = A=00,CY=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.ACC = 0x80;
@@ -1413,7 +1404,7 @@ test('RLC A=0x80,CY=0 = A=00,CY=1', () => {
   expect(cpu.ACC).toBe(0x00);
 });
 
-test('RLC A=0x08,CY=0 = A=10,CY=0', () => {
+test('op:RLC A=0x08,CY=0 = A=10,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.ACC = 0x08;
@@ -1427,7 +1418,7 @@ test('RLC A=0x08,CY=0 = A=10,CY=0', () => {
   expect(cpu.ACC).toBe(0x10);
 });
 
-test('RLC A=0x80,CY=1 = A=01,CY=1', () => {
+test('op:RLC A=0x80,CY=1 = A=01,CY=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.ACC = 0x80;
@@ -1441,7 +1432,7 @@ test('RLC A=0x80,CY=1 = A=01,CY=1', () => {
   expect(cpu.ACC).toBe(0x01);
 });
 
-test('RLC A=0x08,CY=1 = A=11,CY=0', () => {
+test('op:RLC A=0x08,CY=1 = A=11,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.ACC = 0x08;
@@ -1455,7 +1446,7 @@ test('RLC A=0x08,CY=1 = A=11,CY=0', () => {
   expect(cpu.ACC).toBe(0x11);
 });
 
-test('RLC CY=1 bit walk', () => {
+test('op:RLC CY=1 bit walk', () => {
   clearIRAM();
   cpu.code[0x100] = 0x33;       // RLC A
   cpu.ACC = 0x00;
@@ -1479,7 +1470,7 @@ test('RLC CY=1 bit walk', () => {
 
 
 //////////// RRC ////////////
-test('RRC A=0x01,CY=0 = A=00,CY=1', () => {
+test('op:RRC A=0x01,CY=0 = A=00,CY=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.ACC = 0x01;
@@ -1493,7 +1484,7 @@ test('RRC A=0x01,CY=0 = A=00,CY=1', () => {
   expect(cpu.ACC).toBe(0x00);
 });
 
-test('RRC A=0x08,CY=0 = A=04,CY=0', () => {
+test('op:RRC A=0x08,CY=0 = A=04,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.ACC = 0x08;
@@ -1507,7 +1498,7 @@ test('RRC A=0x08,CY=0 = A=04,CY=0', () => {
   expect(cpu.ACC).toBe(0x04);
 });
 
-test('RRC A=0x80,CY=1 = A=C0,CY=0', () => {
+test('op:RRC A=0x80,CY=1 = A=C0,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.ACC = 0x80;
@@ -1521,7 +1512,7 @@ test('RRC A=0x80,CY=1 = A=C0,CY=0', () => {
   expect(cpu.ACC).toBe(0xC0);
 });
 
-test('RRC A=0x08,CY=1 = A=84,CY=0', () => {
+test('op:RRC A=0x08,CY=1 = A=84,CY=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.ACC = 0x08;
@@ -1535,7 +1526,7 @@ test('RRC A=0x08,CY=1 = A=84,CY=0', () => {
   expect(cpu.ACC).toBe(0x84);
 });
 
-test('RRC CY=1 bit walk', () => {
+test('op:RRC CY=1 bit walk', () => {
   clearIRAM();
   cpu.code[0x100] = 0x13;       // RRC A
   cpu.ACC = 0x00;
@@ -1575,7 +1566,7 @@ describe.each([
   [   1, 0x88, 0x77, 0xFF,  0,    0],
   [   0, 0x08, 0x08, 0x10,  0,    1],
 ]) (
-  'ADD',
+  'op:ADD',
   (inCY, x, y, addSum, addCY, addAC)  => {
     test(`A,dir ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
       const dir = 0x42;
@@ -1668,7 +1659,7 @@ describe.each([
   [   1, 0x88, 0x77, 0x00,  1,    1],
   [   0, 0x08, 0x08, 0x10,  0,    1],
 ]) (
-  'ADDC',
+  'op:ADDC',
   (inCY, x, y, addSum, addCY, addAC)  => {
     test(`${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
            const dir = 0x42;
@@ -1760,7 +1751,7 @@ describe.each([
   [   0, 0x88, 0x77, 0xFF,  0,    0,   0x65,  1],
   [   1, 0x88, 0x77, 0x00,  1,    1,   0x66,  1],
   [   0, 0x08, 0x08, 0x10,  0,    1,   0x16,  0],
-]) ('decimal addition',
+]) ('op:DA',
   (inCY, x, y, addSum, addCY, addAC, daSum, daCY)  => {
 
     test(`${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(daSum)},CY=${daCY}`, () => {
@@ -1807,8 +1798,7 @@ describe.each([
   [0x20, 0x05, 0x00],
   [0x40, 0x05, 0x00],
   [0x80, 0x05, 0x00],
-]) (
-  'ANL',
+]) ('op:ANL',
   (x, y, and)  => {
 
     test(`A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(and)}`, () => {
@@ -1925,7 +1915,7 @@ describe.each([
   [  0,  1,  0],
   [  1,  0,  0],
   [  1,  1,  1],
-]) ('ANL',
+]) ('op:ANL',
   (x, y, and)  => {
     test(`C,bit ${x}&${y}=${and}`, () => {
       const bit = 0x42;
@@ -1955,7 +1945,7 @@ describe.each([
   [  0,  1,  0],
   [  1,  0,  1],
   [  1,  1,  0],
-]) ('ANL',
+]) ('op:ANL',
     (x, y, and)  => {
       test(`ANL C,/bit ${x}&/${y}=${and}`, () => {
         const bit = 0x42;
@@ -1993,8 +1983,7 @@ describe.each([
   [0x20, 0x05, 0x25],
   [0x40, 0x05, 0x45],
   [0x80, 0x05, 0x85],
-]) (
-  'ORL',
+]) ('op:ORL',
   (x, y, or)  => {
 
     test(`A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(or)}`, () => {
@@ -2111,7 +2100,7 @@ describe.each([
   [  0,  1,  0],
   [  1,  0,  0],
   [  1,  1,  1],
-]) ('ORL',
+]) ('op:ORL',
   (x, y, or)  => {
     test(`C,bit ${x}&${y}=${or}`, () => {
       const bit = 0x72;
@@ -2141,7 +2130,7 @@ describe.each([
   [  0,  1,  0],
   [  1,  0,  1],
   [  1,  1,  1],
-]) ('ORL',
+]) ('op:ORL',
     (x, y, or)  => {
       test(`ORL C,/bit ${x}&/${y}=${or}`, () => {
         const bit = 0xA0;
@@ -2176,8 +2165,7 @@ describe.each([
   [0x04, 0x05, 0x01],
   [0x08, 0x05, 0x0D],
   [0x10, 0x05, 0x15],
-]) (
-  'XRL',
+]) ('op:XRL',
   (x, y, xor)  => {
 
     test(`A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(xor)}`, () => {
@@ -2286,7 +2274,7 @@ describe.each([
   });
 
 
-describe('POP', () => {
+describe('op:POP', () => {
 
   test('dir', () => {
     const dir = 0x42;
@@ -2310,7 +2298,7 @@ describe('POP', () => {
 });
 
 
-describe('PUSH', () => {
+describe('op:PUSH', () => {
 
   test('dir', () => {
     const dir = 0x42;
@@ -2349,7 +2337,7 @@ describe.each([
   [   1, 0x99, 0x66, 0x32,  0,  1,  0],
   [   0, 0x88, 0x77, 0x11,  0,  1,  0],
   [   0, 0x10, 0x08, 0x08,  0,  0,  1],
-]) ('SUBB',
+]) ('op:SUBB',
   (inCY, x, y, diff, cy, ov, ac)  => {
     test(`${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)}, CY=${cy},OV=${ov},AC=${ac}`, () => {
       const dir = 0x42;
@@ -2410,7 +2398,7 @@ describe.each([
       expect(cpu.iram[dir]).toBe(y);
     });
 
-    test(`SUBB A,#imm ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
+    test(`A,#imm ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
       const imm = y;
       clearIRAM();
       cpu.code[0x100] = 0x94;       // SUBB A,#imm
@@ -2440,7 +2428,7 @@ describe.each([
   [   0xF8, 0x8F],
   [   0x22, 0x22],
   [   0x12, 0x21],
-]) ('SWAP',
+]) ('op:SWAP',
   (x, swap)  => {
     test(`${toHex2(x)}=${toHex2(swap)}`, () => {
       const dir = 0x42;
@@ -2459,7 +2447,7 @@ describe.each([
   });
 
 
-describe('XCH', () => {
+describe('op:XCH', () => {
 
   test('A,R3', () => {
     clearIRAM();
@@ -2510,7 +2498,7 @@ describe('XCH', () => {
 });
 
 
-describe('XCHD', () => {
+describe('op:XCHD', () => {
 
   test('A,@R1', () => {
     const dir = 0x42;

@@ -168,9 +168,27 @@ class CPU8052 {
       [0x3D]: aluA_R(C, 5, doADD, true),
       [0x3E]: aluA_R(C, 6, doADD, true),
       [0x3F]: aluA_R(C, 7, doADD, true),
+
+      // DA
+      [0xD4]: doDA,
     };
 
     C.reset();
+
+
+    function doDA() {
+      C.PC += 1;
+
+      if ((C.ACC & 0x0F) > 9 || C.AC) {
+        if (C.ACC + 0x06 > 0xFF) C.CY = 1
+        C.ACC = (C.ACC + 0x06) & 0xFF;
+      }
+      
+      if ((C.ACC & 0xF0) > 0x90 || C.CY) {
+        if (C.ACC + 0x60 > 0xFF) C.CY = 1;
+        C.ACC = (C.ACC + 0x60) & 0xFF;
+      }
+    }
 
 
     function doADD(a, b, c) {
@@ -318,7 +336,7 @@ class CPU8052 {
   run1(pc = C.PC) {
     this.PC = pc;
     const op = this.code[pc];
-    this.ops[op].call(this);
+    this.ops[op](this);
   };
 
 
