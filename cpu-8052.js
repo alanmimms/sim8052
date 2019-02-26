@@ -6,21 +6,6 @@ const util = require('util');
 const {toHex1, toHex2, toHex4} = require('./simutils');
 
 
-/*
-  # Access examples
-
-  cpu.ACC = 0x12;
-  cpu.ACC += 0x42;
-  cpu.B = cpu.ACC;
-
-  cpu.OV = 1;
-  cpu.CY |= c;
-  v = cpu.PSW;
-
-  cpu.PSW = 0x33;
-*/
-
-
 //  mathMask: pswBits.ovMask | pswBits.acMask | pswBits.cyMask,
 //  rsMask: pswBits.rs0Mask | pswBits.rs1Mask,
 
@@ -171,13 +156,36 @@ class CPU8052 {
 
       // DA
       [0xD4]: doDA,
+
+      // XCHD
+      [0xD6]: doXCHD(0),
+      [0xD7]: doXCHD(1),
     };
 
     C.reset();
 
 
+    function doXCHD(r) {
+
+      return function() {
+        const a = C.ACC;
+        const b = C.iram[C.getR(r)];
+        C.PC = (C.PC + 1) & 0xFFFF;
+        C.ACC &= 0xF0;
+        C.ACC |= b & 0x0F;
+        C.iram[C.getR(r)] &= 0xF0;
+        C.iram[C.getR(r)] |= a & 0x0F;
+      };
+    }
+
+
+    function doRETI() {
+      if (this.ipl >= 0) this.ipl = this.ipl - 1;
+    }
+
+
     function doDA() {
-      C.PC += 1;
+      C.PC = (C.PC + 1) & 0xFFFF;
 
       if ((C.ACC & 0x0F) > 9 || C.AC) {
         if (C.ACC + 0x06 > 0xFF) C.CY = 1
@@ -277,8 +285,8 @@ class CPU8052 {
     function opA_DIR(C, op) {
 
       return function() {
-        const ea = C.code[C.PC + 1];
-        C.PC += 2;
+        const ea = C.code[(C.PC + 1) & 0xFFFF];
+        C.PC = (C.PC + 2) & 0xFFFF;
         const b = C.getDIR(ea);
         const v = op(C.ACC, b);
         C.setDIR(ea, v);
@@ -289,8 +297,8 @@ class CPU8052 {
     function aluA_DIR(C, op, useCY) {
 
       return function() {
-        const ea = C.code[C.PC + 1];
-        C.PC += 2;
+        const ea = C.code[(C.PC + 1) & 0xFFFF];
+        C.PC = (C.PC + 2) & 0xFFFF;
         const b = C.getDIR(ea);
         const v = op(C.ACC, b, useCY ? C.CY : 0);
         C.ACC = v;
@@ -301,8 +309,8 @@ class CPU8052 {
     function aluA_IMM(C, op, useCY) {
 
       return function() {
-        const b = C.code[C.PC + 1];
-        C.PC += 2;
+        const b = C.code[(C.PC + 1) & 0xFFFF];
+        C.PC = (C.PC + 2) & 0xFFFF;
         const v = op(C.ACC, b, useCY ? C.CY : 0);
         C.ACC = v;
       }
@@ -313,7 +321,7 @@ class CPU8052 {
     function aluA_R(C, r, op, useCY) {
 
       return function() {
-        C.PC += 1;
+        C.PC = (C.PC + 1) & 0xFFFF;
         const b = C.getR(r);
         const v = op(C.ACC, b, useCY ? C.CY : 0);
         C.ACC = v;
@@ -324,7 +332,7 @@ class CPU8052 {
     function aluA_Ri(C, r, op, useCY) {
 
       return function() {
-        C.PC += 1;
+        C.PC = (C.PC + 1) & 0xFFFF;
         const b = C.iram[C.getR(r)];
         const v = op(C.ACC, b, useCY ? C.CY : 0);
         C.ACC = v;
