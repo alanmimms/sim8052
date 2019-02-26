@@ -6,6 +6,15 @@ const util = require('util');
 const {toHex1, toHex2, toHex4} = require('./simutils');
 
 
+// SFR values are stored as property values on the CPU8052 object.
+// BitFieldSFR values have their bit flag values stored as property
+// values on the CPU8052 object. Accesses to read SFR by address
+// retrieve the appropriate property for SFRs and aggregate the bit
+// flag values for BitFieldSFR values before returning the value for a
+// get. A set changes the value of the property on the CPU8052 object
+// for an SFR and disaggregates the bit flag values for a BitFieldSFR.
+
+
 //  mathMask: pswBits.ovMask | pswBits.acMask | pswBits.cyMask,
 //  rsMask: pswBits.rs0Mask | pswBits.rs1Mask,
 
@@ -121,10 +130,12 @@ class CPU8052 {
     C.code = code;
     C.xram = xram;
     C.iram = Buffer.alloc(0x100, 0x00, 'binary');
+    C.reset();
 
     C.ops = {
       // ANL
       [0x52]: opA_DIR(C, (a, b) => a & b),
+      [0x53]: opDIR_IMM(C, (a, b) => a & b),
 
       // ADD
       [0x24]: aluA_IMM(C, doADD, false),
@@ -161,8 +172,6 @@ class CPU8052 {
       [0xD6]: doXCHD(0),
       [0xD7]: doXCHD(1),
     };
-
-    C.reset();
 
 
     function doXCHD(r) {
@@ -290,6 +299,18 @@ class CPU8052 {
         const b = C.getDIR(ea);
         const v = op(C.ACC, b);
         C.setDIR(ea, v);
+      }
+    }
+
+
+    function opDIR_IMM(C, op) {
+
+      return function() {
+        const dir = C.code[(C.PC + 1) & 0xFFFF];
+        const imm = C.code[(C.PC + 2) & 0xFFFF];
+        C.PC = (C.PC + 3) & 0xFFFF;
+        const v = op(dir, imm);
+        C.DIR[dir] = v;
       }
     }
 
