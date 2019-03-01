@@ -32,9 +32,30 @@ const parityTable = [
 
 class SFR {
 
-  constructor(addr, resetValue) {
+  constructor(name, addr, cpu, resetValue, defineProps) {
+    this.name = name;
     this.addr = addr;
+    this.cpu = cpu;
     this.resetValue = resetValue || 0x00;
+    this.defineGetSet(cpu, name);
+  }
+
+
+  defineGetSet(cpu, name) {
+
+    Object.defineProperty(cpu, name, {
+
+      get: function() {
+        const v = cpu.SFR[name];
+        console.log(`SFR get ${name} is ${toHex2(v)}`);
+        return v;
+      },
+
+      set: function(v) {
+        console.log(`SFR set ${name} to ${toHex2(v)}`);
+        cpu.SFR[name] = v;
+      },
+    });
   }
 };
 
@@ -44,10 +65,9 @@ class SFR {
 // disaggregated to the separate flags in the setter.
 class BitFieldSFR extends SFR {
 
-  constructor(addr, bitNames, cpu, resetValue) {
-    super(addr, resetValue);
-    this.cpu = cpu;
-    this.bitNames = bitNames.toUpperCase();
+  constructor(name, addr, bitNames, cpu, resetValue) {
+
+    super(name, addr, cpu, resetValue);
 
     // Take the string and add get/set methods to treat each as a
     // single bit of the parent object's value. Define properties xBit
@@ -58,6 +78,7 @@ class BitFieldSFR extends SFR {
     bitNames.split(/\s+/)
       .reverse()
       .map((name, index) => {
+        const ucName = name.toUpperCase();
 
         if (name !== '.') {
           const mask = 1 << index;
@@ -68,58 +89,29 @@ class BitFieldSFR extends SFR {
 
           // Define zeroed flag on our parent object (CPU8052
           // instance) with uppercase version of this bit name.
-          cpu[name.toUpperCase()] = 0;
+          cpu[name.ucName] = 0;
         }
       });
+
+    this.bitNames = bitNames.toUpperCase().split(/\s+/);
   }
 
-  // TODO: This needs to be define get/set for SFRs and BitFieldSFRs
-  // to access SFR memory space in the CPU instance.
 
-  get v() {
-    const cpu = this.cpu;
-    return this.bitNames.reduce((a, bit, x) => cpu[bit] << (7 - x), 0);
-  }
+   defineGetSet(cpu, name) {
+    const sfr = this;
 
-  set v(a) {
-    const cpu = this.cpu;
-    this.bitNames.forEach((bit, x) => cpu[bit] = +!!(a & (1 << (7 - x))));
+    Object.defineProperty(cpu, name, {
+
+      get: function() {
+        return sfr.bitNames.reduce((a, bit, x) => cpu[bit] << (7 - x), 0);
+      },
+
+      set: function(v) {
+        sfr.bitNames.forEach((bit, x) => cpu[bit] = +!!(v & (1 << (7 - x))));
+      },
+    });
   }
 };
-
-
-
-
-const SFRs = {
-  PSW: new BitFieldSFR(0xD0, 'cy ac f0 rs1 rs0 ov ud p', this),
-  ACC: new SFR(0xE0),
-  B: new SFR(0xF0),
-  SP: new SFR(0x81, 0x07),
-  DPL: new SFR(0x82),
-  DPH: new SFR(0x83),
-  P0: new SFR(0x80, null, 0xFF),
-  P1: new SFR(0x90, null, 0xFF),
-  P2: new SFR(0xA0, null, 0xFF),
-  P3: new SFR(0xB0, null, 0xFF),
-  IP: new BitFieldSFR(0xB8, '. . pt2 ps pt1 px1 pt0 px0', this),
-  IE: new BitFieldSFR(0xA8, 'ea . et2 es et1 ex1 et0 ex0', this),
-  TMOD: new SFR(0x89, 'gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0', this),
-  TCON: new SFR(0x88, 'tf1 tr1 tf0 tr0 ie1 it1 ie0 it0', this),
-  T2CON: new SFR(0xC8, 'tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2', this),
-  TH0: new SFR(0x8C),
-  TL0: new SFR(0x8A),
-  TH1: new SFR(0x8D),
-  TL1: new SFR(0x8B),
-  TH2: new SFR(0xCD),
-  TL2: new SFR(0xCC),
-  RCAP2H: new SFR(0xCB),
-  RCAP2L: new SFR(0xCA),
-  SCON: new BitFieldSFR(0x98, 'sm0 sm1 sm2 ren tb8 rb8 ti ri', this),
-  SBUF: new SFR(0x99),
-  PCON: new BitFieldSFR(0x87, 'smod . . . gf1 gf0 pd idl', this),
-};
-module.exports.SFRs = SFRs;
-
 
 
 class CPU8052 {
@@ -127,9 +119,40 @@ class CPU8052 {
   constructor(code, xram) {
     const C = this;
 
-    C.code = code;
-    C.xram = xram;
+    C.code = code || Buffer.alloc(0x10000, 0x00, 'binary');
+    C.xram = xram || Buffer.alloc(0x10000, 0x00, 'binary');
     C.iram = Buffer.alloc(0x100, 0x00, 'binary');
+    C.SFR = {};
+
+    C.SFRs = {
+      PSW: new BitFieldSFR('PSW', 0xD0, 'cy ac f0 rs1 rs0 ov ud p', this),
+      ACC: new SFR('ACC', 0xE0, this),
+      B: new SFR('B', 0xF0, this),
+      SP: new SFR('SP', 0x81, this, 0x07),
+      DPL: new SFR('DPL', 0x82, this),
+      DPH: new SFR('DPH', 0x83, this),
+      P0: new SFR('P0', 0x80, this, null, 0xFF),
+      P1: new SFR('P1', 0x90, this, null, 0xFF),
+      P2: new SFR('P2', 0xA0, this, null, 0xFF),
+      P3: new SFR('P3', 0xB0, this, null, 0xFF),
+      IP: new BitFieldSFR('IP', 0xB8, '. . pt2 ps pt1 px1 pt0 px0', this),
+      IE: new BitFieldSFR('IE', 0xA8, 'ea . et2 es et1 ex1 et0 ex0', this),
+      TMOD: new BitFieldSFR('TMOD', 0x89, 'gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0', this),
+      TCON: new BitFieldSFR('TCON', 0x88, 'tf1 tr1 tf0 tr0 ie1 it1 ie0 it0', this),
+      T2CON: new BitFieldSFR('T2CON', 0xC8, 'tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2', this),
+      TH0: new SFR('TH0', 0x8C, this),
+      TL0: new SFR('TL0', 0x8A, this),
+      TH1: new SFR('TH1', 0x8D, this),
+      TL1: new SFR('TL1', 0x8B, this),
+      TH2: new SFR('TH2', 0xCD, this),
+      TL2: new SFR('TL2', 0xCC, this),
+      RCAP2H: new SFR('RCAP2H', 0xCB, this),
+      RCAP2L: new SFR('RCAP2L', 0xCA, this),
+      SCON: new BitFieldSFR('SCON', 0x98, 'sm0 sm1 sm2 ren tb8 rb8 ti ri', this),
+      SBUF: new SFR('SBUF', 0x99, this),
+      PCON: new BitFieldSFR('PCON', 0x87, 'smod . . . gf1 gf0 pd idl', this),
+    };
+
     C.reset();
 
     C.ops = {
@@ -387,7 +410,7 @@ class CPU8052 {
     this.sbufQ = [];
     this.ipl = -1;
 
-    Object.keys(SFRs).forEach(sn => this[sn] = SFRs[sn].resetValue);
+    Object.keys(this.SFRs).forEach(sn => this[sn] = this.SFRs[sn].resetValue);
   };
 };
 module.exports.CPU8052 = CPU8052;
