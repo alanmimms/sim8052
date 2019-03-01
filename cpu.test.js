@@ -1,6 +1,5 @@
-const SIM = require('./sim');
 const {toHex1, toHex2, toHex4} = require('./simutils');
-const {SFRs, CPU8052} = require('./cpu-8052');
+const {CPU8052} = require('./cpu-8052');
 
 const CODESize = 65536;
 const XRAMSize = 65536;
@@ -9,10 +8,6 @@ const code = Buffer.alloc(CODESize, 0x00, 'binary');
 const xram = Buffer.alloc(XRAMSize, 0x00, 'binary');
 
 const cpu = new CPU8052(code, xram);
-
-
-// Define each SFR address globally
-Object.keys(SFRs).forEach(name => global[name] = SFRs[name]);
 
 
 // Always start with a clean slate
