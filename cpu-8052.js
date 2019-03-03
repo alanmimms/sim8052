@@ -203,9 +203,13 @@ class CPU8052 {
       [0x3E]: aluA_R(C, 6, doADD, true),
       [0x3F]: aluA_R(C, 7, doADD, true),
 
+      // CLR
+      [0xC2]: bitBIT(C, () => 0),
+      [0xC3]: bitCY(C, () => 0),
+      [0xE4]: singleton(C, C => C.ACC = 0),
+      
       // DA
       [0xD4]: doDA,
-
 
       // ORL
       [0x42]: opDIR_A(C, (a, b) => a | b),
@@ -389,6 +393,38 @@ class CPU8052 {
         C.PC = (C.PC + 2) & 0xFFFF;
         const b = C.getBIT(bn);
         C.CY = +op(C.CY, b);
+      }
+    }
+
+
+    function singleton(C, op) {
+
+      return function() {
+        C.PC = (C.PC + 1) & 0xFFFF;
+        op(C);
+      }
+    }
+
+
+    function bitBIT(C, op) {
+
+      return function() {
+        const bit = C.code[(C.PC + 1) & 0xFFFF];
+        C.PC = (C.PC + 2) & 0xFFFF;
+        const b = C.getBIT(bit);
+        const v = op(b);
+        C.setBIT(bit, v);
+      }
+    }
+
+
+    function bitCY(C, op) {
+
+      return function() {
+        C.PC = (C.PC + 1) & 0xFFFF;
+        const b = C.CY;
+        const v = op(b);
+        C.CY = v;
       }
     }
 
