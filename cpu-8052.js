@@ -237,6 +237,10 @@ class CPU8052 {
       [0xA0]: opCY_bit(C, (a, b) => a | !b),
 
 
+      // SETB
+      [0xD2]: bitBIT(C, b => 1),
+      [0xD3]: bitCY(C, () => 1),
+      
       // SUBB
       [0x94]: aluA_IMM(C, doSUB, true),
       [0x95]: aluA_DIR(C, doSUB, true),
