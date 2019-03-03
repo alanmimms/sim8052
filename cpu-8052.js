@@ -209,8 +209,8 @@ class CPU8052 {
       [0xE4]: singleton(C, C => C.ACC = 0),
       
       // CPL
-      [0xF2]: bitBIT(C, b => +!!b),
-      [0xF3]: bitCY(C, () => +!!C.CY),
+      [0xB2]: bitBIT(C, b => +!b),
+      [0xB3]: bitCY(C, () => +!C.CY),
       [0xF4]: singleton(C, C => C.ACC ^= 0xFF),
       
       // DA
