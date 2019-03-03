@@ -206,6 +206,28 @@ class CPU8052 {
       // DA
       [0xD4]: doDA,
 
+
+      // ORL
+      [0x42]: opDIR_A(C, (a, b) => a | b),
+      [0x43]: opDIR_IMM(C, (a, b) => a | b),
+      [0x44]: aluA_IMM(C, (a, b) => a | b),
+      [0x45]: opA_DIR(C, (a, b) => a | b),
+      [0x46]: aluA_Ri(C, 0, (a, b) => a | b),
+      [0x47]: aluA_Ri(C, 1, (a, b) => a | b),
+
+      [0x48]: aluA_R(C, 0, (a, b) => a | b),
+      [0x49]: aluA_R(C, 1, (a, b) => a | b),
+      [0x4A]: aluA_R(C, 2, (a, b) => a | b),
+      [0x4B]: aluA_R(C, 3, (a, b) => a | b),
+      [0x4C]: aluA_R(C, 4, (a, b) => a | b),
+      [0x4D]: aluA_R(C, 5, (a, b) => a | b),
+      [0x4E]: aluA_R(C, 6, (a, b) => a | b),
+      [0x4F]: aluA_R(C, 7, (a, b) => a | b),
+
+      [0x72]: opCY_bit(C, (a, b) => a | b),
+      [0xA0]: opCY_bit(C, (a, b) => a | !b),
+
+
       // XCHD
       [0xD6]: doXCHD(0),
       [0xD7]: doXCHD(1),
