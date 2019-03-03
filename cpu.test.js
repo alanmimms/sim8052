@@ -348,11 +348,11 @@ test(`op:JB bit,rel bit=0`, () => {
   cpu.code[0x102] = rela;
   cpu.PSW = 0;
   cpu.ACC = acBase;
-  cpu.BIT[bit] = 0;
+  cpu.setBIT(bit, 0);
 
   cpu.run1(0x100);              // JB bit,rela
   expect(cpu.PC).toBe(0x103);
-  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.getBIT(bit)).toBe(0);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -369,11 +369,11 @@ test(`op:JB bit,rel bit=1`, () => {
   cpu.code[0x102] = rela;
   cpu.PSW = 0;
   cpu.ACC = acBase;
-  cpu.BIT[bit] = 1;
+  cpu.setBIT(bit, 1);
 
   cpu.run1(0x100);              // JB bit,rela
   expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
-  expect(cpu.BIT[bit]).toBe(1);
+  expect(cpu.getBIT(bit)).toBe(1);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -392,11 +392,11 @@ test(`op:JBC bit,rel bit=0`, () => {
   cpu.code[0x102] = rela;
   cpu.PSW = 0;
   cpu.ACC = acBase;
-  cpu.BIT[bit] = 0;
+  cpu.setBIT(bit, 0);
 
   cpu.run1(0x100);              // JBC bit,rela
   expect(cpu.PC).toBe(0x103);
-  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.getBIT(bit)).toBe(0);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -413,11 +413,11 @@ test(`op:JBC bit,rel bit=1`, () => {
   cpu.code[0x102] = rela;
   cpu.PSW = 0;
   cpu.ACC = acBase;
-  cpu.BIT[bit] = 1;
+  cpu.setBIT(bit, 1);
 
   cpu.run1(0x100);              // JBC bit,rela
   expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
-  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.getBIT(bit)).toBe(0);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -436,11 +436,11 @@ test(`op:JNB bit,rel bit=0`, () => {
   cpu.code[0x102] = rela;
   cpu.PSW = 0;
   cpu.ACC = acBase;
-  cpu.BIT[bit] = 0;
+  cpu.setBIT(bit, 0);
 
   cpu.run1(0x100);              // JNB bit,rela
   expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
-  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.getBIT(bit)).toBe(0);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -457,11 +457,11 @@ test(`op:JNB bit,rel bit=1`, () => {
   cpu.code[0x102] = rela;
   cpu.PSW = 0;
   cpu.ACC = acBase;
-  cpu.BIT[bit] = 1;
+  cpu.setBIT(bit, 1);
 
   cpu.run1(0x100);              // JNB bit,rela
   expect(cpu.PC).toBe(0x103);
-  expect(cpu.BIT[bit]).toBe(1);
+  expect(cpu.getBIT(bit)).toBe(1);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -773,12 +773,12 @@ test(`op:MOV C,sbit=0`, () => {
   cpu.PSW = 0;
   cpu.ACC = 0xAA;
   cpu.CY = 0;
-  cpu.BIT[bit] = 0;
+  cpu.setBIT(bit, 0);
 
   cpu.run1(0x100);              // MOV
   expect(cpu.PC).toBe(0x102);
   expect(cpu.ACC).toBe(0xAA);
-  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.getBIT(bit)).toBe(0);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -792,12 +792,12 @@ test(`op:MOV C,sbit=1`, () => {
   cpu.PSW = 0;
   cpu.ACC = 0xAA;
   cpu.CY = 1;
-  cpu.BIT[bit] = 0;
+  cpu.setBIT(bit, 0);
 
   cpu.run1(0x100);              // MOV
   expect(cpu.PC).toBe(0x102);
   expect(cpu.ACC).toBe(0xAA);
-  expect(cpu.BIT[bit]).toBe(1);
+  expect(cpu.getBIT(bit)).toBe(1);
   expect(cpu.CY).toBe(1);
   expect(cpu.AC).toBe(0);
   expect(cpu.OV).toBe(0);
@@ -990,7 +990,7 @@ test('op:CLR bit', () => {
   clearIRAM();
   cpu.code[0x100] = 0xC2;       // CLR bit
   cpu.code[0x101] = bit;
-  cpu.BIT[bit] = 1;
+  cpu.setBIT(bit, 1);
   cpu.ACC = acBase;
   cpu.PSW = 0;
 
@@ -999,7 +999,7 @@ test('op:CLR bit', () => {
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.ACC).toBe(acBase);
-  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.getBIT(bit)).toBe(0);
 });
 
 //////////// CLR C ////////////
@@ -1024,7 +1024,7 @@ test('op:SETB bit', () => {
   clearIRAM();
   cpu.code[0x100] = 0xD2;       // SETB bit
   cpu.code[0x101] = bit;
-  cpu.BIT[bit] = 0;
+  cpu.setBIT(bit, 0);
   cpu.ACC = acBase;
   cpu.PSW = 0;
 
@@ -1033,7 +1033,7 @@ test('op:SETB bit', () => {
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.ACC).toBe(acBase);
-  expect(cpu.BIT[bit]).toBe(1);
+  expect(cpu.getBIT(bit)).toBe(1);
 });
 
 //////////// SETB C ////////////
@@ -1073,7 +1073,7 @@ test('op:CPL bit=1', () => {
   clearIRAM();
   cpu.code[0x100] = 0xB2;       // CPL bit
   cpu.code[0x101] = bit;
-  cpu.BIT[bit] = 1;
+  cpu.setBIT(bit, 1);
   cpu.ACC = acBase;
   cpu.PSW = 0;
 
@@ -1082,7 +1082,7 @@ test('op:CPL bit=1', () => {
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.ACC).toBe(acBase);
-  expect(cpu.BIT[bit]).toBe(0);
+  expect(cpu.getBIT(bit)).toBe(0);
 });
 
 //////////// CPL bit ////////////
@@ -1092,7 +1092,7 @@ test('op:CPL bit=0', () => {
   clearIRAM();
   cpu.code[0x100] = 0xB2;       // CPL bit
   cpu.code[0x101] = bit;
-  cpu.BIT[bit] = 0;
+  cpu.setBIT(bit, 0);
   cpu.ACC = acBase;
   cpu.PSW = 0;
 
@@ -1101,7 +1101,7 @@ test('op:CPL bit=0', () => {
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
   expect(cpu.ACC).toBe(acBase);
-  expect(cpu.BIT[bit]).toBe(1);
+  expect(cpu.getBIT(bit)).toBe(1);
 });
 
 //////////// CPL C ////////////
@@ -1919,7 +1919,7 @@ describe.each([
       cpu.code[0x101] = bit;
       cpu.PSW = 0;
 
-      cpu.BIT[bit] = y;
+      cpu.setBIT(bit, y);
       cpu.ACC = 0;
       cpu.CY = x;
 
@@ -1928,7 +1928,7 @@ describe.each([
       expect(cpu.CY).toBe(and);
       expect(cpu.AC).toBe(0);
       expect(cpu.ACC).toBe(0);
-      expect(cpu.BIT[bit]).toBe(y);
+      expect(cpu.getBIT(bit)).toBe(y);
     });
   });
 
@@ -1949,7 +1949,7 @@ describe.each([
         cpu.code[0x101] = bit;
         cpu.PSW = 0;
 
-        cpu.BIT[bit] = y;
+        cpu.setBIT(bit, y);
         cpu.ACC = 0;
         cpu.CY = x;
 
@@ -1958,7 +1958,7 @@ describe.each([
         expect(cpu.CY).toBe(and);
         expect(cpu.AC).toBe(0);
         expect(cpu.ACC).toBe(0);
-        expect(cpu.BIT[bit]).toBe(y);
+        expect(cpu.getBIT(bit)).toBe(y);
       });
     });
 
@@ -2104,7 +2104,7 @@ describe.each([
       cpu.code[0x101] = bit;
       cpu.PSW = 0;
 
-      cpu.BIT[bit] = y;
+      cpu.setBIT(bit, y);
       cpu.ACC = 0;
       cpu.CY = x;
 
@@ -2113,7 +2113,7 @@ describe.each([
       expect(cpu.CY).toBe(or);
       expect(cpu.AC).toBe(0);
       expect(cpu.ACC).toBe(0);
-      expect(cpu.BIT[bit]).toBe(y);
+      expect(cpu.getBIT(bit)).toBe(y);
     });
   });
 
@@ -2134,7 +2134,7 @@ describe.each([
         cpu.code[0x101] = bit;
         cpu.PSW = 0;
 
-        cpu.BIT[bit] = y;
+        cpu.setBIT(bit, y);
         cpu.ACC = 0;
         cpu.CY = x;
 
@@ -2143,7 +2143,7 @@ describe.each([
         expect(cpu.CY).toBe(or);
         expect(cpu.AC).toBe(0);
         expect(cpu.ACC).toBe(0);
-        expect(cpu.BIT[bit]).toBe(y);
+        expect(cpu.getBIT(bit)).toBe(y);
       });
     });
 

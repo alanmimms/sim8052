@@ -47,12 +47,10 @@ class SFR {
 
       get: function() {
         const v = cpu.SFR[name];
-        console.log(`SFR get ${name} is ${toHex2(v)}`);
         return v;
       },
 
       set: function(v) {
-        console.log(`SFR set ${name} to ${toHex2(v)}`);
         cpu.SFR[name] = v;
       },
     });
@@ -70,7 +68,7 @@ class BitFieldSFR extends SFR {
     super(name, addr, cpu, resetValue);
 
     // Take the string and add get/set methods to treat each as a
-    // single bit of the parent object's value. Define properties xBit
+    // single bit of the parent object value. Define properties xBit
     // (bit address), xShift, and xMask for each bit `x`. The string
     // is a space separated list of bit names where the leftmost is
     // bit #n and rightmost is bit #0 and '.' is used for a reserved
@@ -153,12 +151,29 @@ class CPU8052 {
       PCON: new BitFieldSFR('PCON', 0x87, 'smod . . . gf1 gf0 pd idl', this),
     };
 
+
     C.reset();
 
     C.ops = {
       // ANL
-      [0x52]: opA_DIR(C, (a, b) => a & b),
+      [0x52]: opDIR_A(C, (a, b) => a & b),
       [0x53]: opDIR_IMM(C, (a, b) => a & b),
+      [0x54]: aluA_IMM(C, (a, b) => a & b),
+      [0x55]: opA_DIR(C, (a, b) => a & b),
+      [0x56]: aluA_Ri(C, 0, (a, b) => a & b),
+      [0x57]: aluA_Ri(C, 1, (a, b) => a & b),
+
+      [0x58]: aluA_R(C, 0, (a, b) => a & b),
+      [0x59]: aluA_R(C, 1, (a, b) => a & b),
+      [0x5A]: aluA_R(C, 2, (a, b) => a & b),
+      [0x5B]: aluA_R(C, 3, (a, b) => a & b),
+      [0x5C]: aluA_R(C, 4, (a, b) => a & b),
+      [0x5D]: aluA_R(C, 5, (a, b) => a & b),
+      [0x5E]: aluA_R(C, 6, (a, b) => a & b),
+      [0x5F]: aluA_R(C, 7, (a, b) => a & b),
+
+      [0x82]: opCY_bit(C, (a, b) => a & b),
+      [0xB0]: opCY_bit(C, (a, b) => a & !b),
 
       // ADD
       [0x24]: aluA_IMM(C, doADD, false),
@@ -314,6 +329,17 @@ class CPU8052 {
     }
 
 
+    function opCY_bit(C, op) {
+
+      return function() {
+        const bn = C.code[(C.PC + 1) & 0xFFFF];
+        C.PC = (C.PC + 2) & 0xFFFF;
+        const b = C.getBIT(bn);
+        C.CY = +op(C.CY, b);
+      }
+    }
+
+
     function opA_DIR(C, op) {
 
       return function() {
@@ -321,7 +347,19 @@ class CPU8052 {
         C.PC = (C.PC + 2) & 0xFFFF;
         const b = C.getDIR(ea);
         const v = op(C.ACC, b);
-        C.setDIR(ea, v);
+        C.ACC = v;
+      }
+    }
+
+
+    function opDIR_A(C, op) {
+
+      return function() {
+        const dir = C.code[(C.PC + 1) & 0xFFFF];
+        C.PC = (C.PC + 2) & 0xFFFF;
+        const a = C.getDIR(dir);
+        const v = op(a, C.ACC);
+        C.setDIR(dir, v);
       }
     }
 
@@ -332,8 +370,9 @@ class CPU8052 {
         const dir = C.code[(C.PC + 1) & 0xFFFF];
         const imm = C.code[(C.PC + 2) & 0xFFFF];
         C.PC = (C.PC + 3) & 0xFFFF;
-        const v = op(dir, imm);
-        C.DIR[dir] = v;
+        const a = C.getDIR(dir);
+        const v = op(a, imm);
+        C.setDIR(dir, v);
       }
     }
 
@@ -403,6 +442,45 @@ class CPU8052 {
   setDIR(ea, v) {
     this.iram[ea] = v;
   };
+
+
+  // TODO: this.the getBIT and setBIT accessors need to switch on address
+  // and access the appropriate SFRs member instance where needed.
+  getBIT(bn) {
+    bn = +bn;
+    const mask = 1 << (bn & 7);
+
+    if (bn < 0x80) {
+      const ea = 0x20 + (bn >>> 3);
+      return +!!(this.iram[ea] & mask);
+    } else {
+      const ea = bn & 0xF8;
+      return +!!(this.SFR[ea] & mask);
+    }
+  }
+
+  setBIT(bn, v) {
+    bn = +bn;
+    const mask = 1 << (bn & 7);
+
+    if (bn < 0x80) {
+      const ea = 0x20 + (bn >>> 3);
+
+      if (v) {
+        this.iram[ea] |= mask;
+      } else {
+        this.iram[ea] &= ~mask;
+      }
+    } else {
+      const ea = bn & 0xF8;
+
+      if (v) {
+        this.SFR[ea] |= mask;
+      } else {
+        this.SFR[ea] &= ~mask;
+      }
+    }
+  }
 
 
   reset() {
