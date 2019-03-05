@@ -1,3 +1,28 @@
+# Stages of instruction execution
+
+## Arithmetic/Logical instructions
+* Increment PC to next instruction
+* Get left operand
+* Get right operand
+* Do operation, setting flags if any
+* Store result
+
+## ACC modifying: rotates, DA, SWAP, CLR, CPL
+
+## Bit operations
+
+## MOV
+
+## XCH, XCHD
+
+## PUSH/POP
+
+## CJNE, DJNZ
+
+## Conditional and unconditional jumps and calls
+
+
+
 # Using Proxy() to mediate access for get/set even of array
 
 
