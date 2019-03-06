@@ -1796,7 +1796,7 @@ describe.each([
 ]) ('op:ANL',
   (x, y, and)  => {
 
-    test(`A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(and)}`, () => {
+    test(`A,dir 0x55 ${toHex2(x)}&${toHex2(y)}=${toHex2(and)}`, () => {
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x55;       // ANL A,dir
@@ -1815,7 +1815,7 @@ describe.each([
       expect(cpu.iram[dir]).toBe(x);
     });
 
-    test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+    test(`A,Rn 0x5B ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
       cpu.PSW = 0;
       cpu.code[0x100] = 0x5B;       // ANL A,R3
       cpu.iram[3] = x;              // R3
@@ -1829,7 +1829,7 @@ describe.each([
       expect(cpu.iram[3]).toBe(x);
     });
 
-    test(`A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+    test(`A,@Ri 0x57 ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x57;       // ANL A,@R1
@@ -1848,7 +1848,7 @@ describe.each([
       expect(cpu.iram[dir]).toBe(x);
     });
 
-    test(`A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+    test(`A,#imm 0x54 ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
       const imm = x;
       clearIRAM();
       cpu.code[0x100] = 0x54;       // ANL A,#imm
@@ -1864,7 +1864,7 @@ describe.each([
       expect(cpu.AC).toBe(0);
     });
 
-    test(`dir,A ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+    test(`dir,A 0x52 ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x52;       // ANL dir,A
@@ -1882,7 +1882,7 @@ describe.each([
       expect(cpu.AC).toBe(0);
     });
 
-    test(`ANL dir,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+    test(`ANL dir,0x53 #imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
       const dir = 0x42;
       const imm = x;
       clearIRAM();
