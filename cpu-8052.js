@@ -154,23 +154,51 @@ class CPU8052 {
 
     C.reset();
 
+    const ANL = (a, b) => a & b;
+    const ORL = (a, b) => a | b;
+    const XRL = (a, b) => a ^ b;
+
+    const getA = () => C.ACC;
+    const getDIR = () => C.getDIR(C.code[(C.opPC + 1) & 0xFFFF]);
+    const getIMM = () => C.code[(C.opPC + 1) & 0xFFFF];
+    const getIMM2 = () => C.code[(C.opPC + 2) & 0xFFFF];
+    const getR = () => C.getR(C.op & 0x07);
+    const getRi = () => C.iram[C.getR(C.op & 0x01)];
+
+    const putA = v => C.ACC = v;
+    const putDIR = v => C.setDIR(C.code[(C.opPC + 1) & 0xFFFFF], v);
+    const putR = v => C.setR(C.op & 0x7, v);
+    const putRi = v => C.iram(C.getR(C.op & 0x1), v);
+
+    function doOP(opN, putR, getA, getB, op) {
+
+      return function(C) {
+        C.PC = (C.PC + opN) & 0xFFFF;
+        const a = getA();
+        const b = getB();
+        const r = op(a, b);
+        putR(r);
+      };
+    }
+
+
     C.ops = {
       // ANL
-      [0x52]: opDIR_A(C, (a, b) => a & b),
-      [0x53]: opDIR_IMM(C, (a, b) => a & b),
-      [0x54]: aluA_IMM(C, (a, b) => a & b),
-      [0x55]: opA_DIR(C, (a, b) => a & b),
-      [0x56]: aluA_Ri(C, 0, (a, b) => a & b),
-      [0x57]: aluA_Ri(C, 1, (a, b) => a & b),
+      [0x52]: doOP(2, putDIR, getDIR, getA, ANL),
+      [0x53]: doOP(3, putDIR, getDIR, getIMM2, ANL),
+      [0x54]: doOP(2, putA, getA, getIMM, ANL),
+      [0x55]: doOP(2, putA, getA, getDIR, ANL),
+      [0x56]: doOP(1, putA, getA, getRi, ANL),
+      [0x57]: doOP(1, putA, getA, getRi, ANL),
 
-      [0x58]: aluA_R(C, 0, (a, b) => a & b),
-      [0x59]: aluA_R(C, 1, (a, b) => a & b),
-      [0x5A]: aluA_R(C, 2, (a, b) => a & b),
-      [0x5B]: aluA_R(C, 3, (a, b) => a & b),
-      [0x5C]: aluA_R(C, 4, (a, b) => a & b),
-      [0x5D]: aluA_R(C, 5, (a, b) => a & b),
-      [0x5E]: aluA_R(C, 6, (a, b) => a & b),
-      [0x5F]: aluA_R(C, 7, (a, b) => a & b),
+      [0x58]: doOP(1, putA, getA, getR, ANL),
+      [0x59]: doOP(1, putA, getA, getR, ANL),
+      [0x5A]: doOP(1, putA, getA, getR, ANL),
+      [0x5B]: doOP(1, putA, getA, getR, ANL),
+      [0x5C]: doOP(1, putA, getA, getR, ANL),
+      [0x5D]: doOP(1, putA, getA, getR, ANL),
+      [0x5E]: doOP(1, putA, getA, getR, ANL),
+      [0x5F]: doOP(1, putA, getA, getR, ANL),
 
       [0x82]: opCY_bit(C, (a, b) => a & b),
       [0xB0]: opCY_bit(C, (a, b) => a & !b),
@@ -522,10 +550,11 @@ class CPU8052 {
   };
 
 
-  run1(pc = C.PC) {
-    this.PC = pc;
-    const op = this.code[pc];
-    this.ops[op](this);
+  run1(pc = this.PC) {
+    const C = this;
+    C.opPC = C.PC = pc;
+    C.op = C.code[pc];
+    C.ops[C.op](C);
   };
 
 
