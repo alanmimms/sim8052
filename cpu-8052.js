@@ -155,20 +155,24 @@ class CPU8052 {
     C.reset();
 
     const ANL = (a, b) => a & b;
+    const ANL_NOT = (a, b) => a & !b;
     const ORL = (a, b) => a | b;
     const XRL = (a, b) => a ^ b;
 
     const getA = () => C.ACC;
     const getDIR = () => C.getDIR(C.code[(C.opPC + 1) & 0xFFFF]);
     const getIMM = () => C.code[(C.opPC + 1) & 0xFFFF];
+    const getBIT = () => C.getBIT(C.code[(C.opPC + 1) & 0xFFFF]);
     const getIMM2 = () => C.code[(C.opPC + 2) & 0xFFFF];
     const getR = () => C.getR(C.op & 0x07);
     const getRi = () => C.iram[C.getR(C.op & 0x01)];
+    const getCY = () => C.CY;
 
     const putA = v => C.ACC = v;
     const putDIR = v => C.setDIR(C.code[(C.opPC + 1) & 0xFFFFF], v);
     const putR = v => C.setR(C.op & 0x7, v);
     const putRi = v => C.iram(C.getR(C.op & 0x1), v);
+    const putCY = v => C.CY = v;
 
     function doOP(opN, putR, getA, getB, op) {
 
@@ -200,8 +204,8 @@ class CPU8052 {
       [0x5E]: doOP(1, putA, getA, getR, ANL),
       [0x5F]: doOP(1, putA, getA, getR, ANL),
 
-      [0x82]: opCY_bit(C, (a, b) => a & b),
-      [0xB0]: opCY_bit(C, (a, b) => a & !b),
+      [0x82]: doOP(2, putCY, getCY, getBIT, ANL),
+      [0xB0]: doOP(2, putCY, getCY, getBIT, ANL_NOT),
 
       // ADD
       [0x24]: aluA_IMM(C, doADD, false),
