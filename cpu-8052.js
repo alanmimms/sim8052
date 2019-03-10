@@ -154,9 +154,6 @@ class CPU8052 {
 
     C.reset();
 
-    const ANL = (a, b) => a & b;
-    const ANL_NOT = (a, b) => a & !b;
-    const ORL = (a, b) => a | b;
     const XRL = (a, b) => a ^ b;
 
     const getA = () => C.ACC;
@@ -186,27 +183,46 @@ class CPU8052 {
     }
 
 
-    C.ops = {
-      // ANL
-      [0x52]: doOP(2, putDIR, getDIR, getA, ANL),
-      [0x53]: doOP(3, putDIR, getDIR, getIMM2, ANL),
-      [0x54]: doOP(2, putA, getA, getIMM, ANL),
-      [0x55]: doOP(2, putA, getA, getDIR, ANL),
-      [0x56]: doOP(1, putA, getA, getRi, ANL),
-      [0x57]: doOP(1, putA, getA, getRi, ANL),
+    C.ops = {};
 
-      [0x58]: doOP(1, putA, getA, getR, ANL),
-      [0x59]: doOP(1, putA, getA, getR, ANL),
-      [0x5A]: doOP(1, putA, getA, getR, ANL),
-      [0x5B]: doOP(1, putA, getA, getR, ANL),
-      [0x5C]: doOP(1, putA, getA, getR, ANL),
-      [0x5D]: doOP(1, putA, getA, getR, ANL),
-      [0x5E]: doOP(1, putA, getA, getR, ANL),
-      [0x5F]: doOP(1, putA, getA, getR, ANL),
+    const Ri = _.range(0, 2);
+    const R = _.range(0, 8);
 
+    function doLogical(mnemonic, opBase, opF) {
+      Object.assign(C.ops, {
+        [opBase+0x02]: doOP(2, putDIR, getDIR, getA, opF),
+        [opBase+0x03]: doOP(3, putDIR, getDIR, getIMM2, opF),
+        [opBase+0x04]: doOP(2, putA, getA, getIMM, opF),
+        [opBase+0x05]: doOP(2, putA, getA, getDIR, opF),
+      });
+
+      Ri.forEach(r => Object.assign(C.ops, {
+        [opBase + 0x06 + r]: doOP(1, putA, getA, getRi, opF),
+      }));
+
+      R.forEach(r => Object.assign(C.ops, {
+        [opBase + 0x08 + r]: doOP(1, putA, getA, getR, opF),
+      }));
+    }
+
+
+    const ANL = (a, b) => a & b;
+    const ANL_NOT = (a, b) => a & !b;
+    doLogical('ANL', 0x50, ANL);
+    Object.assign(C.ops, {
       [0x82]: doOP(2, putCY, getCY, getBIT, ANL),
       [0xB0]: doOP(2, putCY, getCY, getBIT, ANL_NOT),
+    });
 
+    const ORL = (a, b) => a | b;
+    const ORL_NOT = (a, b) => a | !b;
+    doLogical('ORL', 0x40, ORL);
+    Object.assign(C.ops, {
+      [0x72]: doOP(2, putCY, getCY, getBIT, ORL),
+      [0xA0]: doOP(2, putCY, getCY, getBIT, ORL_NOT),
+    });
+
+    Object.assign(C.ops, {
       // ADD
       [0x24]: aluA_IMM(C, doADD, false),
       [0x25]: aluA_DIR(C, doADD, false),
@@ -307,7 +323,7 @@ class CPU8052 {
       [0x6D]: aluA_R(C, 5, (a, b) => a ^ b),
       [0x6E]: aluA_R(C, 6, (a, b) => a ^ b),
       [0x6F]: aluA_R(C, 7, (a, b) => a ^ b),
-    };
+    });
 
 
     function doXCHD(r) {
