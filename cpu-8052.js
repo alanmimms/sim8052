@@ -169,10 +169,10 @@ class CPU8052 {
     const putRi = v => C.iram(C.getR(C.op & 0x1), v);
     const putCY = v => C.CY = v;
 
-    function doOp(opN, putResult, getA, getB, op) {
+    function doOp(nBytes, putResult, getA, getB, op) {
 
       return function() {
-        C.PC = (C.PC + opN) & 0xFFFF;
+        C.PC = (C.PC + nBytes) & 0xFFFF;
         const a = getA();
         const b = getB();
         const r = op(a, b);
@@ -189,12 +189,14 @@ class CPU8052 {
         [opBase+0x05]: doOp(2, putA, getA, getDIR, opF),
       });
 
-      Ri.forEach(r => Object.assign(C.ops, {
+      // @Ri
+      _.times(2, r => Object.assign(C.ops, {
         [opBase + 0x06 + r]: doOp(1, putA, getA, getRi, opF),
       }));
 
-      R.forEach(r => Object.assign(C.ops, {
-         [opBase + 0x08 + r]: doOp(1, putA, getA, getR, opF),
+      // Rn
+      _.times(8, r => Object.assign(C.ops, {
+        [opBase + 0x08 + r]: doOp(1, putA, getA, getR, opF),
       }));
     }
 
@@ -205,20 +207,19 @@ class CPU8052 {
         [opBase + 0x05]: doOp(2, putA, getA, getDIR, opF),
       });
 
-      Ri.forEach(r => Object.assign(C.ops, {
+      // @Ri
+      _.times(2, r => Object.assign(C.ops, {
         [opBase + 0x06 + r]: doOp(1, putA, getA, getRi, opF),
       }));
 
-      R.forEach(r => Object.assign(C.ops, {
-         [opBase + 0x08 + r]: doOp(1, putA, getA, getR, opF),
+      // Rn
+      _.times(8, r => Object.assign(C.ops, {
+        [opBase + 0x08 + r]: doOp(1, putA, getA, getR, opF),
       }));
     }
 
 
     C.ops = {};
-
-    const Ri = _.range(0, 2);
-    const R = _.range(0, 8);
 
     const ANL = (a, b) => a & b;
     const ANL_NOT = (a, b) => a & +!b;
@@ -238,8 +239,8 @@ class CPU8052 {
 
     doLogical('XRL', 0x60, (a, b) => a ^ b);
 
-    doMath('ADD', 0x24, doADD, false);
-    doMath('ADDC', 0x34, doADD, true);
+    doMath('ADD', 0x20, doADD, false);
+    doMath('ADDC', 0x30, doADD, true);
 
     Object.assign(C.ops, {
       // ADD

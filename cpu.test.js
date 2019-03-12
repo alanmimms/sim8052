@@ -1882,7 +1882,7 @@ describe.each([
       expect(cpu.AC).toBe(0);
     });
 
-    test(`ANL dir,0x53 #imm ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
+    test(`ANL dir,#imm 0x53 ${toHex2(x)}+${toHex2(y)}=${toHex2(and)}`, () => {
       const dir = 0x42;
       const imm = x;
       clearIRAM();
@@ -1942,7 +1942,7 @@ describe.each([
   [  1,  1,  0],
 ]) ('op:ANL',
     (x, y, and)  => {
-      test(`ANL C,/bit ${x}&/${y}=${and}`, () => {
+      test(`ANL C,/bit 0xB0 ${x}&/${y}=${and}`, () => {
         const bit = 0x42;
         clearIRAM();
         cpu.code[0x100] = 0xB0;       // ANL C,bit
@@ -1981,7 +1981,7 @@ describe.each([
 ]) ('op:ORL=0x4x',
   (x, y, or)  => {
 
-    test(`A,dir ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`A,dir 0x45 ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x45;       // ORL A,dir
@@ -2000,7 +2000,7 @@ describe.each([
       expect(cpu.iram[dir]).toBe(x);
     });
 
-    test(`A,Rn ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`A,Rn 0x4B ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       cpu.PSW = 0;
       cpu.code[0x100] = 0x4B;       // ORL A,R3
       cpu.iram[3] = x;              // R3
@@ -2014,7 +2014,7 @@ describe.each([
       expect(cpu.iram[3]).toBe(x);
     });
 
-    test(`A,@Ri ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`A,@Ri 0x47 ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x47;       // ORL A,@R1
@@ -2033,7 +2033,7 @@ describe.each([
       expect(cpu.iram[dir]).toBe(x);
     });
 
-    test(`A,#imm ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`A,#imm 0x44 ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const imm = x;
       clearIRAM();
       cpu.code[0x100] = 0x44;       // ORL A,#imm
@@ -2049,8 +2049,8 @@ describe.each([
       expect(cpu.AC).toBe(0);
     });
 
-    test(`dir,A ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
-      const dir = 0x42;
+    test(`dir,A 0x42 ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
+      const dir = 0x47;
       clearIRAM();
       cpu.code[0x100] = 0x42;       // ORL dir,A
       cpu.code[0x101] = dir;
@@ -2067,7 +2067,7 @@ describe.each([
       expect(cpu.AC).toBe(0);
     });
 
-    test(`ORL dir,#imm ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`ORL dir,#imm 0x43 ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const dir = 0x42;
       const imm = x;
       clearIRAM();
@@ -2097,7 +2097,7 @@ describe.each([
   [  1,  1,  1],
 ]) ('op:ORL',
   (x, y, or)  => {
-    test(`C,bit ${x}|${y}=${or}`, () => {
+    test(`C,bit 0x82 ${x}|${y}=${or}`, () => {
       const bit = 0x72;
       clearIRAM();
       cpu.code[0x100] = 0x82;       // ORL C,bit
@@ -2127,8 +2127,8 @@ describe.each([
   [  1,  1,  1],
 ]) ('op:ORL',
     (x, y, or)  => {
-      test(`ORL C,/bit ${x}|/${y}=${or}`, () => {
-        const bit = 0xA0;
+      test(`ORL C,/bit0xA0  ${x}|/${y}=${or}`, () => {
+        const bit = 0x33;
         clearIRAM();
         cpu.code[0x100] = 0xA0;       // ORL C,/bit
         cpu.code[0x101] = bit;
