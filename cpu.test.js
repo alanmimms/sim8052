@@ -1978,10 +1978,10 @@ describe.each([
   [0x20, 0x05, 0x25],
   [0x40, 0x05, 0x45],
   [0x80, 0x05, 0x85],
-]) ('op:ORL',
+]) ('op:ORL=0x4x',
   (x, y, or)  => {
 
-    test(`A,dir ${toHex2(x)}&${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`A,dir ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x45;       // ORL A,dir
@@ -2000,7 +2000,7 @@ describe.each([
       expect(cpu.iram[dir]).toBe(x);
     });
 
-    test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`A,Rn ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       cpu.PSW = 0;
       cpu.code[0x100] = 0x4B;       // ORL A,R3
       cpu.iram[3] = x;              // R3
@@ -2014,7 +2014,7 @@ describe.each([
       expect(cpu.iram[3]).toBe(x);
     });
 
-    test(`A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`A,@Ri ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x47;       // ORL A,@R1
@@ -2033,7 +2033,7 @@ describe.each([
       expect(cpu.iram[dir]).toBe(x);
     });
 
-    test(`A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`A,#imm ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const imm = x;
       clearIRAM();
       cpu.code[0x100] = 0x44;       // ORL A,#imm
@@ -2049,7 +2049,7 @@ describe.each([
       expect(cpu.AC).toBe(0);
     });
 
-    test(`dir,A ${toHex2(x)}+${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`dir,A ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const dir = 0x42;
       clearIRAM();
       cpu.code[0x100] = 0x42;       // ORL dir,A
@@ -2067,7 +2067,7 @@ describe.each([
       expect(cpu.AC).toBe(0);
     });
 
-    test(`ORL dir,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(or)}`, () => {
+    test(`ORL dir,#imm ${toHex2(x)}|${toHex2(y)}=${toHex2(or)}`, () => {
       const dir = 0x42;
       const imm = x;
       clearIRAM();
@@ -2097,7 +2097,7 @@ describe.each([
   [  1,  1,  1],
 ]) ('op:ORL',
   (x, y, or)  => {
-    test(`C,bit ${x}&${y}=${or}`, () => {
+    test(`C,bit ${x}|${y}=${or}`, () => {
       const bit = 0x72;
       clearIRAM();
       cpu.code[0x100] = 0x82;       // ORL C,bit
@@ -2127,7 +2127,7 @@ describe.each([
   [  1,  1,  1],
 ]) ('op:ORL',
     (x, y, or)  => {
-      test(`ORL C,/bit ${x}&/${y}=${or}`, () => {
+      test(`ORL C,/bit ${x}|/${y}=${or}`, () => {
         const bit = 0xA0;
         clearIRAM();
         cpu.code[0x100] = 0xA0;       // ORL C,/bit
