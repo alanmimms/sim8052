@@ -154,8 +154,6 @@ class CPU8052 {
 
     C.reset();
 
-    const XRL = (a, b) => a ^ b;
-
     const getA = () => C.ACC;
     const getDIR = () => C.getDIR(C.code[(C.opPC + 1) & 0xFFFF]);
     const getIMM = () => C.code[(C.opPC + 1) & 0xFFFF];
@@ -171,15 +169,49 @@ class CPU8052 {
     const putRi = v => C.iram(C.getR(C.op & 0x1), v);
     const putCY = v => C.CY = v;
 
-    function doOP(opN, putR, getA, getB, op) {
+    function doOp(opN, putResult, getA, getB, op) {
 
-      return function(C) {
+      return function() {
         C.PC = (C.PC + opN) & 0xFFFF;
         const a = getA();
         const b = getB();
         const r = op(a, b);
-        putR(r);
+        putResult(r);
       };
+    }
+
+
+    function doLogical(mnemonic, opBase, opF) {
+      Object.assign(C.ops, {
+        [opBase+0x02]: doOp(2, putDIR, getDIR, getA, opF),
+        [opBase+0x03]: doOp(3, putDIR, getDIR, getIMM2, opF),
+        [opBase+0x04]: doOp(2, putA, getA, getIMM, opF),
+        [opBase+0x05]: doOp(2, putA, getA, getDIR, opF),
+      });
+
+      Ri.forEach(r => Object.assign(C.ops, {
+        [opBase + 0x06 + r]: doOp(1, putA, getA, getRi, opF),
+      }));
+
+      R.forEach(r => Object.assign(C.ops, {
+         [opBase + 0x08 + r]: doOp(1, putA, getA, getR, opF),
+      }));
+    }
+
+
+    function doMath(mnemonic, opBase, opF, withCarry) {
+      Object.assign(C.ops, {
+        [opBase + 0x04]: doOp(2, putA, getA, getIMM, opF),
+        [opBase + 0x05]: doOp(2, putA, getA, getDIR, opF),
+      });
+
+      Ri.forEach(r => Object.assign(C.ops, {
+        [opBase + 0x06 + r]: doOp(1, putA, getA, getRi, opF),
+      }));
+
+      R.forEach(r => Object.assign(C.ops, {
+         [opBase + 0x08 + r]: doOp(1, putA, getA, getR, opF),
+      }));
     }
 
 
@@ -188,39 +220,26 @@ class CPU8052 {
     const Ri = _.range(0, 2);
     const R = _.range(0, 8);
 
-    function doLogical(mnemonic, opBase, opF) {
-      Object.assign(C.ops, {
-        [opBase+0x02]: doOP(2, putDIR, getDIR, getA, opF),
-        [opBase+0x03]: doOP(3, putDIR, getDIR, getIMM2, opF),
-        [opBase+0x04]: doOP(2, putA, getA, getIMM, opF),
-        [opBase+0x05]: doOP(2, putA, getA, getDIR, opF),
-      });
-
-      Ri.forEach(r => Object.assign(C.ops, {
-        [opBase + 0x06 + r]: doOP(1, putA, getA, getRi, opF),
-      }));
-
-      R.forEach(r => Object.assign(C.ops, {
-        [opBase + 0x08 + r]: doOP(1, putA, getA, getR, opF),
-      }));
-    }
-
-
     const ANL = (a, b) => a & b;
-    const ANL_NOT = (a, b) => a & !b;
+    const ANL_NOT = (a, b) => a & +!b;
     doLogical('ANL', 0x50, ANL);
     Object.assign(C.ops, {
-      [0x82]: doOP(2, putCY, getCY, getBIT, ANL),
-      [0xB0]: doOP(2, putCY, getCY, getBIT, ANL_NOT),
+      [0x82]: doOp(2, putCY, getCY, getBIT, ANL),
+      [0xB0]: doOp(2, putCY, getCY, getBIT, ANL_NOT),
     });
 
     const ORL = (a, b) => a | b;
-    const ORL_NOT = (a, b) => a | !b;
+    const ORL_NOT = (a, b) => a | +!b;
     doLogical('ORL', 0x40, ORL);
     Object.assign(C.ops, {
-      [0x72]: doOP(2, putCY, getCY, getBIT, ORL),
-      [0xA0]: doOP(2, putCY, getCY, getBIT, ORL_NOT),
+      [0x72]: doOp(2, putCY, getCY, getBIT, ORL),
+      [0xA0]: doOp(2, putCY, getCY, getBIT, ORL_NOT),
     });
+
+    doLogical('XRL', 0x60, (a, b) => a ^ b);
+
+    doMath('ADD', 0x24, doADD, false);
+    doMath('ADDC', 0x34, doADD, true);
 
     Object.assign(C.ops, {
       // ADD
@@ -264,27 +283,6 @@ class CPU8052 {
       // DA
       [0xD4]: doDA,
 
-      // ORL
-      [0x42]: opDIR_A(C, (a, b) => a | b),
-      [0x43]: opDIR_IMM(C, (a, b) => a | b),
-      [0x44]: aluA_IMM(C, (a, b) => a | b),
-      [0x45]: opA_DIR(C, (a, b) => a | b),
-      [0x46]: aluA_Ri(C, 0, (a, b) => a | b),
-      [0x47]: aluA_Ri(C, 1, (a, b) => a | b),
-
-      [0x48]: aluA_R(C, 0, (a, b) => a | b),
-      [0x49]: aluA_R(C, 1, (a, b) => a | b),
-      [0x4A]: aluA_R(C, 2, (a, b) => a | b),
-      [0x4B]: aluA_R(C, 3, (a, b) => a | b),
-      [0x4C]: aluA_R(C, 4, (a, b) => a | b),
-      [0x4D]: aluA_R(C, 5, (a, b) => a | b),
-      [0x4E]: aluA_R(C, 6, (a, b) => a | b),
-      [0x4F]: aluA_R(C, 7, (a, b) => a | b),
-
-      [0x72]: opCY_bit(C, (a, b) => a | b),
-      [0xA0]: opCY_bit(C, (a, b) => a | !b),
-
-
       // SETB
       [0xD2]: bitBIT(C, b => 1),
       [0xD3]: bitCY(C, () => 1),
@@ -306,23 +304,6 @@ class CPU8052 {
       // XCHD
       [0xD6]: doXCHD(0),
       [0xD7]: doXCHD(1),
-
-      // XRL
-      [0x62]: opDIR_A(C, (a, b) => a ^ b),
-      [0x63]: opDIR_IMM(C, (a, b) => a ^ b),
-      [0x64]: aluA_IMM(C, (a, b) => a ^ b),
-      [0x65]: opA_DIR(C, (a, b) => a ^ b),
-      [0x66]: aluA_Ri(C, 0, (a, b) => a ^ b),
-      [0x67]: aluA_Ri(C, 1, (a, b) => a ^ b),
-
-      [0x68]: aluA_R(C, 0, (a, b) => a ^ b),
-      [0x69]: aluA_R(C, 1, (a, b) => a ^ b),
-      [0x6A]: aluA_R(C, 2, (a, b) => a ^ b),
-      [0x6B]: aluA_R(C, 3, (a, b) => a ^ b),
-      [0x6C]: aluA_R(C, 4, (a, b) => a ^ b),
-      [0x6D]: aluA_R(C, 5, (a, b) => a ^ b),
-      [0x6E]: aluA_R(C, 6, (a, b) => a ^ b),
-      [0x6F]: aluA_R(C, 7, (a, b) => a ^ b),
     });
 
 
@@ -574,7 +555,7 @@ class CPU8052 {
     const C = this;
     C.opPC = C.PC = pc;
     C.op = C.code[pc];
-    C.ops[C.op](C);
+    C.ops[C.op]();
   };
 
 
