@@ -175,46 +175,61 @@ class CPU8052 {
         C.PC = (C.PC + nBytes) & 0xFFFF;
         const a = getA();
         const b = getB();
-        const r = op(a, b);
+        const r = op(a, b, C.CY);
         putResult(r);
       };
     }
 
 
-    function doLogical(mnemonic, opBase, opF) {
+    function doLogical(mnemonic, {op, opF,
+                                  bitOp, bitF,
+                                  notBitOp, notBitF}) {
       Object.assign(C.ops, {
-        [opBase+0x02]: doOp(2, putDIR, getDIR, getA, opF),
-        [opBase+0x03]: doOp(3, putDIR, getDIR, getIMM2, opF),
-        [opBase+0x04]: doOp(2, putA, getA, getIMM, opF),
-        [opBase+0x05]: doOp(2, putA, getA, getDIR, opF),
+        [op+0x02]: doOp(2, putDIR, getDIR, getA, opF),
+        [op+0x03]: doOp(3, putDIR, getDIR, getIMM2, opF),
+        [op+0x04]: doOp(2, putA, getA, getIMM, opF),
+        [op+0x05]: doOp(2, putA, getA, getDIR, opF),
       });
 
       // @Ri
       _.times(2, r => Object.assign(C.ops, {
-        [opBase + 0x06 + r]: doOp(1, putA, getA, getRi, opF),
+        [op + 0x06 + r]: doOp(1, putA, getA, getRi, opF),
       }));
 
       // Rn
       _.times(8, r => Object.assign(C.ops, {
-        [opBase + 0x08 + r]: doOp(1, putA, getA, getR, opF),
+        [op + 0x08 + r]: doOp(1, putA, getA, getR, opF),
       }));
+
+      if (bitF && notBitF) {
+        Object.assign(C.ops, {
+          [bitOp]: doOp(2, putCY, getCY, getBIT, bitF),
+          [notBitOp]: doOp(2, putCY, getCY, getBIT, notBitF),
+        });
+      }
     }
 
 
-    function doMath(mnemonic, opBase, opF, withCarry) {
+    function doMath(mnemonic, op, opF, withCarry) {
+      // Bind our operator function to one that gets CY if carry is
+      // requested, else use zero.
+      const fullOpF = withCarry ? 
+            ((a, b) => opF(a, b, getCY())) :
+            ((a, b) => opF(a, b, 0));
+
       Object.assign(C.ops, {
-        [opBase + 0x04]: doOp(2, putA, getA, getIMM, opF),
-        [opBase + 0x05]: doOp(2, putA, getA, getDIR, opF),
+        [op + 0x04]: doOp(2, putA, getA, getIMM, fullOpF),
+        [op + 0x05]: doOp(2, putA, getA, getDIR, fullOpF),
       });
 
       // @Ri
       _.times(2, r => Object.assign(C.ops, {
-        [opBase + 0x06 + r]: doOp(1, putA, getA, getRi, opF),
+        [op + 0x06 + r]: doOp(1, putA, getA, getRi, fullOpF),
       }));
 
       // Rn
       _.times(8, r => Object.assign(C.ops, {
-        [opBase + 0x08 + r]: doOp(1, putA, getA, getR, opF),
+        [op + 0x08 + r]: doOp(1, putA, getA, getR, fullOpF),
       }));
     }
 
@@ -223,54 +238,22 @@ class CPU8052 {
 
     const ANL = (a, b) => a & b;
     const ANL_NOT = (a, b) => a & +!b;
-    doLogical('ANL', 0x50, ANL);
-    Object.assign(C.ops, {
-      [0x82]: doOp(2, putCY, getCY, getBIT, ANL),
-      [0xB0]: doOp(2, putCY, getCY, getBIT, ANL_NOT),
-    });
+    doLogical('ANL', {op: 0x50, opF: ANL,
+                      bitOp: 0x82, bitF: ANL,
+                      notBitOp: 0xB0, notBitF: ANL_NOT});
 
     const ORL = (a, b) => a | b;
     const ORL_NOT = (a, b) => a | +!b;
-    doLogical('ORL', 0x40, ORL);
-    Object.assign(C.ops, {
-      [0x72]: doOp(2, putCY, getCY, getBIT, ORL),
-      [0xA0]: doOp(2, putCY, getCY, getBIT, ORL_NOT),
-    });
+    doLogical('ORL', {op: 0x40, opF: ORL,
+                      bitOp: 0x72, bitF: ORL,
+                      notBitOp: 0xA0, notBitF: ORL_NOT});
 
-    doLogical('XRL', 0x60, (a, b) => a ^ b);
+    doLogical('XRL', {op: 0x60, opF: (a, b) => a ^ b});
 
     doMath('ADD', 0x20, doADD, false);
     doMath('ADDC', 0x30, doADD, true);
 
     Object.assign(C.ops, {
-      // ADD
-      [0x24]: aluA_IMM(C, doADD, false),
-      [0x25]: aluA_DIR(C, doADD, false),
-      [0x26]: aluA_Ri(C, 0, doADD, false),
-      [0x27]: aluA_Ri(C, 1, doADD, false),
-      [0x28]: aluA_R(C, 0, doADD, false),
-      [0x29]: aluA_R(C, 1, doADD, false),
-      [0x2A]: aluA_R(C, 2, doADD, false),
-      [0x2B]: aluA_R(C, 3, doADD, false),
-      [0x2C]: aluA_R(C, 4, doADD, false),
-      [0x2D]: aluA_R(C, 5, doADD, false),
-      [0x2E]: aluA_R(C, 6, doADD, false),
-      [0x2F]: aluA_R(C, 7, doADD, false),
-
-      // ADDC
-      [0x34]: aluA_IMM(C, doADD, true),
-      [0x35]: aluA_DIR(C, doADD, true),
-      [0x36]: aluA_Ri(C, 0, doADD, true),
-      [0x37]: aluA_Ri(C, 1, doADD, true),
-      [0x38]: aluA_R(C, 0, doADD, true),
-      [0x39]: aluA_R(C, 1, doADD, true),
-      [0x3A]: aluA_R(C, 2, doADD, true),
-      [0x3B]: aluA_R(C, 3, doADD, true),
-      [0x3C]: aluA_R(C, 4, doADD, true),
-      [0x3D]: aluA_R(C, 5, doADD, true),
-      [0x3E]: aluA_R(C, 6, doADD, true),
-      [0x3F]: aluA_R(C, 7, doADD, true),
-
       // CLR
       [0xC2]: bitBIT(C, () => 0),
       [0xC3]: bitCY(C, () => 0),
