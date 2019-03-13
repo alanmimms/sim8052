@@ -234,6 +234,21 @@ class CPU8052 {
     }
 
 
+    function doBitUnary(mnemonic, {op, opF, 
+                                   accOp, accOpF}) {
+      Object.assign(C.ops, {
+        [op + 0x02]: bitBIT(C, opF),
+        [op + 0x03]: bitCY(C, opF),
+      });
+
+      if (accOpF) {
+        Object.assign(C.ops, {
+          [accOp]: singleton(C, accOpF),
+        });
+      }
+    }
+
+
     C.ops = {};
 
     const ANL = (a, b) => a & b;
@@ -250,27 +265,17 @@ class CPU8052 {
 
     doLogical('XRL', {op: 0x60, opF: (a, b) => a ^ b});
 
+    doBitUnary('CLR', {op: 0xC0, opF: () => 0, accOp: 0xE4, accOpF: C => C.ACC = 0});
+    doBitUnary('CPL', {op: 0xB0, opF: b => +!b, accOp: 0xF4, accOpF: C => C.ACC ^= 0xFF});
+    doBitUnary('SETB', {op: 0xD0, opF: b => 1});
+
     doMath('ADD', 0x20, doADD, false);
     doMath('ADDC', 0x30, doADD, true);
 
     Object.assign(C.ops, {
-      // CLR
-      [0xC2]: bitBIT(C, () => 0),
-      [0xC3]: bitCY(C, () => 0),
-      [0xE4]: singleton(C, C => C.ACC = 0),
-      
-      // CPL
-      [0xB2]: bitBIT(C, b => +!b),
-      [0xB3]: bitCY(C, () => +!C.CY),
-      [0xF4]: singleton(C, C => C.ACC ^= 0xFF),
-      
       // DA
       [0xD4]: doDA,
 
-      // SETB
-      [0xD2]: bitBIT(C, b => 1),
-      [0xD3]: bitCY(C, () => 1),
-      
       // SUBB
       [0x94]: aluA_IMM(C, doSUB, true),
       [0x95]: aluA_DIR(C, doSUB, true),
