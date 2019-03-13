@@ -152,6 +152,7 @@ class CPU8052 {
     };
 
 
+    C.ops = {};
     C.reset();
 
     const getA = () => C.ACC;
@@ -169,73 +170,59 @@ class CPU8052 {
     const putRi = v => C.iram(C.getR(C.op & 0x1), v);
     const putCY = v => C.CY = v;
 
-    function doOp(nBytes, putResult, getA, getB, op) {
-
-      return function() {
+    function genOp(mnemonic, op, nBytes, putResult, getA, getB, opF) {
+      C.ops[op] = {mnemonic, f: function() {
         C.PC = (C.PC + nBytes) & 0xFFFF;
         const a = getA();
         const b = getB();
-        const r = op(a, b, C.CY);
+        const r = opF(a, b, C.CY);
         putResult(r);
-      };
+      }};
     }
 
 
-    function doLogical(mnemonic, {op, opF,
+    function genLogical(mnemonic, {op, opF,
                                   bitOp, bitF,
                                   notBitOp, notBitF}) {
-      Object.assign(C.ops, {
-        [op+0x02]: doOp(2, putDIR, getDIR, getA, opF),
-        [op+0x03]: doOp(3, putDIR, getDIR, getIMM2, opF),
-        [op+0x04]: doOp(2, putA, getA, getIMM, opF),
-        [op+0x05]: doOp(2, putA, getA, getDIR, opF),
-      });
+      genOp(mnemonic, op+0x02, 2, putDIR, getDIR, getA, opF);
+      genOp(mnemonic, op+0x03, 3, putDIR, getDIR, getIMM2, opF);
+      genOp(mnemonic, op+0x04, 2, putA, getA, getIMM, opF);
+      genOp(mnemonic, op+0x05, 2, putA, getA, getDIR, opF);
 
       // @Ri
-      _.times(2, r => Object.assign(C.ops, {
-        [op + 0x06 + r]: doOp(1, putA, getA, getRi, opF),
-      }));
+      _.times(2, r => genOp(mnemonic, op + 0x06 + r, 1, putA, getA, getRi, opF));
 
       // Rn
-      _.times(8, r => Object.assign(C.ops, {
-        [op + 0x08 + r]: doOp(1, putA, getA, getR, opF),
-      }));
+      _.times(8, r => genOp(mnemonic, op + 0x08 + r, 1, putA, getA, getR, opF));
 
       if (bitF && notBitF) {
-        Object.assign(C.ops, {
-          [bitOp]: doOp(2, putCY, getCY, getBIT, bitF),
-          [notBitOp]: doOp(2, putCY, getCY, getBIT, notBitF),
-        });
+        genOp(mnemonic, bitOp, 2, putCY, getCY, getBIT, bitF);
+        genOp(mnemonic, notBitOp, 2, putCY, getCY, getBIT, notBitF);
       }
     }
 
 
-    function doMath(mnemonic, op, opF, withCarry) {
+    function genMath(mnemonic, op, opF, withCarry) {
       // Bind our operator function to one that gets CY if carry is
       // requested, else use zero.
       const fullOpF = withCarry ? 
             ((a, b) => opF(a, b, getCY())) :
             ((a, b) => opF(a, b, 0));
 
-      Object.assign(C.ops, {
-        [op + 0x04]: doOp(2, putA, getA, getIMM, fullOpF),
-        [op + 0x05]: doOp(2, putA, getA, getDIR, fullOpF),
-      });
+      genOp(mnemonic, op+0x04, 2, putA, getA, getIMM, fullOpF);
+      genOp(mnemonic, op+0x05, 2, putA, getA, getDIR, fullOpF);
 
       // @Ri
-      _.times(2, r => Object.assign(C.ops, {
-        [op + 0x06 + r]: doOp(1, putA, getA, getRi, fullOpF),
-      }));
+      _.times(2, r => genOp(mnemonic, op+0x06+r, 1, putA, getA, getRi, fullOpF));
 
       // Rn
-      _.times(8, r => Object.assign(C.ops, {
-        [op + 0x08 + r]: doOp(1, putA, getA, getR, fullOpF),
-      }));
+      _.times(8, r => genOp(mnemonic, op+0x08+r, 1, putA, getA, getR, fullOpF));
     }
 
 
-    function doBitUnary(mnemonic, {op, opF, 
+    function genBitUnary(mnemonic, {op, opF, 
                                    accOp, accOpF}) {
+      // FIXME switch to genOp style
       Object.assign(C.ops, {
         [op + 0x02]: bitBIT(C, opF),
         [op + 0x03]: bitCY(C, opF),
@@ -249,41 +236,46 @@ class CPU8052 {
     }
 
 
-    C.ops = {};
-
     const ANL = (a, b) => a & b;
     const ANL_NOT = (a, b) => a & +!b;
-    doLogical('ANL', {op: 0x50, opF: ANL,
-                      bitOp: 0x82, bitF: ANL,
-                      notBitOp: 0xB0, notBitF: ANL_NOT});
+    genLogical('ANL', {op: 0x50, opF: ANL,
+                       bitOp: 0x82, bitF: ANL,
+                       notBitOp: 0xB0, notBitF: ANL_NOT});
 
     const ORL = (a, b) => a | b;
     const ORL_NOT = (a, b) => a | +!b;
-    doLogical('ORL', {op: 0x40, opF: ORL,
-                      bitOp: 0x72, bitF: ORL,
-                      notBitOp: 0xA0, notBitF: ORL_NOT});
+    genLogical('ORL', {op: 0x40, opF: ORL,
+                       bitOp: 0x72, bitF: ORL,
+                       notBitOp: 0xA0, notBitF: ORL_NOT});
 
-    doLogical('XRL', {op: 0x60, opF: (a, b) => a ^ b});
+    genLogical('XRL', {op: 0x60, opF: (a, b) => a ^ b});
 
-    doBitUnary('CLR', {op: 0xC0, opF: () => 0, accOp: 0xE4, accOpF: C => C.ACC = 0});
-    doBitUnary('CPL', {op: 0xB0, opF: b => +!b, accOp: 0xF4, accOpF: C => C.ACC ^= 0xFF});
-    doBitUnary('SETB', {op: 0xD0, opF: b => 1});
+    genBitUnary('CLR', {op: 0xC0, opF: () => 0, accOp: 0xE4, accOpF: C => C.ACC = 0});
+    genBitUnary('CPL', {op: 0xB0, opF: b => +!b, accOp: 0xF4, accOpF: C => C.ACC ^= 0xFF});
+    genBitUnary('SETB', {op: 0xD0, opF: b => 1});
 
-    doMath('ADD', 0x20, doADD, false);
-    doMath('ADDC', 0x30, doADD, true);
-    doMath('SUBB', 0x90, doSUB, true);
+    genMath('ADD', 0x20, doADD, false);
+    genMath('ADDC', 0x30, doADD, true);
+    genMath('SUBB', 0x90, doSUB, true);
 
     Object.assign(C.ops, {
       // DA
       [0xD4]: doDA,
 
       // XCHD
-      [0xD6]: doXCHD(0),
-      [0xD7]: doXCHD(1),
+      [0xD6]: genXCHD(0),
+      [0xD7]: genXCHD(1),
     });
 
 
-    function doXCHD(r) {
+    console.warn(`Remaining undefined opcodes:
+${_.difference(_.range(0x100), Object.keys(C.ops))
+.map(op => toHex2(op))
+.join(' ')}`);
+
+
+
+    function genXCHD(r) {
 
       return function() {
         const a = C.ACC;
