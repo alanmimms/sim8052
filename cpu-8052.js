@@ -271,24 +271,11 @@ class CPU8052 {
 
     doMath('ADD', 0x20, doADD, false);
     doMath('ADDC', 0x30, doADD, true);
+    doMath('SUBB', 0x90, doSUB, true);
 
     Object.assign(C.ops, {
       // DA
       [0xD4]: doDA,
-
-      // SUBB
-      [0x94]: aluA_IMM(C, doSUB, true),
-      [0x95]: aluA_DIR(C, doSUB, true),
-      [0x96]: aluA_Ri(C, 0, doSUB, true),
-      [0x97]: aluA_Ri(C, 1, doSUB, true),
-      [0x98]: aluA_R(C, 0, doSUB, true),
-      [0x99]: aluA_R(C, 1, doSUB, true),
-      [0x9A]: aluA_R(C, 2, doSUB, true),
-      [0x9B]: aluA_R(C, 3, doSUB, true),
-      [0x9C]: aluA_R(C, 4, doSUB, true),
-      [0x9D]: aluA_R(C, 5, doSUB, true),
-      [0x9E]: aluA_R(C, 6, doSUB, true),
-      [0x9F]: aluA_R(C, 7, doSUB, true),
 
       // XCHD
       [0xD6]: doXCHD(0),
