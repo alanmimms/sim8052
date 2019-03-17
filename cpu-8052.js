@@ -152,7 +152,7 @@ class CPU8052 {
     };
 
 
-    C.ops = {};
+    C.ops = [];
     C.reset();
 
     const getA = () => C.ACC;
@@ -170,8 +170,14 @@ class CPU8052 {
     const putRi = v => C.iram(C.getR(C.op & 0x1), v);
     const putCY = v => C.CY = v;
 
+    function genSimple(mnemonic, op, f) {
+      const o = {mnemonic, f};
+      C.ops[op] = o;
+      return o;
+    }
+
     function genOp(mnemonic, op, nBytes, putResult, getA, getB, opF) {
-      C.ops[op] = {mnemonic, f: function() {
+      C.ops[op] = {mnemonic, f: function(C) {
         C.PC = (C.PC + nBytes) & 0xFFFF;
         const a = getA();
         const b = getB();
@@ -258,26 +264,23 @@ class CPU8052 {
     genMath('ADDC', 0x30, doADD, true);
     genMath('SUBB', 0x90, doSUB, true);
 
-    Object.assign(C.ops, {
-      // DA
-      [0xD4]: doDA,
-
-      // XCHD
-      [0xD6]: genXCHD(0),
-      [0xD7]: genXCHD(1),
-    });
+    genSimple('DA', 0xDA, doDA);
+    genSimple('XCHD', 0xD6, genXCHD(0));
+    genSimple('XCHD', 0xD7, genXCHD(1));
 
 
     console.warn(`Remaining undefined opcodes:
-${_.difference(_.range(0x100), Object.keys(C.ops))
-.map(op => toHex2(op))
-.join(' ')}`);
+${(() => {const list = _.range(0x100)
+.filter(op => C.ops[op])
+.map(op => toHex2(op));
+   return list.join(' ') + `
+${0x100 - list.length} ops missing`;})()}`);
 
 
 
     function genXCHD(r) {
 
-      return function() {
+      return function(C) {
         const a = C.ACC;
         const b = C.iram[C.getR(r)];
         C.PC = (C.PC + 1) & 0xFFFF;
@@ -523,7 +526,7 @@ ${_.difference(_.range(0x100), Object.keys(C.ops))
     const C = this;
     C.opPC = C.PC = pc;
     C.op = C.code[pc];
-    C.ops[C.op]();
+    C.ops[C.op].f(C);
   };
 
 
