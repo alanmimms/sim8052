@@ -154,6 +154,7 @@ class CPU8052 {
 
     C.ops = [];
     C.reset();
+    C.ipl = -1;
 
     const getA = () => C.ACC;
     const getDIR = () => C.getDIR(C.code[(C.opPC + 1) & 0xFFFF]);
@@ -277,6 +278,8 @@ class CPU8052 {
     _.range(8).forEach(genAJMP);
     _.range(8).forEach(genACALL);
     genSimple('RET', 0x22, 1, doRET);
+    genSimple('RETI', 0x32, 1, doRETI);
+    genSimple('LCALL', 0x12, 3, doLCALL);
 
 
     console.warn(`Remaining undefined opcodes:
@@ -310,6 +313,14 @@ ${0x100 - list.length} ops missing`;})()}`);
     }
 
 
+    function doLCALL(C) {
+      const hi = C.code[(C.opPC + 1) & 0xFFFF];
+      const lo = C.code[(C.opPC + 2) & 0xFFFF];
+      C.push16(C.PC);
+      C.PC = hi << 8 | lo;
+    }
+    
+
     function genXCHD(r) {
 
       return function(C) {
@@ -335,8 +346,9 @@ ${0x100 - list.length} ops missing`;})()}`);
     }
 
 
-    function doRETI() {
-      if (this.ipl >= 0) this.ipl = this.ipl - 1;
+    function doRETI(C) {
+      if (C.ipl >= 0) C.ipl = C.ipl - 1;
+      doRET(C);
     }
 
 
