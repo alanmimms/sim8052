@@ -1401,7 +1401,7 @@ test('op:RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
 });
 
@@ -1415,7 +1415,7 @@ test('op:RLC A=0x08,CY=0 = A=10,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x10);
 });
 
@@ -1429,7 +1429,7 @@ test('op:RLC A=0x80,CY=1 = A=01,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x01);
 });
 
@@ -1443,7 +1443,7 @@ test('op:RLC A=0x08,CY=1 = A=11,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x11);
 });
 
@@ -1458,14 +1458,14 @@ test('op:RLC CY=1 bit walk', () => {
     cpu.run1(0x100);
     expect(cpu.PC).toBe(0x101);
     expect(cpu.CY).toBe(0);
-    expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+    expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
     expect(cpu.ACC).toBe(0x01 << k);
   }
 
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
 });
 
@@ -1481,7 +1481,7 @@ test('op:RRC A=0x01,CY=0 = A=00,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
 });
 
@@ -1495,7 +1495,7 @@ test('op:RRC A=0x08,CY=0 = A=04,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x04);
 });
 
@@ -1509,7 +1509,7 @@ test('op:RRC A=0x80,CY=1 = A=C0,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0xC0);
 });
 
@@ -1523,7 +1523,7 @@ test('op:RRC A=0x08,CY=1 = A=84,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x84);
 });
 
@@ -1538,14 +1538,14 @@ test('op:RRC CY=1 bit walk', () => {
     cpu.run1(0x100);
     expect(cpu.PC).toBe(0x101);
     expect(cpu.CY).toBe(0);
-    expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+    expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
     expect(cpu.ACC).toBe(0x80 >>> k);
   }
 
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~CPU.pswBits.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
 });
 

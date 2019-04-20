@@ -280,6 +280,10 @@ class CPU8052 {
     genSimple('RET', 0x22, 1, doRET);
     genSimple('RETI', 0x32, 1, doRETI);
     genSimple('LCALL', 0x12, 3, doLCALL);
+    genSimple('RL', 0x23, 1, doRL);
+    genSimple('RLC', 0x33, 1, doRLC);
+    genSimple('RR', 0x03, 1, doRR);
+    genSimple('RRC', 0x13, 1, doRRC);
 
 
     console.warn(`Remaining undefined opcodes:
@@ -415,33 +419,37 @@ ${0x100 - list.length} ops missing`;})()}`);
     }
 
 
-    function doRL(a) {
+    function doRL(C) {
+      let a = C.ACC;
       a <<= 1;
       a = a & 0xFF | a >>> 8;
-      return a;
+      C.ACC = a & 0xFF;
     }
 
 
-    function doRLC(a) {
+    function doRLC(C) {
+      let a = C.ACC;
       let c = C.CY;
       C.CY = a >>> 7;
       a <<= 1;
-      return a | c;
+      C.ACC = (a & 0xFF) | c;
     }
 
 
-    function doRR(a) {
+    function doRR(C) {
+      let a = C.ACC;
       a = a >>> 1 | a << 7;
-      return a;
+      C.ACC = a & 0xFF;
     }
 
 
-    function doRRC(a) {
+    function doRRC(C) {
+      let a = C.ACC;
       let c = C.CY;
       C.CY = a & 1;
       a >>>= 1;
       a |= c << 7;
-      return a;
+      C.ACC = a & 0xFF;
     }
 
 
