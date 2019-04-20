@@ -285,6 +285,7 @@ class CPU8052 {
     genSimple('RR', 0x03, 1, doRR);
     genSimple('RRC', 0x13, 1, doRRC);
     genSimple('SJMP', 0x80, 2, doSJMP);
+    genSimple('SWAP', 0xC4, 1, doSWAP);
 
 
     console.warn(`Remaining undefined opcodes:
@@ -423,6 +424,11 @@ ${0x100 - list.length} ops missing`;})()}`);
       }
 
       return a;
+    }
+
+
+    function doSWAP(C) {
+      C.ACC = (C.ACC & 0x0F) << 4 | (C.ACC & 0xF0) >> 4;
     }
 
 
