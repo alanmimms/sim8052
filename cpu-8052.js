@@ -284,6 +284,7 @@ class CPU8052 {
     genSimple('RLC', 0x33, 1, doRLC);
     genSimple('RR', 0x03, 1, doRR);
     genSimple('RRC', 0x13, 1, doRRC);
+    genSimple('SJMP', 0x80, 2, doSJMP);
 
 
     console.warn(`Remaining undefined opcodes:
@@ -293,6 +294,12 @@ ${(() => {const list = _.range(0x100)
    return list.join(' ') + `
 ${0x100 - list.length} ops missing`;})()}`);
 
+
+
+    function doSJMP(C) {
+      const rel = C.code[(C.opPC + 1) & 0xFFFF];
+      C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
+    }
 
 
     function genAJMP(p) {
