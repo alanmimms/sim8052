@@ -168,7 +168,7 @@ class CPU8052 {
     const putA = v => C.ACC = v;
     const putDIR = v => C.setDIR(C.code[(C.opPC + 1) & 0xFFFFF], v);
     const putR = v => C.setR(C.op & 0x7, v);
-    const putRi = v => C.iram(C.getR(C.op & 0x1), v);
+    const putRi = v => C.iram[C.getR(C.op & 0x1), v];
     const putCY = v => C.CY = v;
 
     function genSimple(mnemonic, op, nBytes, f) {
@@ -275,6 +275,23 @@ class CPU8052 {
     genSimple('XCHD', 0xD6, 1, genXCHD(0));
     genSimple('XCHD', 0xD7, 1, genXCHD(1));
 
+    
+    function genXCH(op, nBytes, getV, putV) {
+      C.ops[op] = {mnemonic: 'XCH', f: function(C) {
+        C.PC = (C.PC + nBytes) & 0xFFFF;
+        const a = C.ACC;
+        const v = getV();
+        putV(a);
+        C.ACC = v;
+      }};
+    }
+
+    _.range(8).forEach(r => genXCH(0xC8 + r, 1, getR, putR));
+    genXCH(0xC5, 2, getDIR, putDIR);
+    genXCH(0xC6, 1, getRi, putRi);
+    genXCH(0xC7, 1, getRi, putRi);
+
+
     _.range(8).forEach(genAJMP);
     _.range(8).forEach(genACALL);
     genSimple('RET', 0x22, 1, doRET);
@@ -338,7 +355,6 @@ ${0x100 - list.length} ops missing`;})()}`);
       return function(C) {
         const a = C.ACC;
         const b = C.iram[C.getR(r)];
-        C.PC = (C.PC + 1) & 0xFFFF;
         C.ACC &= 0xF0;
         C.ACC |= b & 0x0F;
         C.iram[C.getR(r)] &= 0xF0;
@@ -632,7 +648,7 @@ ${0x100 - list.length} ops missing`;})()}`);
 
 
   getR(r) { return this.iram[r + (this.RS1 << 4 | this.RS0 << 3)] }
-  putR(r, v) { this.iram[r + (this.RS1 << 4 | this.RS0 << 3)] = v }
+  setR(r, v) { this.iram[r + (this.RS1 << 4 | this.RS0 << 3)] = v }
 
 
   // TODO: this.the getDIR and setDIR accessors need to switch on address
