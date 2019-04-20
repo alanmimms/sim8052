@@ -170,10 +170,16 @@ class CPU8052 {
     const putRi = v => C.iram(C.getR(C.op & 0x1), v);
     const putCY = v => C.CY = v;
 
-    function genSimple(mnemonic, op, f) {
-      const o = {mnemonic, f};
-      C.ops[op] = o;
-      return o;
+    function genSimple(mnemonic, op, nBytes, f) {
+
+      return C.ops[op] = {
+        mnemonic,
+
+        f: C => {
+          C.PC = (C.PC + nBytes) & 0xFFFF;
+          f(C);
+        },
+      };
     }
 
     function genOp(mnemonic, op, nBytes, putResult, getA, getB, opF) {
@@ -264,9 +270,13 @@ class CPU8052 {
     genMath('ADDC', 0x30, doADD, true);
     genMath('SUBB', 0x90, doSUB, true);
 
-    genSimple('DA', 0xDA, doDA);
-    genSimple('XCHD', 0xD6, genXCHD(0));
-    genSimple('XCHD', 0xD7, genXCHD(1));
+    genSimple('DA', 0xDA, 1, doDA);
+    genSimple('XCHD', 0xD6, 1, genXCHD(0));
+    genSimple('XCHD', 0xD7, 1, genXCHD(1));
+
+    _.range(8).forEach(genAJMP);
+    _.range(8).forEach(genACALL);
+    genSimple('RET', 0x22, 1, doRET);
 
 
     console.warn(`Remaining undefined opcodes:
@@ -276,6 +286,28 @@ ${(() => {const list = _.range(0x100)
    return list.join(' ') + `
 ${0x100 - list.length} ops missing`;})()}`);
 
+
+
+    function genAJMP(p) {
+
+      // Note nBytes=0 here since this is a JMP instruction
+      genSimple('AJMP', p << 5 | 0x01, 0, C => {
+        const lo = C.code[(C.opPC + 1) & 0xFFFF];
+        C.PC = ((C.PC + 2) & 0xF800) | (p << 8) | lo;
+      });
+    }
+
+
+    function genACALL(p) {
+
+      // Note nBytes=0 here since this is a JMP instruction
+      genSimple('ACALL', p << 5 | 0x11, 0, C => {
+        const lo = C.code[(C.opPC + 1) & 0xFFFF];
+        let pc = (C.PC + 2) & 0xFFFF;
+        C.push16(pc);
+        C.PC = (pc & 0xF800) | p << 8 | lo;
+      });
+    }
 
 
     function genXCHD(r) {
@@ -289,6 +321,17 @@ ${0x100 - list.length} ops missing`;})()}`);
         C.iram[C.getR(r)] &= 0xF0;
         C.iram[C.getR(r)] |= a & 0x0F;
       };
+    }
+
+
+    function doRET(C) {
+      let sp = C.SP;
+      const pcH = C.iram[sp];
+      sp = (sp - 1) & 0xFF;
+      const pcL = C.iram[sp];
+      sp = (sp - 1) & 0xFF;
+      C.SP = sp;
+      C.PC = pcH << 8 | pcL;
     }
 
 
@@ -522,6 +565,31 @@ ${0x100 - list.length} ops missing`;})()}`);
   };
 
 
+  push8(v) {
+    const C = this;
+    let sp = C.SP;
+
+    sp = (sp + 1) & 0xFF;
+    C.iram[sp] = v;
+
+    C.SP = sp;
+  };
+  
+
+  push16(v) {
+    const C = this;
+    let sp = C.SP;
+
+    sp = (sp + 1) & 0xFF;
+    C.iram[sp] = v;
+
+    sp = (sp + 1) & 0xFF;
+    C.iram[sp] = v >>> 8;
+
+    C.SP = sp;
+  };
+  
+
   run1(pc = this.PC) {
     const C = this;
     C.opPC = C.PC = pc;
@@ -598,8 +666,8 @@ if (require.main === module) {
 
   // If this is run as main module, dump definition for our parity
   // table.
-  const parityString = _.range(0, 0x100)
-        .map(k => _.range(0, 8).reduce((p, bn) => p ^ ((k >>> bn) & 1), 0))
+  const parityString = _.range(0x100)
+        .map(k => _.range(8).reduce((p, bn) => p ^ ((k >>> bn) & 1), 0))
         .join(',')
         .replace(/(.{64})/g, '$1\n  ');
 

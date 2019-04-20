@@ -169,20 +169,26 @@ describe.each([
 
 
 //////////// AJMP ////////////
-describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
+describe.each([0x0000, 0x0800,
+               0x1000, 0x1800,
+               0x3000, 0x3800,
+               0x7000, 0x7800,
+               0xE000, 0xE800,
+               0xF000, 0xF800])('AJMP', fromPage => {
 
-  test(`op:AJMP from page${fromPage}`, () => {
-    const pageOffset = 0x24;
-    const jmpBase = fromPage * 0x100 + 0x42;
+  test(`op:AJMP from page ${toHex4(fromPage)}`, () => {
+    const fromOffset = 0x324;
+    const jmpBase = fromPage | fromOffset;
     const spBase = 0x07;
     const acBase = 0x42;
 
     clearIRAM();
 
-    for (let toPage = 0; toPage < 8; ++toPage) {
-      const jmpTarget = (toPage * 0x100) + pageOffset;
-      cpu.code[jmpBase] = (toPage * 0x20) + 0x01;      // AJMP pageN
-      cpu.code[jmpBase + 1] = pageOffset;
+    [0, 3, 5, 7].forEach(toMid => {
+      const toOffset = 0x33;
+      const jmpTarget = fromPage | toMid << 8 | toOffset;
+      cpu.code[jmpBase] = toMid << 5 | 0x01;      // AJMP pageN
+      cpu.code[jmpBase + 1] = jmpTarget & 0xFF;
 
       cpu.ACC = acBase;
       cpu.PSW = 0;
@@ -193,7 +199,7 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('AJMP', fromPage => {
       expect(cpu.PSW).toBe(0);
       expect(cpu.ACC).toBe(acBase);
       expect(cpu.SP).toBe(spBase);
-    }
+    });
   });
 });
 
