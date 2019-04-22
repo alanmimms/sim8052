@@ -314,7 +314,7 @@ class CPU8052 {
     genSimple('RR', 0x03, 1, doRR);
     genSimple('RRC', 0x13, 1, doRRC);
     genSimple('SJMP', 0x80, 2, doSJMP);
-    genSimple('JMP', 0x73, 2, doJMP_);
+    genSimple('JMP', 0x73, 1, doJMP_);
 
     const yesB = b => b;
     const notB = b => !b;
