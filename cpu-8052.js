@@ -331,6 +331,26 @@ class CPU8052 {
     _.range(8).forEach(r => genCJNE('CJNE', 0xB8 + r, 3, getR, getIMM));
     _.range(2).forEach(i => genCJNE('CJNE', 0xB6 + i, 3, getRi, getIMM));
 
+    genDJNZ('DJNZ', 0xD5, 3, getDIR, putDIR);
+    _.range(8).forEach(r => genDJNZ('DJNZ', 0xD8 + r, 2, getR, putR));
+
+    function genDJNZ(mnemonic, op, nBytes, getF, putF) {
+
+      return C.ops[op] = {
+        mnemonic,
+        nBytes,
+
+        f: C => {
+          const rel = C.code[(C.opPC + nBytes - 1) & 0xFFFF];
+          C.PC = (C.PC + nBytes) & 0xFFFF;
+          let v = getF();
+          v = (v - 1) & 0xFF;
+          putF(v);
+          if (v !== 0) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
+        },
+      };
+    }
+
 
     const doINC = v => (v + 1) & 0xFF;
     const doINC16 = v => (v + 1) & 0xFFFF;
