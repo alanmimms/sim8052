@@ -168,7 +168,7 @@ class CPU8052 {
     const putA = v => C.ACC = v;
     const putDIR = v => C.setDIR(C.code[(C.opPC + 1) & 0xFFFFF], v);
     const putR = v => C.setR(C.op & 0x7, v);
-    const putRi = v => C.iram[C.getR(C.op & 0x1), v];
+    const putRi = v => C.iram[C.getR(C.op & 0x1)] = v;
     const putCY = v => C.CY = v;
 
     function genSimple(mnemonic, op, nBytes, f) {
