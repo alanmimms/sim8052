@@ -168,6 +168,7 @@ class CPU8052 {
 
     const putA = v => C.ACC = v;
     const putDIR = v => C.setDIR(C.code[(C.opPC + 1) & 0xFFFFF], v);
+    const putBIT = v => C.setBIT(C.code[(C.opPC + 1) & 0xFFFF], v);
     const putR = v => C.setR(C.op & 0x7, v);
     const putRi = v => C.iram[C.getR(C.op & 0x1)] = v;
     const putDPTR = v => {C.DPH = v >>> 8; C.DPL = v};
@@ -313,6 +314,7 @@ class CPU8052 {
     genSimple('RR', 0x03, 1, doRR);
     genSimple('RRC', 0x13, 1, doRRC);
     genSimple('SJMP', 0x80, 2, doSJMP);
+    genSimple('JBC', 0x10, 3, doJBC);
 
     genCJNE('CJNE', 0xB4, 3, getA, getIMM);
     genCJNE('CJNE', 0xB5, 3, getA, getDIR);
@@ -381,6 +383,14 @@ ${list.length} ops unimplemented`;})()}`);
     function doSJMP(C) {
       const rel = C.code[(C.opPC + 1) & 0xFFFF];
       C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
+    }
+
+
+    function doJBC(C) {
+      const rel = C.code[(C.opPC + 2) & 0xFFFF];
+      let b = getBIT();
+      putBIT(0);
+      if (b) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
     }
 
 
