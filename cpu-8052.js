@@ -168,6 +168,7 @@ class CPU8052 {
 
     const putA = v => C.ACC = v;
     const putDIR = v => C.setDIR(C.code[(C.opPC + 1) & 0xFFFFF], v);
+    const putDIR2 = v => C.setDIR(C.code[(C.opPC + 2) & 0xFFFFF], v);
     const putBIT = v => C.setBIT(C.code[(C.opPC + 1) & 0xFFFF], v);
     const putR = v => C.setR(C.op & 0x7, v);
     const putRi = v => C.iram[C.getR(C.op & 0x1)] = v;
@@ -368,6 +369,35 @@ class CPU8052 {
     _.range(8).forEach(r => genINCDEC('INC', 0x08 + r, 1, getR, putR, doINC));
     _.range(2).forEach(i => genINCDEC('INC', 0x06 + i, 1, getRi, putRi, doINC));
     genINCDEC('INC', 0xA3, 1, getDPTR, putDPTR, doINC16);
+
+    _.range(8).forEach(r => genMOV('MOV', 0xE8 + r, 1, getR, putA));
+    genMOV('MOV', 0xE5, 2, getDIR, putA);
+    _.range(2).forEach(i => genMOV('MOV', 0xE6 + i, 1, getRi, putA));
+    genMOV('MOV', 0x74, 2, getIMM, putA);
+    _.range(8).forEach(r => genMOV('MOV', 0xF8 + r, 1, getA, putR));
+    _.range(8).forEach(r => genMOV('MOV', 0xA8 + r, 2, getDIR, putR));
+    _.range(8).forEach(r => genMOV('MOV', 0x78 + r, 2, getIMM, putR));
+    genMOV('MOV', 0xF5, 2, getA, putDIR);
+    _.range(8).forEach(r => genMOV('MOV', 0x88 + r, 2, getR, putDIR));
+    genMOV('MOV', 0x85, 3, getDIR, putDIR2);
+    _.range(2).forEach(i => genMOV('MOV', 0x86 + i, 2, getRi, putDIR));
+    genMOV('MOV', 0x75, 3, getIMM2, putDIR);
+
+
+    function genMOV(mnemonic, op, nBytes, getF, putF) {
+
+      return C.ops[op] = {
+        mnemonic,
+        nBytes,
+
+        f: C => {
+          C.PC = (C.PC + nBytes) & 0xFFFF;
+          const v = getF();
+          putF(v);
+        },
+      };
+    }
+
 
     console.warn(`Remaining undefined opcodes:
 ${(() => {const list = _.range(0x100)
