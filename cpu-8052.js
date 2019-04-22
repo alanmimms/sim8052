@@ -303,6 +303,7 @@ class CPU8052 {
     genSimple('RRC', 0x13, 1, doRRC);
     genSimple('SJMP', 0x80, 2, doSJMP);
     genSimple('SWAP', 0xC4, 1, doSWAP);
+    genSimple('NOP', 0x00, 1, () => 0);
 
 
     console.warn(`Remaining undefined opcodes:
