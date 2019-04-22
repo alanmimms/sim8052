@@ -271,7 +271,8 @@ class CPU8052 {
     genMath('ADDC', 0x30, doADD, true);
     genMath('SUBB', 0x90, doSUB, true);
 
-    genSimple('DA', 0xDA, 1, doDA);
+    genSimple('NOP', 0x00, 1, () => 0);
+    genSimple('DA', 0xD4, 1, doDA);
     genSimple('XCHD', 0xD6, 1, genXCHD(0));
     genSimple('XCHD', 0xD7, 1, genXCHD(1));
 
@@ -303,7 +304,6 @@ class CPU8052 {
     genSimple('RRC', 0x13, 1, doRRC);
     genSimple('SJMP', 0x80, 2, doSJMP);
     genSimple('SWAP', 0xC4, 1, doSWAP);
-    genSimple('NOP', 0x00, 1, () => 0);
 
 
     console.warn(`Remaining undefined opcodes:
@@ -382,7 +382,6 @@ ${0x100 - list.length} ops missing`;})()}`);
 
 
     function doDA() {
-      C.PC = (C.PC + 1) & 0xFFFF;
 
       if ((C.ACC & 0x0F) > 9 || C.AC) {
         if (C.ACC + 0x06 > 0xFF) C.CY = 1
