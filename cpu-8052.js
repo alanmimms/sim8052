@@ -314,9 +314,17 @@ class CPU8052 {
     genSimple('RR', 0x03, 1, doRR);
     genSimple('RRC', 0x13, 1, doRRC);
     genSimple('SJMP', 0x80, 2, doSJMP);
-    genSimple('JBC', 0x10, 3, doJBC);
-    genSimple('JB', 0x20, 3, doJB);
-    genSimple('JNB', 0x30, 3, doJNB);
+
+    const yesB = b => b;
+    const notB = b => !b;
+
+    genJxx('JBC', 0x10, 3, getBIT, true, yesB);
+    genJxx('JB', 0x20, 3, getBIT, false, yesB);
+    genJxx('JNB', 0x30, 3, getBIT, false, notB);
+    genJxx('JC', 0x40, 2, getCY, false, yesB);
+    genJxx('JNC', 0x50, 2, getCY, false, notB);
+    genJxx('JZ', 0x60, 2, getA, false, notB);
+    genJxx('JNZ', 0x70, 2, getA, false, yesB);
 
     genCJNE('CJNE', 0xB4, 3, getA, getIMM);
     genCJNE('CJNE', 0xB5, 3, getA, getDIR);
@@ -388,25 +396,20 @@ ${list.length} ops unimplemented`;})()}`);
     }
 
 
-    function doJBC(C) {
-      const rel = C.code[(C.opPC + 2) & 0xFFFF];
-      let b = getBIT();
-      putBIT(0);
-      if (b) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
-    }
+    function genJxx(mnemonic, op, nBytes, getF, put0, brTestF) {
 
+      return C.ops[op] = {
+        mnemonic,
+        nBytes,
 
-    function doJB(C) {
-      const rel = C.code[(C.opPC + 2) & 0xFFFF];
-      let b = getBIT();
-      if (b) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
-    }
-
-
-    function doJNB(C) {
-      const rel = C.code[(C.opPC + 2) & 0xFFFF];
-      let b = getBIT();
-      if (!b) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
+        f: C => {
+          const rel = C.code[(C.opPC + 2) & 0xFFFF];
+          C.PC = (C.PC + nBytes) & 0xFFFF;
+          let b = getF();
+          if (put0) putBIT(0);
+          if (brTestF(b)) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
+        },
+      };
     }
 
 
