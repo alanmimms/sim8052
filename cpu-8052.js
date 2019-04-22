@@ -288,8 +288,8 @@ class CPU8052 {
     }
 
     _.range(8).forEach(r => genXCH(0xC8 + r, 1, getR, putR));
+    _.range(2).forEach(i => genXCH(0xC6 + i, 1, getRi, putRi));
     genXCH(0xC5, 2, getDIR, putDIR);
-    genXCH(0xC6, 1, getRi, putRi);
     genXCH(0xC7, 1, getRi, putRi);
 
 
@@ -303,16 +303,37 @@ class CPU8052 {
     genSimple('RR', 0x03, 1, doRR);
     genSimple('RRC', 0x13, 1, doRRC);
     genSimple('SJMP', 0x80, 2, doSJMP);
-    genSimple('SWAP', 0xC4, 1, doSWAP);
 
+    genCJNE('CJNE', 0xB4, 3, getA, getIMM);
+    genCJNE('CJNE', 0xB5, 3, getA, getDIR);
+    _.range(8).forEach(r => genCJNE('CJNE', 0xB8 + r, 3, getR, getIMM));
+    _.range(2).forEach(i => genCJNE('CJNE', 0xB6 + i, 3, getRi, getIMM));
 
     console.warn(`Remaining undefined opcodes:
 ${(() => {const list = _.range(0x100)
 .filter(op => C.ops[op])
 .map(op => toHex2(op));
    return list.join(' ') + `
-${0x100 - list.length} ops missing`;})()}`);
+${0x100 - list.length} ops unimplemented`;})()}`);
 
+
+
+    function genCJNE(mnemonic, op, nBytes, getF1, getF2) {
+      
+      return C.ops[op] = {
+        mnemonic,
+        nBytes,
+
+        f: C => {
+          C.PC = (C.PC + nBytes) & 0xFFFF;
+          const rel = C.code[(C.opPC + nBytes - 1) & 0xFFFF];
+          const a = getF1(C);
+          const b = getF2(C);
+          C.CY = a < b ? 1 : 0;
+          if (a !== b) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
+        },
+      };
+    }
 
 
     function doSJMP(C) {

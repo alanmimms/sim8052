@@ -228,7 +228,7 @@ describe.each([
       cpu.iram[dir] = y;
 
       cpu.run1(0x100);              // CJNE A,dir,rela
-      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.PC).toBe(jump ? 0x103 + toSigned(rela) : 0x103);
       expect(cpu.ACC).toBe(x);
       expect(cpu.iram[dir]).toBe(y);
       expect(cpu.CY).toBe(ltCY);
@@ -246,7 +246,7 @@ describe.each([
       cpu.ACC = x;
 
       cpu.run1(0x100);              // CJNE A,#imm,rela
-      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.PC).toBe(jump ? 0x103 + toSigned(rela) : 0x103);
       expect(cpu.ACC).toBe(x);
       expect(cpu.CY).toBe(ltCY);
       expect(cpu.AC).toBe(0);
@@ -263,7 +263,7 @@ describe.each([
       cpu.iram[3] = x;
 
       cpu.run1(0x100);              // CJNE A,#imm,rela
-      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.PC).toBe(jump ? 0x103 + toSigned(rela) : 0x103);
       expect(cpu.iram[3]).toBe(x);
       expect(cpu.CY).toBe(ltCY);
       expect(cpu.AC).toBe(0);
@@ -274,15 +274,15 @@ describe.each([
       const imm = y;
       const dir = 0x42;
       clearIRAM();
-      cpu.code[0x100] = 0xB7;       // CJNE R3,#imm,rela
+      cpu.code[0x100] = 0xB7;       // CJNE @R1,#imm,rela
       cpu.code[0x101] = imm;
       cpu.code[0x102] = rela;
       cpu.PSW = 0;
       cpu.iram[dir] = x;
       cpu.iram[1] = dir;
 
-      cpu.run1(0x100);              // CJNE R3,#imm,rela
-      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      cpu.run1(0x100);              // CJNE @R1,#imm,rela
+      expect(cpu.PC).toBe(jump ? 0x103 + toSigned(rela) : 0x103);
       expect(cpu.iram[1]).toBe(dir);
       expect(cpu.iram[dir]).toBe(x);
       expect(cpu.CY).toBe(ltCY);
@@ -314,7 +314,7 @@ describe.each([
       cpu.iram[dir] = x;
 
       cpu.run1(0x100);              // DJNZ dir,rela
-      expect(cpu.PC).toBe(jump ? 0x103 + cpu.toSigned(rela) : 0x103);
+      expect(cpu.PC).toBe(jump ? 0x103 + toSigned(rela) : 0x103);
       expect(cpu.ACC).toBe(acBase);
       expect(cpu.iram[dir]).toBe(y);
       expect(cpu.CY).toBe(0);
@@ -333,7 +333,7 @@ describe.each([
       cpu.iram[3] = x;
 
       cpu.run1(0x100);              // DJNZ R3,rela
-      expect(cpu.PC).toBe(jump ? 0x102 + cpu.toSigned(rela) : 0x102);
+      expect(cpu.PC).toBe(jump ? 0x102 + toSigned(rela) : 0x102);
       expect(cpu.iram[3]).toBe(y);
       expect(cpu.ACC).toBe(acBase);
       expect(cpu.CY).toBe(0);
@@ -378,7 +378,7 @@ test(`op:JB bit,rel bit=1`, () => {
   cpu.setBIT(bit, 1);
 
   cpu.run1(0x100);              // JB bit,rela
-  expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x103 + toSigned(rela));
   expect(cpu.getBIT(bit)).toBe(1);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
@@ -422,7 +422,7 @@ test(`op:JBC bit,rel bit=1`, () => {
   cpu.setBIT(bit, 1);
 
   cpu.run1(0x100);              // JBC bit,rela
-  expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x103 + toSigned(rela));
   expect(cpu.getBIT(bit)).toBe(0);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
@@ -445,7 +445,7 @@ test(`op:JNB bit,rel bit=0`, () => {
   cpu.setBIT(bit, 0);
 
   cpu.run1(0x100);              // JNB bit,rela
-  expect(cpu.PC).toBe(0x103 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x103 + toSigned(rela));
   expect(cpu.getBIT(bit)).toBe(0);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
@@ -505,7 +505,7 @@ test(`op:JC rel CY=1`, () => {
   cpu.CY = 1;
 
   cpu.run1(0x100);              // JC rela
-  expect(cpu.PC).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x102 + toSigned(rela));
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(1);
   expect(cpu.AC).toBe(0);
@@ -525,7 +525,7 @@ test(`op:JNC rel CY=0`, () => {
   cpu.CY = 0;
 
   cpu.run1(0x100);              // JNC rela
-  expect(cpu.PC).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x102 + toSigned(rela));
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -579,7 +579,7 @@ test(`op:JZ rel AC=00`, () => {
   cpu.ACC = acBase;
 
   cpu.run1(0x100);              // JZ rela
-  expect(cpu.PC).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x102 + toSigned(rela));
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -598,7 +598,7 @@ test(`op:JNZ rel AC=55`, () => {
   cpu.ACC = acBase;
 
   cpu.run1(0x100);              // JNZ rela
-  expect(cpu.PC).toBe(0x102 + cpu.toSigned(rela));
+  expect(cpu.PC).toBe(0x102 + toSigned(rela));
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
@@ -2518,6 +2518,12 @@ describe('op:XCHD', () => {
     expect(cpu.PSW).toBe(0);
   });
 });
+
+
+
+function toSigned(v) {
+  return v & 0x80 ? v - 0x100 : v;
+}
 
 
 function clearCode() {
