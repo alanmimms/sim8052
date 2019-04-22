@@ -163,13 +163,22 @@ class CPU8052 {
     const getIMM2 = () => C.code[(C.opPC + 2) & 0xFFFF];
     const getR = () => C.getR(C.op & 0x07);
     const getRi = () => C.iram[C.getR(C.op & 0x01)];
+    const getDPTR = () => C.DPH << 8 | C.DPL;
     const getCY = () => C.CY;
 
     const putA = v => C.ACC = v;
     const putDIR = v => C.setDIR(C.code[(C.opPC + 1) & 0xFFFFF], v);
     const putR = v => C.setR(C.op & 0x7, v);
     const putRi = v => C.iram[C.getR(C.op & 0x1)] = v;
+    const putDPTR = v => {C.DPH = v >>> 8; C.DPL = v};
     const putCY = v => C.CY = v;
+
+
+    Object.defineProperty(C, 'DPTR', {
+      get: getDPTR,
+      set: putDPTR,
+    });
+
 
     function genSimple(mnemonic, op, nBytes, f) {
 
@@ -309,6 +318,23 @@ class CPU8052 {
     _.range(8).forEach(r => genCJNE('CJNE', 0xB8 + r, 3, getR, getIMM));
     _.range(2).forEach(i => genCJNE('CJNE', 0xB6 + i, 3, getRi, getIMM));
 
+
+    const doINC = v => (v + 1) & 0xFF;
+    const doINC16 = v => (v + 1) & 0xFFFF;
+    const doDEC = v => (v - 1) & 0xFF;
+
+
+    genINCDEC('DEC', 0x14, 1, getA, putA, doDEC);
+    genINCDEC('DEC', 0x15, 2, getDIR, putDIR, doDEC);
+    _.range(8).forEach(r => genINCDEC('DEC', 0x18 + r, 1, getR, putR, doDEC));
+    _.range(2).forEach(i => genINCDEC('DEC', 0x16 + i, 1, getRi, putRi, doDEC));
+
+    genINCDEC('INC', 0x04, 1, getA, putA, doINC);
+    genINCDEC('INC', 0x05, 2, getDIR, putDIR, doINC);
+    _.range(8).forEach(r => genINCDEC('INC', 0x08 + r, 1, getR, putR, doINC));
+    _.range(2).forEach(i => genINCDEC('INC', 0x06 + i, 1, getRi, putRi, doINC));
+    genINCDEC('INC', 0xA3, 1, getDPTR, putDPTR, doINC16);
+
     console.warn(`Remaining undefined opcodes:
 ${(() => {const list = _.range(0x100)
 .filter(op => C.ops[op])
@@ -316,6 +342,21 @@ ${(() => {const list = _.range(0x100)
    return list.join(' ') + `
 ${0x100 - list.length} ops unimplemented`;})()}`);
 
+
+    function genINCDEC(mnemonic, op, nBytes, getV, putV, opF) {
+      
+      return C.ops[op] = {
+        mnemonic,
+        nBytes,
+
+        f: C => {
+          C.PC = (C.PC + nBytes) & 0xFFFF;
+          let v = getV();
+          v = opF(v);
+          putV(v);
+        },
+      };
+    }
 
 
     function genCJNE(mnemonic, op, nBytes, getF1, getF2) {
