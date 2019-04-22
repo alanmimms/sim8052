@@ -307,6 +307,7 @@ class CPU8052 {
     genSimple('RET', 0x22, 1, doRET);
     genSimple('RETI', 0x32, 1, doRETI);
     genSimple('LCALL', 0x12, 3, doLCALL);
+    genSimple('LJMP', 0x02, 3, doLJMP);
     genSimple('RL', 0x23, 1, doRL);
     genSimple('RLC', 0x33, 1, doRLC);
     genSimple('RR', 0x03, 1, doRR);
@@ -337,10 +338,10 @@ class CPU8052 {
 
     console.warn(`Remaining undefined opcodes:
 ${(() => {const list = _.range(0x100)
-.filter(op => C.ops[op])
+.filter(op => C.ops[op] == null)
 .map(op => toHex2(op));
    return list.join(' ') + `
-${0x100 - list.length} ops unimplemented`;})()}`);
+${list.length} ops unimplemented`;})()}`);
 
 
     function genINCDEC(mnemonic, op, nBytes, getV, putV, opF) {
@@ -409,6 +410,13 @@ ${0x100 - list.length} ops unimplemented`;})()}`);
       const hi = C.code[(C.opPC + 1) & 0xFFFF];
       const lo = C.code[(C.opPC + 2) & 0xFFFF];
       C.push16(C.PC);
+      C.PC = hi << 8 | lo;
+    }
+    
+
+    function doLJMP(C) {
+      const hi = C.code[(C.opPC + 1) & 0xFFFF];
+      const lo = C.code[(C.opPC + 2) & 0xFFFF];
       C.PC = hi << 8 | lo;
     }
     
