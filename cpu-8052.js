@@ -399,6 +399,11 @@ class CPU8052 {
     }
 
 
+    genSimple('MOV', 0xA2, 2, C => C.CY = getBIT());
+    genSimple('MOV', 0x92, 2, C => putBIT(C.CY));
+    genSimple('MOV', 0x90, 3, C => {C.DPH = getIMM(); C.DPL = getIMM2()});
+
+
     console.warn(`Remaining undefined opcodes:
 ${(() => {const list = _.range(0x100)
 .filter(op => C.ops[op] == null)
