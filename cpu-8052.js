@@ -314,6 +314,7 @@ class CPU8052 {
     genSimple('RR', 0x03, 1, doRR);
     genSimple('RRC', 0x13, 1, doRRC);
     genSimple('SJMP', 0x80, 2, doSJMP);
+    genSimple('JMP', 0x73, 2, doJMP_);
 
     const yesB = b => b;
     const notB = b => !b;
@@ -413,6 +414,12 @@ ${list.length} ops unimplemented`;})()}`);
     function doSJMP(C) {
       const rel = C.code[(C.opPC + 1) & 0xFFFF];
       C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
+    }
+
+
+    function doJMP_(C) {
+      const rel = C.code[(C.opPC + 1) & 0xFFFF];
+      C.PC = (C.ACC + C.DPTR) & 0xFFFF;
     }
 
 
