@@ -316,6 +316,7 @@ class CPU8052 {
     genSimple('SJMP', 0x80, 2, doSJMP);
     genSimple('JBC', 0x10, 3, doJBC);
     genSimple('JB', 0x20, 3, doJB);
+    genSimple('JNB', 0x30, 3, doJNB);
 
     genCJNE('CJNE', 0xB4, 3, getA, getIMM);
     genCJNE('CJNE', 0xB5, 3, getA, getDIR);
@@ -399,6 +400,13 @@ ${list.length} ops unimplemented`;})()}`);
       const rel = C.code[(C.opPC + 2) & 0xFFFF];
       let b = getBIT();
       if (b) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
+    }
+
+
+    function doJNB(C) {
+      const rel = C.code[(C.opPC + 2) & 0xFFFF];
+      let b = getBIT();
+      if (!b) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
     }
 
 
