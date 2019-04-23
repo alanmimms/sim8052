@@ -384,6 +384,10 @@ class CPU8052 {
     _.range(2).forEach(i => genMOV('MOV', 0x76 + i, 2, getIMM, putRi));
     genMOV('MOV', 0x75, 3, getIMM2, putDIR);
 
+    genSimple('MOV', 0xA2, 2, C => C.CY = getBIT());
+    genSimple('MOV', 0x92, 2, C => putBIT(C.CY));
+    genSimple('MOV', 0x90, 3, C => {C.DPH = getIMM(); C.DPL = getIMM2()});
+
     const getA_PC = () => C.code[(C.ACC + C.PC) & 0xFFFF];
     const getA_DPTR = () => C.code[(C.ACC + getDPTR()) & 0xFFFF];
 
@@ -401,6 +405,7 @@ class CPU8052 {
     genMOV('MOVX', 0xE0, 1, getXDPTR, putA);
     genMOV('MOVX', 0xF0, 1, getA, putXDPTR);
 
+
     function genMOV(mnemonic, op, nBytes, getF, putF) {
 
       return C.ops[op] = {
@@ -415,10 +420,8 @@ class CPU8052 {
       };
     }
 
-
-    genSimple('MOV', 0xA2, 2, C => C.CY = getBIT());
-    genSimple('MOV', 0x92, 2, C => putBIT(C.CY));
-    genSimple('MOV', 0x90, 3, C => {C.DPH = getIMM(); C.DPL = getIMM2()});
+    genSimple('DIV', 0x84, 1, doDIV);
+    genSimple('MUL', 0xA4, 1, doMUL);
 
 
     console.warn(`Remaining undefined opcodes:
@@ -595,16 +598,24 @@ ${list.length} ops unimplemented`;})()}`);
     }
 
 
-    function doMUL(a, b) {
+    function doMUL() {
+      let a = C.ACC;
+      let b = C.B;
+
       const result = a * b;
       C.CY = 0;                // Always clears CY.
       C.OV = +(result > 0xFF);
-      C.B = a >>> 8;
-      return result & 0xFF;
+      b = result >>> 8;
+
+      C.ACC = result & 0xFF;
+      C.B = b;
     }
 
 
-    function doDIV(a, b) {
+    function doDIV() {
+      let a = C.ACC;
+      let b = C.B;
+
       // DIV always clears CY. DIV sets OV on divide by 0.
       C.CY = 0;
 
@@ -614,10 +625,10 @@ ${list.length} ops unimplemented`;})()}`);
         const curA = a;
         a = Math.floor(curA / b);
         b = curA % b;
-        C.B = b;
       }
 
-      return a;
+      C.ACC = a;
+      C.B = b;
     }
 
 
