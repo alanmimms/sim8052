@@ -386,6 +386,7 @@ class CPU8052 {
     genMOV('MOV', 0x75, 3, getIMM2, putDIR);
     _.range(2).forEach(i => genMOV('MOV', 0xA6 + i, 2, getDIR, putRi));
     _.range(8).forEach(r => genMOV('MOV', 0xA8 + r, 2, getDIR, putR));
+    _.range(2).forEach(i => genMOV('MOV', 0xF6 + i, 1, getRi, putA));
 
     genSimple('MOV', 0xA2, 2, C => C.CY = getBIT());
     genSimple('MOV', 0x92, 2, C => putBIT(C.CY));
