@@ -8,7 +8,7 @@ const fs = require('fs');
 const util = require('util');
 const _ = require('lodash');
 const readline = require('readline');
-const CPU = require('./cpu-8052');
+const {CPU8052} = require('./cpu-8052');
 
 const {toHex1, toHex2, toHex4} = require('./simutils');
 
@@ -29,53 +29,20 @@ const CODESize = 65536;
 const XRAMSize = 65536;
 
 
-// These are also stuffed into the `cpu` context for generated code.
-const ACC = CPU.ACC;
-const B = CPU.B;
-const SP = CPU.SP;
-const P0 = CPU.P0;
-const P1 = CPU.P1;
-const P2 = CPU.P2;
-const P3 = CPU.P3;
-const IP = CPU.IP;
-const IE = CPU.IE;
-const TMOD = CPU.TMOD;
-const TCON = CPU.TCON;
-const T2CON = CPU.T2CON;
-const T2MOD = CPU.T2MOD;
-const TH0 = CPU.TH0;
-const TL0 = CPU.TL0;
-const TH1 = CPU.TH1;
-const TL1 = CPU.TL1;
-const TH2 = CPU.TH2;
-const TL2 = CPU.TL2;
-const RCAP2H = CPU.RCAP2H;
-const RCAP2L = CPU.RCAP2L;
-const PCON = CPU.PCON;
-const PSW = CPU.PSW;
-const DPL = CPU.DPL;
-const DPH = CPU.DPH;
-const SCON = CPU.SCON;
-const SBUF = CPU.SBUF;
-
-
-const {pswBits, sconBits, parityTable, mathMask, rsMask} = CPU;
-
-
 // These are done first so we can construct a Proxy to access it.
 const iram = Buffer.alloc(0x100, 0x00, 'binary');
 const xram = Buffer.alloc(XRAMSize, 0x00, 'binary');
 const SFR = Buffer.alloc(0x100, 0x00, 'binary');
 const code = Buffer.alloc(CODESize, 0x00, 'binary');
 
+// This CPU8052 instance we are simulating
+var cpu;
+
 
 const sbufQueue = [];
 
 
-const cpu = {
-
-  // Program counter - invisible to software in most ways
-  pc: 0,
+const sim = {
 
   // Code (program) memory.
   code,
@@ -83,24 +50,8 @@ const cpu = {
   // Internal RAM
   iram,
 
-  // SFRs. Even though this is 256 bytes, only 0x80..0xFF are used.
-  SFR,
-
   // External (data) memory.
   xram,
-
-  // Interrupt priority level.
-  // -1: No interrupt in progress.
-  // 0: Low priority in progress.
-  // 1: High priority in progress.
-  ipl: -1,
-
-  // Temporary value used during some instructions
-  tmp: 0,
-
-  // Parameters to ALU operations like doADD, doSUBB, etc.
-  alu1: 0,
-  aluC: 0,
 
   // Serial port input queue
   sbufQueue,
@@ -131,298 +82,6 @@ const cpu = {
   branchHistoryMask: 255,
   branchHistory: new Array(256),
   branchHistoryX: -1,           // Always points to most recent entry
-
-
-  // Get/set high nybble of tmp
-  get tmpNYBHI() {
-    return (cpu.tmp >>> 4) & 0x0F;
-  },
-
-  set tmpNYBHI(v) {
-    cpu.tmp &= ~0xF0;
-    cpu.tmp |= (v << 4) & 0xF0;
-    return true;
-  },
-
-
-  // Get/set low nybble of tmp
-  get tmpNYBLO() {
-    return cpu.tmp & 0x0F;
-  },
-
-  set tmpNYBLO(v) {
-    cpu.tmp &= ~0x0F;
-    cpu.tmp |= v & 0x0F;
-    return true;
-  },
-
-
-  // Get/set low nybble of SFR location
-  sfrNYBLO: new Proxy(SFR, {
-
-    // Set low nybble of SFR location
-    set(target, ea, value) {
-      ea = +ea;                 // Proxy always gets `property` parameter as string
-      SFR[ea] = SFR[ea] & ~0x0F | value & 0x0F;
-      return true;
-    },
-
-    // Get low nybble of SFR location
-    get: (target, ea, value) => SFR[+ea] & 0x0F,
-  }),
-
-
-  // Get/set high nybble of SFR location
-  sfrNYBHI: new Proxy(SFR, {
-
-    // Set low nybble of SFR location
-    set(target, ea, value) {
-      ea = +ea;                 // Proxy always gets `property` parameter as string
-      SFR[ea] = SFR[ea] & ~0xF0 | (value << 4) & 0xF0;
-      return true;
-    },
-
-    // Get high nybble of SFR location
-    get: (target, ea, value) => (SFR[+ea] & 0xF0) >>> 4,
-  }),
-
-
-  BIT: new Proxy(SFR, {
-
-    // Set bit of an SFR or IRAM location
-    set(target, bn, newValue) {
-      bn = +bn;                 // Proxy always gets `property` parameter as string
-
-      const {ra, bm} = getBitAddrMask(bn);
-      let v = cpu.DIR[ra];
-
-      if (newValue) {
-        v = v | bm;
-      } else {
-        v = v & ~bm;
-      }
-
-      cpu.DIR[ra] = v;
-      return true;
-    },
-
-    // Get bit of an SFR or IRAM location
-    get(target, bn) {
-      bn = +bn;                 // Proxy always gets `property` parameter as string
-      const {ra, bm} = getBitAddrMask(bn);
-      const v = +!!(cpu.DIR[ra] & bm);
-
-      // If we are spinning waiting for SCON.RI to go high we can
-      // introduce a bit of delay.
-      if (bn === sconBits.riBit && !v) cpu.mayDelay = true;
-
-      return v;
-    },
-  }),
-
-
-  // Get/set low and high byte or page field of PC
-  set pcLO(v) {
-    cpu.pc &= ~0xFF;
-    cpu.pc |= v & 0xFF;
-  },
-
-  get pcLO() {
-    return cpu.pc & 0xFF;
-  },
-
-  set pcHI(v) {
-    cpu.pc &= ~0xFF00;
-    cpu.pc |= (v & 0xFF) << 8;
-  },
-
-  get pcHI() {
-    return (cpu.pc & 0xFF00) >>> 8;
-  },
-
-
-  set pcPAGE(v) {
-    cpu.pc &= ~0x7FF;
-    cpu.pc |= v & 0x7FF;
-  },
-
-  get pcPAGE() {
-    return cpu.pc & 0x7FF;
-  },
-
-
-  get CY() {
-    return +!!(this.SFR[PSW] & pswBits.cyMask);
-  },
-
-  get AC() {
-    return +!!(this.SFR[PSW] & pswBits.acMask);
-  },
-
-  get OV() {
-    return +!!(this.SFR[PSW] & pswBits.ovMask);
-  },
-
-
-  set CY(v) {
-
-    if (v)
-      this.SFR[PSW] |= pswBits.cyMask;
-    else
-      this.SFR[PSW] &= ~pswBits.cyMask;
-  },
-
-
-  set AC(v) {
-
-    if (v)
-      this.SFR[PSW] |= pswBits.acMask;
-    else
-      this.SFR[PSW] &= ~pswBits.acMask;
-  },
-
-
-  set OV(v) {
-
-    if (v)
-      this.SFR[PSW] |= pswBits.ovMask;
-    else
-      this.SFR[PSW] &= ~pswBits.ovMask;
-  },
-
-
-  get DPTR() {
-    return SFR[DPH] << 8 | SFR[DPL];
-  },
-
-
-  set DPTR(v) {
-    v &= 0xFFFF;
-    SFR[DPL] = v;
-    SFR[DPH] = v >>> 8;
-  },
-
-
-  doXCHD() {
-    const a = SFR[ACC];
-    const b = this.alu1;
-    SFR[ACC] &= 0xF0;
-    SFR[ACC] |= b & 0x0F;
-    this.alu1 &= 0xF0;
-    this.alu1 |= a & 0x0F;
-  },
-
-
-  doRETI() {
-    if (this.ipl >= 0) this.ipl = this.ipl - 1;
-  },
-
-
-  doDA() {
-
-    if ((SFR[ACC] & 0x0F) > 9 || this.AC) {
-      if (SFR[ACC] + 0x06 > 0xFF) this.CY = 1
-      SFR[ACC] = (SFR[ACC] + 0x06) & 0xFF;
-    }
-  
-    if ((SFR[ACC] & 0xF0) > 0x90 || this.CY) {
-      if (SFR[ACC] + 0x60 > 0xFF) this.CY = 1;
-      SFR[ACC] = (SFR[ACC] + 0x60) & 0xFF;
-    }
-  },
-
-
-  doADD() {
-    const a = SFR[ACC]
-    const b = this.alu1;
-    const c = this.aluC;
-
-    const c6Value = +!!(((a & 0x7F) + (b & 0x7F) + c) & 0x80);
-    const cyValue = +(a + b + c > 0xFF);
-    this.AC = +(((a & 0x0F) + (b & 0x0F) + c) > 0x0F);
-    this.CY = cyValue;
-    this.OV = cyValue ^ c6Value;
-    SFR[ACC] = a + b + c;
-  },
-
-
-  doSUBB() {
-    const a = SFR[ACC];
-    const b = this.alu1;
-    const c = this.aluC;
-    const toSub = b + c;
-    const result = (a - toSub) & 0xFF;
-
-    this.CY = +(a < toSub);
-    this.AC = +((a & 0x0F) < (toSub & 0x0F) || (c && ((b & 0x0F) == 0x0F)));
-    this.OV = +((a < 0x80 && b > 0x7F && result > 0x7F) ||
-                (a > 0x7F && b < 0x80 && result < 0x80));
-    SFR[ACC] = a - toSub;
-  },
-
-
-  doMUL() {
-    const a = SFR[ACC] * SFR[B];
-    this.CY = 0;                // Always clears CY.
-    this.OV = +(a > 0xFF);
-    SFR[ACC] = a;
-    SFR[B] = a >>> 8;
-  },
-
-
-  doDIV() {
-    // DIV always clears CY. DIV sets OV on divide by 0.
-    let b = SFR[B];
-    this.CY = 0;
-
-    if (b === 0) {
-      this.OV = 1;
-    } else {
-      const curACC = SFR[ACC];
-      const a = Math.floor(curACC / b);
-      b = curACC % b;
-      SFR[ACC] = a;
-      SFR[B] = b;
-    }
-  },
-
-  doRL() {
-    let a = SFR[ACC];
-    a <<= 1;
-    a = a & 0xFF | a >>> 8;
-    SFR[ACC] = a;
-  },
-
-
-  doRLC() {
-    let a = SFR[ACC];
-    let c = this.CY;
-    this.CY = a >>> 7;
-    a <<= 1;
-    SFR[ACC] = a | c;
-  },
-
-
-  doRR() {
-    let a = SFR[ACC];
-    a = a >>> 1 | a << 7;
-    SFR[ACC] =  a;
-  },
-
-
-  doRRC() {
-    let a = SFR[ACC];
-    let c = this.CY;
-    this.CY = a & 1;
-    a >>>= 1;
-    a |= c << 7;
-    SFR[ACC] = a;
-  },
-
-
-  toSigned(v) {
-    return v & 0x80 ? v - 0x100 : v;
-  },
 
 
   // Direct accesses in 0x00..0x7F are internal RAM.
@@ -572,7 +231,7 @@ ${briefState(bh.state)}`);
       addr11: x => displayableAddress((nextPC & 0xF800) | ((op & 0xE0) << 3) | bytes[+x], 'c'),
       verbatum: x => x,
       direct: x => displayableAddress(bytes[+x], 'd'),
-      rela: x => displayableAddress(nextPC + this.toSigned(bytes[+x]), 'c'),
+      rela: x => displayableAddress(nextPC + toSigned(bytes[+x]), 'c'),
       Ri: () => 'R' + (op & 7).toString(),
       '@Ri': () => '@R' + (op & 1).toString(),
     };
@@ -656,17 +315,17 @@ ${_.range(0, 8)
 };
 
 
+function toSigned(v) {
+  return v & 0x80 ? v - 0x100 : v;
+}
+
+
 // Return the address and bit mask for a given bit number.
 function getBitAddrMask(bn) {
   const bm = 1 << (bn & 0x07);
   const ra = bn < 0x10 ? 0x20 + (bn >>> 3) : bn & 0xF8;
   return {ra, bm};
 };
-
-
-// Stuff the SFR names into the `cpu` context so generated code can
-// use them.
-Object.keys(CPU.SFRs).forEach(sfr => cpu[sfr] = CPU[sfr]);
 
 
 var lastX = 0;
@@ -741,12 +400,12 @@ const commands = [
 
   {name: 'history',
    description: 'Display history of PC.',
-   doFn: () => cpu.dumpFetchHistory(),
+   doFn: () => sim.dumpFetchHistory(),
   },
 
   {name: 'bhistory',
    description: 'Display history of branches.',
-   doFn: () => cpu.dumpBranchHistory(),
+   doFn: () => sim.dumpBranchHistory(),
   },
 
   {name: 'sfr',
@@ -795,7 +454,7 @@ With arguments, set specified flag to specified value. If value is unspecified, 
 
 
 function curInstruction() {
-  return cpu.disassemble(cpu.pc);
+  return sim.disassemble(cpu.pc);
 }
 
 
@@ -848,7 +507,7 @@ function findClosestSymbol(x, space) {
 
 
 // Return a compact display strong for the state captured by
-// cpu.captureState().
+// sim.captureState().
 // A=XX B=XX SP=XX PSW=XX CoA DPTR=XXXX R:XX XX XX XX  XX XX XX XX
 function briefState(s) {
   return `\
@@ -943,7 +602,7 @@ function doList(words) {
     if (words.length > 2) n = parseInt(words[1]);
   }
 
-  for (; n; --n, ++x) console.log(`${cpu.disassemble(x).padStart(40)}`);
+  for (; n; --n, ++x) console.log(`${sim.disassemble(x).padStart(40)}`);
   lastX = x;
 }
 
@@ -951,16 +610,16 @@ function doList(words) {
 function doDebug(words) {
 
   if (words.length === 1) {
-    const maxWidth = cpu.debugFlags
+    const maxWidth = sim.debugFlags
       .reduce((prev, cur) => cur.length > prev ? cur.length : prev, 0);
     console.log("\nCurrent debug flags and their values:\n");
-    cpu.debugFlags.forEach(f => {
+    sim.debugFlags.forEach(f => {
       console.log(`  ${_.padStart(f, maxWidth)}: ${cpu[f]}`);
     });
     console.log("");
   } else {
     const flc = words[1].toLowerCase();
-    let f = cpu.debugFlags.find(f => f.toLowerCase() === flc);
+    let f = sim.debugFlags.find(f => f.toLowerCase() === flc);
 
     if (!f) {
       console.log(`Unknown debug flag '${flc}'.`);
@@ -979,7 +638,7 @@ function doDebug(words) {
 
 
 function doDump(words) {
-  cpu.dumpState();
+  sim.dumpState();
 }
 
 
@@ -987,11 +646,11 @@ function doGo(words) {
   const b = words.length >= 2 ? getAddress(words) : cpu.pc;
 
   if (b !== cpu.pc) {
-    cpu.saveBranchHistory(cpu.pc, b, 'go');
+    sim.saveBranchHistory(cpu.pc, b, 'go');
     cpu.pc = b;
   }
 
-  startOfLastStep = cpu.instructionsExecuted;
+  startOfLastStep = sim.instructionsExecuted;
   run(b);
 }
 
@@ -1010,7 +669,7 @@ function doTil(words) {
     };
 
     console.log(`[Running until ${bAsHex}]`);
-    startOfLastStep = cpu.instructionsExecuted;
+    startOfLastStep = sim.instructionsExecuted;
     run(cpu.pc);
   }
 }
@@ -1069,7 +728,7 @@ function doUnbreak(words) {
 
 function doStep(words) {
   const n = (words.length > 1) ? parseInt(words[1]) : 1;
-  startOfLastStep = cpu.instructionsExecuted;
+  startOfLastStep = sim.instructionsExecuted;
   run(cpu.pc, n);
 }
 
@@ -1083,7 +742,7 @@ function doOver(words) {
       transient: true,
     }));
 
-  startOfLastStep = cpu.instructionsExecuted;
+  startOfLastStep = sim.instructionsExecuted;
   run(cpu.pc);
 }
 
@@ -1096,7 +755,7 @@ function doQuit(words) {
 
 
 function doStats(words) {
-  console.log(`Instructions executed: ${cpu.instructionsExecuted}`);
+  console.log(`Instructions executed: ${sim.instructionsExecuted}`);
 }
 
 
@@ -1175,7 +834,7 @@ function startCLI() {
   // Note ^C to allow user to regain control from long execute loops.
   rl.on('SIGINT', () => {
     console.log("\n[INTERRUPT]\n");
-    cpu.running = false;
+    sim.running = false;
     startCLI();
   });
 
@@ -1188,7 +847,7 @@ function sbufRx(c) {
   // Ignore characters if receiver is not enabled
   if ((cpu.SFR[SCON] & sconBits.renMask) === 0) return;
 
-  cpu.sbufQueue.push(c);
+  sim.sbufQueue.push(c);
 
   // TODO: Make this do RI interrupt
 }
@@ -1201,7 +860,7 @@ function sbufKeypressHandler(ch, key) {
 
     // Stop with C-\ keypress
     if (c === 0x1c) {
-      cpu.running = false;
+      sim.running = false;
     } else {
       sbufRx(c);
     }
@@ -1225,11 +884,11 @@ function sbufKeypressHandler(ch, key) {
 
 
 function run(pc, maxCount = Number.POSITIVE_INFINITY) {
-  const startCount = cpu.instructionsExecuted;
+  const startCount = sim.instructionsExecuted;
   const startTime = process.hrtime();
 
   cpu.pc = pc;
-  cpu.running = true;
+  sim.running = true;
 
   let skipBreakIfTrue = true;
 
@@ -1238,11 +897,11 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
 
   function runAsync() {
 
-    for (let n = insnsPerTick; cpu.running && n; --n) {
+    for (let n = insnsPerTick; sim.running && n; --n) {
 
       if (!skipBreakIfTrue && stopReasons.code[cpu.pc]) {
 	console.log(`[${stopReasons.code[cpu.pc].msg}]`); // Say why we stopped
-        cpu.running = false;
+        sim.running = false;
 
         const match = stopReasons.code[cpu.pc].msg
               .match(/^stepped over to \$\+([0-9A-F]+)H/);
@@ -1262,21 +921,21 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
 
         // If we are spinning in a loop waiting for RI, just introduce
         // a bit of delay if we keep seeing RI=0.
-        if (cpu.mayDelay) break;
+        if (sim.mayDelay) break;
 
-        if (maxCount && cpu.instructionsExecuted - startCount >= maxCount)
-	  cpu.running = false;
+        if (maxCount && sim.instructionsExecuted - startCount >= maxCount)
+	  sim.running = false;
       }
 
-      if (cpu.tracing || !cpu.running) cpu.dumpState();
+      if (sim.tracing || !sim.running) sim.dumpState();
 
       skipBreakIfTrue = false;
     }
 
-    if (cpu.running) {
+    if (sim.running) {
 
-      if (cpu.mayDelay) {
-        cpu.mayDelay = false;
+      if (sim.mayDelay) {
+        sim.mayDelay = false;
         setTimeout(runAsync, 100);
       } else {
         setImmediate(runAsync);
@@ -1286,9 +945,9 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
       if (!maxCount || stopReasons.code[cpu.pc]) {
 	const stopTime = process.hrtime();
 	const nSec = (stopTime[0] - startTime[0]) + (stopTime[1] - startTime[1]) / 1e9;
-	cpu.executionTime += nSec;
-	const nInstructions = cpu.instructionsExecuted - startOfLastStep;
-	const ips =  nInstructions / cpu.executionTime;
+	sim.executionTime += nSec;
+	const nInstructions = sim.instructionsExecuted - startOfLastStep;
+	const ips =  nInstructions / sim.executionTime;
 	console.log(`[Executed ${nInstructions} instructions ` +
 		    `or ${ips.toFixed(1)}/s]`);
 	startOfLastStep = 0;	// Report full count next time if not in a step
@@ -1342,7 +1001,7 @@ node ${argv[0]} hex-file-name lst-file-name`);
   const hexLength = hexParsed.highestAddress - hexParsed.lowestAddress;
 
   console.log(`Loaded ${toHex4(hexParsed.lowestAddress)}: ${hexLength.toString(16)} bytes`);
-  hexParsed.data.copy(cpu.code, hexParsed.lowestAddress);
+  hexParsed.data.copy(code, hexParsed.lowestAddress);
 
   if (sym) {
     // We capture the match result so we can slice off the LST file
@@ -1454,6 +1113,7 @@ node ${argv[0]} hex-file-name lst-file-name`);
 // Only start the thing if we are not loaded via require.
 if (require.main === module) {
   setupSimulator();
+  cpu = new CPU8052(code, xram);
 
   console.log('[Control-\\ will interrupt execution and return to prompt]');
 
