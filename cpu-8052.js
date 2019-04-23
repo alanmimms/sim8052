@@ -283,6 +283,7 @@ class CPU8052 {
     genMath('SUBB', 0x90, doSUB, true);
 
     genSimple('NOP', 0x00, 1, () => 0);
+    genSimple('A5', 0xA5, 1, () => 0);
     genSimple('DA', 0xD4, 1, doDA);
     genSimple('XCHD', 0xD6, 1, genXCHD(0));
     genSimple('XCHD', 0xD7, 1, genXCHD(1));
@@ -383,6 +384,8 @@ class CPU8052 {
     _.range(2).forEach(i => genMOV('MOV', 0x86 + i, 2, getRi, putDIR));
     _.range(2).forEach(i => genMOV('MOV', 0x76 + i, 2, getIMM, putRi));
     genMOV('MOV', 0x75, 3, getIMM2, putDIR);
+    _.range(2).forEach(i => genMOV('MOV', 0xA6 + i, 2, getDIR, putRi));
+    _.range(8).forEach(r => genMOV('MOV', 0xA8 + r, 2, getDIR, putR));
 
     genSimple('MOV', 0xA2, 2, C => C.CY = getBIT());
     genSimple('MOV', 0x92, 2, C => putBIT(C.CY));
@@ -404,6 +407,9 @@ class CPU8052 {
     _.range(2).forEach(i => genMOV('MOVX', 0xF2 + i, 1, getA, putXRi));
     genMOV('MOVX', 0xE0, 1, getXDPTR, putA);
     genMOV('MOVX', 0xF0, 1, getA, putXDPTR);
+
+    genSimple('PUSH', 0xC0, 2, () => C.push8(getDIR()));
+    genSimple('SWAP', 0xC4, 1, doSWAP);
 
 
     function genMOV(mnemonic, op, nBytes, getF, putF) {
@@ -632,7 +638,7 @@ ${list.length} ops unimplemented`;})()}`);
     }
 
 
-    function doSWAP(C) {
+    function doSWAP() {
       C.ACC = (C.ACC & 0x0F) << 4 | (C.ACC & 0xF0) >> 4;
     }
 
