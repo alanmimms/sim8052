@@ -390,6 +390,16 @@ class CPU8052 {
     genMOV('MOVC', 0x83, 1, getA_PC, putA);
     genMOV('MOVC', 0x93, 1, getA_DPTR, putA);
 
+    const xAddr = a => C.P2 << 8 | a;
+    const getXRi = () => C.xram[xAddr(C.getR(C.op & 0x01))];
+    const getXDPTR = () => C.xram[getDPTR()];
+    const putXRi = v => C.xram[xAddr(C.getR(C.op & 0x01))] = v;
+    const putXDPTR = v => C.xram[getDPTR()] = v;
+    
+    _.range(2).forEach(i => genMOV('MOVX', 0xE2 + i, 1, getXRi, putA));
+    _.range(2).forEach(i => genMOV('MOVX', 0xF2 + i, 1, getA, putXRi));
+    genMOV('MOVX', 0xE0, 1, getXDPTR, putA);
+    genMOV('MOVX', 0xF0, 1, getA, putXDPTR);
 
     function genMOV(mnemonic, op, nBytes, getF, putF) {
 

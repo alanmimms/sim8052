@@ -957,7 +957,7 @@ describe.each([
       clearCode();
       clearIRAM();
       clearXRAM();
-      cpu.code[0x100] = 0xF0;       // MOVX @R1,A
+      cpu.code[0x100] = 0xF0;       // MOVX @DPTR,A
       cpu.PSW = 0;
       cpu.ACC = v;
       cpu.DPTR = addr;
