@@ -381,7 +381,14 @@ class CPU8052 {
     _.range(8).forEach(r => genMOV('MOV', 0x88 + r, 2, getR, putDIR));
     genMOV('MOV', 0x85, 3, getDIR, putDIR2);
     _.range(2).forEach(i => genMOV('MOV', 0x86 + i, 2, getRi, putDIR));
+    _.range(2).forEach(i => genMOV('MOV', 0x76 + i, 2, getIMM, putRi));
     genMOV('MOV', 0x75, 3, getIMM2, putDIR);
+
+    const getA_PC = () => C.code[(C.ACC + C.PC) & 0xFFFF];
+    const getA_DPTR = () => C.code[(C.ACC + getDPTR()) & 0xFFFF];
+
+    genMOV('MOVC', 0x83, 1, getA_PC, putA);
+    genMOV('MOVC', 0x93, 1, getA_DPTR, putA);
 
 
     function genMOV(mnemonic, op, nBytes, getF, putF) {
