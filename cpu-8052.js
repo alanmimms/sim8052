@@ -409,6 +409,7 @@ class CPU8052 {
     genMOV('MOVX', 0xF0, 1, getA, putXDPTR);
 
     genSimple('PUSH', 0xC0, 2, () => C.push8(getDIR()));
+    genSimple('POP', 0xD0, 2, () => putDIR(C.pop8()));
     genSimple('SWAP', 0xC4, 1, doSWAP);
 
 
@@ -552,12 +553,8 @@ ${list.length} ops unimplemented`;})()}`);
 
 
     function doRET(C) {
-      let sp = C.SP;
-      const pcH = C.iram[sp];
-      sp = (sp - 1) & 0xFF;
-      const pcL = C.iram[sp];
-      sp = (sp - 1) & 0xFF;
-      C.SP = sp;
+      const pcH = C.pop8();
+      const pcL = C.pop8();
       C.PC = pcH << 8 | pcL;
     }
 
@@ -809,6 +806,16 @@ ${list.length} ops unimplemented`;})()}`);
   };
 
 
+  pop8() {
+    const C = this;
+    let sp = C.SP;
+    const v = C.iram[sp];
+    sp = (sp - 1) & 0xFF;
+    C.SP = sp;
+    return v;
+  };
+
+
   push8(v) {
     const C = this;
     let sp = C.SP;
@@ -817,7 +824,7 @@ ${list.length} ops unimplemented`;})()}`);
     C.iram[sp] = v;
 
     C.SP = sp;
-  };
+  }
   
 
   push16(v) {
@@ -831,7 +838,7 @@ ${list.length} ops unimplemented`;})()}`);
     C.iram[sp] = v >>> 8;
 
     C.SP = sp;
-  };
+  }
   
 
   run1(pc = this.PC) {
