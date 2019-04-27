@@ -508,8 +508,8 @@ ${ope.mnemonic.padEnd(6)} ${operands}`;
 
   dumpState() {
     console.log(`\
- a=${toHex2(cpu.SFR[cpu.ACC])}   b=${toHex2(cpu.SFR[cpu.B])}  cy=${+cpu.CY} ov=${+cpu.OV} ac=${cpu.AC}  \
-sp=${toHex2(cpu.SFR[cpu.SP])} psw=${toHex2(cpu.SFR[cpu.PSW])}  dptr=${toHex4(cpu.getDPTR())}  \
+ a=${toHex2(cpu.ACC)}   b=${toHex2(cpu.B)}  cy=${+cpu.CY} ov=${+cpu.OV} ac=${cpu.AC}  \
+sp=${toHex2(cpu.SP)} psw=${toHex2(cpu.PSW)}  dptr=${toHex4(cpu.getDPTR())}  \
 pc=${toHex4(cpu.PC)}
 ${_.range(0, 8)
   .map((v, rn) => `r${rn}=${toHex2(cpu.getR(rn))}`)
@@ -895,11 +895,11 @@ function doDump(words) {
 
 
 function doGo(words) {
-  const b = words.length >= 2 ? getAddress(words) : cpu.pc;
+  const b = words.length >= 2 ? getAddress(words) : cpu.PC;
 
-  if (b !== cpu.pc) {
-    sim.saveBranchHistory(cpu.pc, b, 'go');
-    cpu.pc = b;
+  if (b !== cpu.PC) {
+    sim.saveBranchHistory(cpu.PC, b, 'go');
+    cpu.PC = b;
   }
 
   startOfLastStep = sim.instructionsExecuted;
@@ -922,7 +922,7 @@ function doTil(words) {
 
     console.log(`[Running until ${bAsHex}]`);
     startOfLastStep = sim.instructionsExecuted;
-    run(cpu.pc);
+    run(cpu.PC);
   }
 }
 
@@ -981,7 +981,7 @@ function doUnbreak(words) {
 function doStep(words) {
   const n = (words.length > 1) ? parseInt(words[1]) : 1;
   startOfLastStep = sim.instructionsExecuted;
-  run(cpu.pc, n);
+  run(cpu.PC, n);
 }
 
 
@@ -989,13 +989,13 @@ const stepOverRange = 0x10;
 
 function doOver(words) {
   _.range(1, stepOverRange)
-    .forEach(offs => stopReasons.code[cpu.pc + offs] = ({
+    .forEach(offs => stopReasons.code[cpu.PC + offs] = ({
       msg: `stepped over to $+${toHex2(offs)}H`,
       transient: true,
     }));
 
   startOfLastStep = sim.instructionsExecuted;
-  run(cpu.pc);
+  run(cpu.PC);
 }
 
 
@@ -1035,11 +1035,11 @@ function doHelp(words) {
 
 
 function getAddress(words) {
-  if (words.length < 2) return cpu.pc;
+  if (words.length < 2) return cpu.PC;
 
   switch (words[1]) {
   case 'pc':
-    return cpu.pc;
+    return cpu.PC;
 
   case '.':
     return lastX;
@@ -1139,7 +1139,7 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
   const startCount = sim.instructionsExecuted;
   const startTime = process.hrtime();
 
-  cpu.pc = pc;
+  cpu.PC = pc;
   sim.running = true;
 
   let skipBreakIfTrue = true;
@@ -1151,11 +1151,11 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
 
     for (let n = insnsPerTick; sim.running && n; --n) {
 
-      if (!skipBreakIfTrue && stopReasons.code[cpu.pc]) {
-	console.log(`[${stopReasons.code[cpu.pc].msg}]`); // Say why we stopped
+      if (!skipBreakIfTrue && stopReasons.code[cpu.PC]) {
+	console.log(`[${stopReasons.code[cpu.PC].msg}]`); // Say why we stopped
         sim.running = false;
 
-        const match = stopReasons.code[cpu.pc].msg
+        const match = stopReasons.code[cpu.PC].msg
               .match(/^stepped over to \$\+([0-9A-F]+)H/);
 
         // If we stepped over to, say, "stepped over to $+5" then we
@@ -1163,12 +1163,12 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
         if (match) {
           const atOffset = parseInt(match[1], 16);
           _.range(-atOffset, stepOverRange-atOffset)
-            .forEach(offs => delete stopReasons.code[cpu.pc+offs]);
+            .forEach(offs => delete stopReasons.code[cpu.PC+offs]);
         } else {
-          if (stopReasons.code[cpu.pc].transient) delete stopReasons.code[cpu.pc];
+          if (stopReasons.code[cpu.PC].transient) delete stopReasons.code[cpu.PC];
         }
       } else {
-        cpu.run1(cpu.pc);
+        cpu.run1(cpu.PC);
 
         // If we are spinning in a loop waiting for RI, just introduce
         // a bit of delay if we keep seeing RI=0.
@@ -1193,7 +1193,7 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
       }
     } else {
 
-      if (!maxCount || stopReasons.code[cpu.pc]) {
+      if (!maxCount || stopReasons.code[cpu.PC]) {
 	const stopTime = process.hrtime();
 	const nSec = (stopTime[0] - startTime[0]) + (stopTime[1] - startTime[1]) / 1e9;
 	sim.executionTime += nSec;
