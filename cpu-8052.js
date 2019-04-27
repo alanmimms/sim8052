@@ -123,32 +123,32 @@ class CPU8052 {
     C.SFR = {};
 
     C.SFRs = {
-      PSW: new BitFieldSFR('PSW', 0xD0, 'cy ac f0 rs1 rs0 ov ud p', this),
-      ACC: new SFR('ACC', 0xE0, this),
-      B: new SFR('B', 0xF0, this),
-      SP: new SFR('SP', 0x81, this, 0x07),
-      DPL: new SFR('DPL', 0x82, this),
-      DPH: new SFR('DPH', 0x83, this),
-      P0: new SFR('P0', 0x80, this, null, 0xFF),
-      P1: new SFR('P1', 0x90, this, null, 0xFF),
-      P2: new SFR('P2', 0xA0, this, null, 0xFF),
-      P3: new SFR('P3', 0xB0, this, null, 0xFF),
-      IP: new BitFieldSFR('IP', 0xB8, '. . pt2 ps pt1 px1 pt0 px0', this),
-      IE: new BitFieldSFR('IE', 0xA8, 'ea . et2 es et1 ex1 et0 ex0', this),
-      TMOD: new BitFieldSFR('TMOD', 0x89, 'gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0', this),
-      TCON: new BitFieldSFR('TCON', 0x88, 'tf1 tr1 tf0 tr0 ie1 it1 ie0 it0', this),
-      T2CON: new BitFieldSFR('T2CON', 0xC8, 'tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2', this),
-      TH0: new SFR('TH0', 0x8C, this),
-      TL0: new SFR('TL0', 0x8A, this),
-      TH1: new SFR('TH1', 0x8D, this),
-      TL1: new SFR('TL1', 0x8B, this),
-      TH2: new SFR('TH2', 0xCD, this),
-      TL2: new SFR('TL2', 0xCC, this),
-      RCAP2H: new SFR('RCAP2H', 0xCB, this),
-      RCAP2L: new SFR('RCAP2L', 0xCA, this),
-      SCON: new BitFieldSFR('SCON', 0x98, 'sm0 sm1 sm2 ren tb8 rb8 ti ri', this),
-      SBUF: new SFR('SBUF', 0x99, this),
-      PCON: new BitFieldSFR('PCON', 0x87, 'smod . . . gf1 gf0 pd idl', this),
+      PSW: new BitFieldSFR('PSW', 0xD0, 'cy ac f0 rs1 rs0 ov ud p', C),
+      ACC: new SFR('ACC', 0xE0, C),
+      B: new SFR('B', 0xF0, C),
+      SP: new SFR('SP', 0x81, C, 0x07),
+      DPL: new SFR('DPL', 0x82, C),
+      DPH: new SFR('DPH', 0x83, C),
+      P0: new SFR('P0', 0x80, C, null, 0xFF),
+      P1: new SFR('P1', 0x90, C, null, 0xFF),
+      P2: new SFR('P2', 0xA0, C, null, 0xFF),
+      P3: new SFR('P3', 0xB0, C, null, 0xFF),
+      IP: new BitFieldSFR('IP', 0xB8, '. . pt2 ps pt1 px1 pt0 px0', C),
+      IE: new BitFieldSFR('IE', 0xA8, 'ea . et2 es et1 ex1 et0 ex0', C),
+      TMOD: new BitFieldSFR('TMOD', 0x89, 'gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0', C),
+      TCON: new BitFieldSFR('TCON', 0x88, 'tf1 tr1 tf0 tr0 ie1 it1 ie0 it0', C),
+      T2CON: new BitFieldSFR('T2CON', 0xC8, 'tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2', C),
+      TH0: new SFR('TH0', 0x8C, C),
+      TL0: new SFR('TL0', 0x8A, C),
+      TH1: new SFR('TH1', 0x8D, C),
+      TL1: new SFR('TL1', 0x8B, C),
+      TH2: new SFR('TH2', 0xCD, C),
+      TL2: new SFR('TL2', 0xCC, C),
+      RCAP2H: new SFR('RCAP2H', 0xCB, C),
+      RCAP2L: new SFR('RCAP2L', 0xCA, C),
+      SCON: new BitFieldSFR('SCON', 0x98, 'sm0 sm1 sm2 ren tb8 rb8 ti ri', C),
+      SBUF: new SFR('SBUF', 0x99, C),
+      PCON: new BitFieldSFR('PCON', 0x87, 'smod . . . gf1 gf0 pd idl', C),
     };
 
 
@@ -186,6 +186,7 @@ class CPU8052 {
 
       return C.ops[op] = {
         mnemonic,
+        nBytes,
 
         f: C => {
           C.PC = (C.PC + nBytes) & 0xFFFF;
@@ -195,7 +196,7 @@ class CPU8052 {
     }
 
     function genOp(mnemonic, op, nBytes, putResult, getA, getB, opF) {
-      C.ops[op] = {mnemonic, f: function(C) {
+      C.ops[op] = {mnemonic, nBytes, f: function(C) {
         C.PC = (C.PC + nBytes) & 0xFFFF;
         const a = getA();
         const b = getB();
@@ -246,16 +247,11 @@ class CPU8052 {
 
     function genBitUnary(mnemonic, {op, opF, 
                                    accOp, accOpF}) {
-      // FIXME switch to genOp style
-      Object.assign(C.ops, {
-        [op + 0x02]: bitBIT(C, opF),
-        [op + 0x03]: bitCY(C, opF),
-      });
+      C.ops[op + 0x02] = {mnemonic, nBytes: 2, f: bitBIT(C, opF)};
+      C.ops[op + 0x03] = {mnemonic, nBytes: 1, f: bitCY(C, opF)};
 
       if (accOpF) {
-        Object.assign(C.ops, {
-          [accOp]: singleton(C, accOpF),
-        });
+        C.ops[accOp] = {mnemonic, nBytes: 1, f: singleton(C, accOpF)};
       }
     }
 
@@ -290,7 +286,7 @@ class CPU8052 {
 
     
     function genXCH(op, nBytes, getV, putV) {
-      C.ops[op] = {mnemonic: 'XCH', f: function(C) {
+      C.ops[op] = {mnemonic: 'XCH', nBytes, f: function(C) {
         C.PC = (C.PC + nBytes) & 0xFFFF;
         const a = C.ACC;
         const v = getV();
@@ -432,13 +428,15 @@ class CPU8052 {
     genSimple('MUL', 0xA4, 1, doMUL);
 
 
-    console.warn(`Remaining undefined opcodes:
+    if (false) {
+      console.warn(`Remaining undefined opcodes:
 ${(() => {const list = _.range(0x100)
-.filter(op => C.ops[op] == null)
-.map(op => toHex2(op));
-   return list.join(' ') + `
+            .filter(op => C.ops[op] == null)
+            .map(op => toHex2(op));
+          return list.join(' ') + `
 ${list.length} ops unimplemented`;})()}`);
-
+    }
+    
 
     function genINCDEC(mnemonic, op, nBytes, getV, putV, opF) {
       
