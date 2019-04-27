@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 'use strict';
 
+// TOOD: Move SFR emulation stuff into CPU class and make callbacks to
+// get/put SIM related values.
+
 // For `put` style functions, convention is put(address, value).
 // For `get` convention is get(address).
 
@@ -509,7 +512,7 @@ ${ope.mnemonic.padEnd(6)} ${operands}`;
   dumpState() {
     console.log(`\
  a=${toHex2(cpu.ACC)}   b=${toHex2(cpu.B)}  cy=${+cpu.CY} ov=${+cpu.OV} ac=${cpu.AC}  \
-sp=${toHex2(cpu.SP)} psw=${toHex2(cpu.PSW)}  dptr=${toHex4(cpu.getDPTR())}  \
+sp=${toHex2(cpu.SP)} psw=${toHex2(cpu.PSW)}  dptr=${toHex4(cpu.DPTR)}  \
 pc=${toHex4(cpu.PC)}
 ${_.range(0, 8)
   .map((v, rn) => `r${rn}=${toHex2(cpu.getR(rn))}`)
@@ -530,7 +533,7 @@ ${_.range(0, 8)
       ac: cpu.AC,
       sp: cpu.SP,
       psw: cpu.PSW,
-      dptr: cpu.getDPTR(),
+      dptr: cpu.DPTR,
       regs: [...iram.slice(rBase, rBase+8)],
     };
 
@@ -561,7 +564,7 @@ ${_.range(0, 8)
       debugger;
     }
 
-    ope.opFunction.apply(this);
+    cpu.run1(this.pc);
     ++this.instructionsExecuted;
   },
 };
@@ -1168,7 +1171,7 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
           if (stopReasons.code[cpu.PC].transient) delete stopReasons.code[cpu.PC];
         }
       } else {
-        cpu.run1(cpu.PC);
+        sim.run1(cpu.PC);
 
         // If we are spinning in a loop waiting for RI, just introduce
         // a bit of delay if we keep seeing RI=0.
