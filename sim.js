@@ -39,6 +39,268 @@ const code = Buffer.alloc(CODESize, 0x00, 'binary');
 var cpu;
 
 
+// Indexed by opcode, a format string for our disassembly process.
+const disOp = [
+  "",                   // 00 NOP:1
+  "1:addr11",           // 01 AJMP:2
+  "1:addr16",           // 02 LJMP:3
+  "A",                  // 03 RR:1
+  "A",                  // 04 INC:1
+  "1:direct",           // 05 INC:2
+  "@Ri",                // 06 INC:1
+  "@Ri",                // 07 INC:1
+  "Ri",                 // 08 INC:1
+  "Ri",                 // 09 INC:1
+  "Ri",                 // 0A INC:1
+  "Ri",                 // 0B INC:1
+  "Ri",                 // 0C INC:1
+  "Ri",                 // 0D INC:1
+  "Ri",                 // 0E INC:1
+  "Ri",                 // 0F INC:1
+  "1:bit,2:rela",       // 10 JBC:3
+  "1:addr11",           // 11 ACALL:2
+  "1:addr16",           // 12 LCALL:3
+  "A",                  // 13 RRC:1
+  "A",                  // 14 DEC:1
+  "1:direct",           // 15 DEC:2
+  "@Ri",                // 16 DEC:1
+  "@Ri",                // 17 DEC:1
+  "Ri",                 // 18 DEC:1
+  "Ri",                 // 19 DEC:1
+  "Ri",                 // 1A DEC:1
+  "Ri",                 // 1B DEC:1
+  "Ri",                 // 1C DEC:1
+  "Ri",                 // 1D DEC:1
+  "Ri",                 // 1E DEC:1
+  "Ri",                 // 1F DEC:1
+  "1:bit,2:rela",       // 20 JB:3
+  "1:addr11",           // 21 AJMP:2
+  "",                   // 22 RET:1
+  "A",                  // 23 RL:1
+  "A,1:immed",          // 24 ADD:2
+  "A,1:direct",         // 25 ADD:2
+  "A,1:@Ri",            // 26 ADD:1
+  "A,1:@Ri",            // 27 ADD:1
+  "A,Ri",               // 28 ADD:1
+  "A,Ri",               // 29 ADD:1
+  "A,Ri",               // 2A ADD:1
+  "A,Ri",               // 2B ADD:1
+  "A,Ri",               // 2C ADD:1
+  "A,Ri",               // 2D ADD:1
+  "A,Ri",               // 2E ADD:1
+  "A,Ri",               // 2F ADD:1
+  "1:bit,2:rela",       // 30 JNB:3
+  "1:addr11",           // 31 ACALL:2
+  "",                   // 32 RETI:1
+  "A",                  // 33 RLC:1
+  "A,1:immed",          // 34 ADDC:2
+  "A,1:direct",         // 35 ADDC:2
+  "A,@Ri",              // 36 ADDC:1
+  "A,@Ri",              // 37 ADDC:1
+  "A,Ri",               // 38 ADDC:1
+  "A,Ri",               // 39 ADDC:1
+  "A,Ri",               // 3A ADDC:1
+  "A,Ri",               // 3B ADDC:1
+  "A,Ri",               // 3C ADDC:1
+  "A,Ri",               // 3D ADDC:1
+  "A,Ri",               // 3E ADDC:1
+  "A,Ri",               // 3F ADDC:1
+  "1:rela",             // 40 JC:2
+  "1:addr11",           // 41 AJMP:2
+  "A,1:direct",         // 42 ORL:2
+  "1:direct,2:immed",   // 43 ORL:3
+  "A,1:immed",          // 44 ORL:2
+  "A,1:direct",         // 45 ORL:2
+  "A,@Ri",              // 46 ORL:1
+  "A,@Ri",              // 47 ORL:1
+  "A,Ri",               // 48 ORL:1
+  "A,Ri",               // 49 ORL:1
+  "A,Ri",               // 4A ORL:1
+  "A,Ri",               // 4B ORL:1
+  "A,Ri",               // 4C ORL:1
+  "A,Ri",               // 4D ORL:1
+  "A,Ri",               // 4E ORL:1
+  "A,Ri",               // 4F ORL:1
+  "1:rela",             // 50 JNC:2
+  "1:addr11",           // 51 ACALL:2
+  "1:direct,A",         // 52 ANL:2
+  "1:direct,2:immed",   // 53 ANL:3
+  "A,1:immed",          // 54 ANL:2
+  "A,1:direct",         // 55 ANL:2
+  "A,@Ri",              // 56 ANL:1
+  "A,@Ri",              // 57 ANL:1
+  "A,Ri",               // 58 ANL:1
+  "A,Ri",               // 59 ANL:1
+  "A,Ri",               // 5A ANL:1
+  "A,Ri",               // 5B ANL:1
+  "A,Ri",               // 5C ANL:1
+  "A,Ri",               // 5D ANL:1
+  "A,Ri",               // 5E ANL:1
+  "A,Ri",               // 5F ANL:1
+  "1:rela",             // 60 JZ:2
+  "1:addr11",           // 61 AJMP:2
+  "1:direct,A",         // 62 XRL:2
+  "1:direct,2:immed",   // 63 XRL:3
+  "A,1:immed",          // 64 XRL:2
+  "A,1:direct",         // 65 XRL:2
+  "A,@Ri",              // 66 XRL:1
+  "A,@Ri",              // 67 XRL:1
+  "A,Ri",               // 68 XRL:1
+  "A,Ri",               // 69 XRL:1
+  "A,Ri",               // 6A XRL:1
+  "A,Ri",               // 6B XRL:1
+  "A,Ri",               // 6C XRL:1
+  "A,Ri",               // 6D XRL:1
+  "A,Ri",               // 6E XRL:1
+  "A,Ri",               // 6F XRL:1
+  "1:rela",             // 70 JNZ:2
+  "1:addr11",           // 71 ACALL:2
+  "C,1:bit",            // 72 ORL:2
+  "@A+DPTR",            // 73 JMP:1
+  "A,1:immed",          // 74 MOV:2
+  "1:direct,2:immed",   // 75 MOV:3
+  "@Ri,1:immed",        // 76 MOV:2
+  "@Ri,1:immed",        // 77 MOV:2
+  "Ri,1:immed",         // 78 MOV:2
+  "Ri,1:immed",         // 79 MOV:2
+  "Ri,1:immed",         // 7A MOV:2
+  "Ri,1:immed",         // 7B MOV:2
+  "Ri,1:immed",         // 7C MOV:2
+  "Ri,1:immed",         // 7D MOV:2
+  "Ri,1:immed",         // 7E MOV:2
+  "Ri,1:immed",         // 7F MOV:2
+  "1:rela",             // 80 SJMP:2
+  "1:addr11",           // 81 AJMP:2
+  "C,1:bit",            // 82 ANL:2
+  "A,@A+PC",            // 83 MOVC:1
+  "AB",                 // 84 DIV:1
+  "2:direct,1:direct",  // 85 MOV:3
+  "@Ri,1:direct",       // 86 MOV:2
+  "@Ri,1:direct",       // 87 MOV:2
+  "1:direct,Ri",        // 88 MOV:2
+  "1:direct,Ri",        // 89 MOV:2
+  "1:direct,Ri",        // 8A MOV:2
+  "1:direct,Ri",        // 8B MOV:2
+  "1:direct,Ri",        // 8C MOV:2
+  "1:direct,Ri",        // 8D MOV:2
+  "1:direct,Ri",        // 8E MOV:2
+  "1:direct,Ri",        // 8F MOV:2
+  "1:immed16",          // 90 MOV:3
+  "1:addr11",           // 91 ACALL:2
+  "1:bit,C",            // 92 MOV:2
+  "A,@A+DPTR",          // 93 MOVC:1
+  "A,1:immed",          // 94 SUBB:2
+  "A,1:direct",         // 95 SUBB:2
+  "A,@Ri",              // 96 SUBB:1
+  "A,@Ri",              // 97 SUBB:1
+  "A,Ri",               // 98 SUBB:1
+  "A,Ri",               // 99 SUBB:1
+  "A,Ri",               // 9A SUBB:1
+  "A,Ri",               // 9B SUBB:1
+  "A,Ri",               // 9C SUBB:1
+  "A,Ri",               // 9D SUBB:1
+  "A,Ri",               // 9E SUBB:1
+  "A,Ri",               // 9F SUBB:1
+  "C,1:nbit",           // A0 ORL:2
+  "1:addr11",           // A1 AJMP:2
+  "C,1:bit",            // A2 MOV:2
+  "DPTR",               // A3 INC:1
+  "AB",                 // A4 MUL:1
+  "???",                // A5 UNKN:1
+  "@Ri,1:direct",       // A6 MOV:2
+  "@Ri,1:direct",       // A7 MOV:2
+  "Ri,1:direct",        // A8 MOV:2
+  "Ri,1:direct",        // A9 MOV:2
+  "Ri,1:direct",        // AA MOV:2
+  "Ri,1:direct",        // AB MOV:2
+  "Ri,1:direct",        // AC MOV:2
+  "Ri,1:direct",        // AD MOV:2
+  "Ri,1:direct",        // AE MOV:2
+  "Ri,1:direct",        // AF MOV:2
+  "C,1:nbit",           // B0 ANL:2
+  "1:addr11",           // B1 ACALL:2
+  "1:bit",              // B2 CPL:2
+  "C",                  // B3 CPL:1
+  "A,1:immed,2:rela",   // B4 CJNE:3
+  "A,1:dir,2:rela",     // B5 CJNE:3
+  "@Ri,1:immed,2:rela", // B6 CJNE:3
+  "@Ri,1:immed,2:rela", // B7 CJNE:3
+  "Ri,1:immed,2:rela",  // B8 CJNE:3
+  "Ri,1:immed,2:rela",  // B9 CJNE:3
+  "Ri,1:immed,2:rela",  // BA CJNE:3
+  "Ri,1:immed,2:rela",  // BB CJNE:3
+  "Ri,1:immed,2:rela",  // BC CJNE:3
+  "Ri,1:immed,2:rela",  // BD CJNE:3
+  "Ri,1:immed,2:rela",  // BE CJNE:3
+  "Ri,1:immed,2:rela",  // BF CJNE:3
+  "1:direct",           // C0 PUSH:2
+  "1:addr11",           // C1 AJMP:2
+  "1:bit",              // C2 CLR:2
+  "C",                  // C3 CLR:1
+  "A",                  // C4 SWAP:1
+  "A,1:direct",         // C5 XCH:2
+  "A,@Ri",              // C6 XCH:1
+  "A,@Ri",              // C7 XCH:1
+  "A,Ri",               // C8 XCH:1
+  "A,Ri",               // C9 XCH:1
+  "A,Ri",               // CA XCH:1
+  "A,Ri",               // CB XCH:1
+  "A,Ri",               // CC XCH:1
+  "A,Ri",               // CD XCH:1
+  "A,Ri",               // CE XCH:1
+  "A,Ri",               // CF XCH:1
+  "1:direct",           // D0 POP:2
+  "1:addr11",           // D1 ACALL:2
+  "1:bit",              // D2 SETB:2
+  "C",                  // D3 SETB:1
+  "A",                  // D4 DA:1
+  "1:direct,2:rela",    // D5 DJNZ:3
+  "A,@Ri",              // D6 XCHD:1
+  "A,@Ri",              // D7 XCHD:1
+  "Ri,1:rela",          // D8 DJNZ:2
+  "Ri,1:rela",          // D9 DJNZ:2
+  "Ri,1:rela",          // DA DJNZ:2
+  "Ri,1:rela",          // DB DJNZ:2
+  "Ri,1:rela",          // DC DJNZ:2
+  "Ri,1:rela",          // DD DJNZ:2
+  "Ri,1:rela",          // DE DJNZ:2
+  "Ri,1:rela",          // DF DJNZ:2
+  "A,@DPTR",            // E0 MOVX:1
+  "1:addr11",           // E1 AJMP:2
+  "A,@Ri",              // E2 MOVX:1
+  "A,@Ri",              // E3 MOVX:1
+  "A",                  // E4 CLR:1
+  "A,1:direct",         // E5 MOV:2
+  "A,@Ri",              // E6 MOV:1
+  "A,@Ri",              // E7 MOV:1
+  "A,Ri",               // E8 MOV:1
+  "A,Ri",               // E9 MOV:1
+  "A,Ri",               // EA MOV:1
+  "A,Ri",               // EB MOV:1
+  "A,Ri",               // EC MOV:1
+  "A,Ri",               // ED MOV:1
+  "A,Ri",               // EE MOV:1
+  "A,Ri",               // EF MOV:1
+  "@DPTR,A",            // F0 MOVX:1
+  "1:addr11",           // F1 ACALL:2
+  "@Ri,A",              // F2 MOVX:1
+  "@Ri,A",              // F3 MOVX:1
+  "A",                  // F4 CPL:1
+  "1:direct,A",         // F5 MOV:2
+  "@Ri,A",              // F6 MOV:1
+  "@Ri,A",              // F7 MOV:1
+  "Ri,A",               // F8 MOV:1
+  "Ri,A",               // F9 MOV:1
+  "Ri,A",               // FA MOV:1
+  "Ri,A",               // FB MOV:1
+  "Ri,A",               // FC MOV:1
+  "Ri,A",               // FD MOV:1
+  "Ri,A",               // FE MOV:1
+  "Ri,A",               // FF MOV:1
+];
+
+
+
 const sbufQueue = [];
 
 
@@ -96,17 +358,17 @@ const sim = {
       } else {
 
         switch (ea) {
-        case SBUF:
+        case cpu.SBUF.addr:
           process.stdout.write(String.fromCharCode(value));
 
           // Transmitting a character immediately signals TI saying it is done.
-          cpu.SFR[SCON] |= sconBits.tiMask;
+          cpu.TI = 1;
 
           // TODO: Make this do an interrupt
           break;
 
         default:
-          SFR[ea] = value;
+          cpu.SFR[ea] = value;
           break;
         }
       }
@@ -124,32 +386,23 @@ const sim = {
       }        
 
       switch (ea) {
-      case SBUF:
+      case cpu.SBUF.addr:
         return sbufQueue.length ? sbufQueue.shift() : 0x00;
 
-      case PSW:
-        let psw = SFR[PSW];
-
+      case cpu.PSW.addr:
         // Update parity before returning PSW
-        if (parityTable[SFR[ACC]] << pswBits.pShift)
-          psw |= pswBits.pMask;
-        else
-          psw &= ~pswBits.pMask;
+        cpu.P = parityTable[cpu.ACC];
+        return cpu.PSW;
 
-        SFR[PSW] = psw;
-        return psw;
+      case cpu.P3.addr:
+        cpu.P3 ^= 1;          // Fake RxD toggling
+        return cpu.P3;
 
-      case P3:
-        let p3 = SFR[P3];
-        p3 ^= 1;
-        SFR[P3] = p3;          // Fake RxD toggling
-        return p3;
-
-      case SCON:
-        return SFR[SCON] | +(sbufQueue.length !== 0) << sconBits.riShift;
+      case cpu.SCON.addr:
+        return cpu.SCON.RI = +(sbufQueue.length !== 0);
 
       default:
-        return SFR[ea];
+        return cpu.SFR[ea];
       }
     }
   }),
@@ -206,14 +459,14 @@ ${briefState(bh.state)}`);
 
   disassemble(pc) {
     const op = code[pc];
-    const ope = opcodes[op];
+    const ope = cpu.ops[op];
 
-    if (!ope) {
+    if (!ope || !ope.nBytes) {
       console.log(`Undefined opcodes[${op}] pc=${pc}`);
       this.dumpFetchHistory();
     }
 
-    const nextPC = pc + ope.n;
+    const nextPC = pc + ope.nBytes;
     const bytes = code.slice(pc, nextPC);
 
     const disassembly = bytes.toString('hex')
@@ -238,7 +491,7 @@ ${briefState(bh.state)}`);
 
     const opcodeHandlers = {Ri: 'Ri', '@Ri': '@Ri'};
 
-    const operands = ope.operands.split(/,/)
+    const operands = disOp[op].split(/,/)
           .map(opnd => {
             let [offset, handler] = opnd.split(/:/);
             handler = handler || opcodeHandlers[offset] || 'verbatum';
@@ -254,13 +507,12 @@ ${ope.mnemonic.padEnd(6)} ${operands}`;
 
 
   dumpState() {
-    const getR = r => iram[(SFR[PSW] & rsMask) + r];
     console.log(`\
- a=${toHex2(SFR[ACC])}   b=${toHex2(SFR[B])}  cy=${+this.CY} ov=${+this.OV} ac=${this.AC}  \
-sp=${toHex2(SFR[SP])} psw=${toHex2(SFR[PSW])}  dptr=${toHex4(this.DPTR)}  \
-pc=${toHex4(this.pc)}
+ a=${toHex2(cpu.SFR[cpu.ACC])}   b=${toHex2(cpu.SFR[cpu.B])}  cy=${+cpu.CY} ov=${+cpu.OV} ac=${cpu.AC}  \
+sp=${toHex2(cpu.SFR[cpu.SP])} psw=${toHex2(cpu.SFR[cpu.PSW])}  dptr=${toHex4(cpu.getDPTR())}  \
+pc=${toHex4(cpu.PC)}
 ${_.range(0, 8)
-  .map((v, rn) => `r${rn}=${toHex2(getR(rn))}`)
+  .map((v, rn) => `r${rn}=${toHex2(cpu.getR(rn))}`)
   .join('  ')
 }`);
   },
@@ -269,16 +521,16 @@ ${_.range(0, 8)
 
 
   captureState() {
-    const rBase = SFR[PSW] & rsMask;
+    const rBase = cpu.RS1 << 4 | cpu.RS0 << 3;
     const state = {
-      a: SFR[ACC],
-      b: SFR[B],
-      cy: this.CY,
-      ov: this.OV,
-      ac: this.AC,
-      sp: SFR[SP],
-      psw: SFR[PSW],
-      dptr: this.DPTR,
+      a: cpu.ACC,
+      b: cpu.B,
+      cy: cpu.CY,
+      ov: cpu.OV,
+      ac: cpu.AC,
+      sp: cpu.SP,
+      psw: cpu.PSW,
+      dptr: cpu.getDPTR(),
       regs: [...iram.slice(rBase, rBase+8)],
     };
 
@@ -454,7 +706,7 @@ With arguments, set specified flag to specified value. If value is unspecified, 
 
 
 function curInstruction() {
-  return sim.disassemble(cpu.pc);
+  return sim.disassemble(cpu.PC);
 }
 
 
@@ -845,7 +1097,7 @@ function startCLI() {
 function sbufRx(c) {
 
   // Ignore characters if receiver is not enabled
-  if ((cpu.SFR[SCON] & sconBits.renMask) === 0) return;
+  if ((cpu.REN) === 0) return;
 
   sim.sbufQueue.push(c);
 
@@ -916,8 +1168,7 @@ function run(pc, maxCount = Number.POSITIVE_INFINITY) {
           if (stopReasons.code[cpu.pc].transient) delete stopReasons.code[cpu.pc];
         }
       } else {
-	let beforePC = cpu.pc;
-        let insnVals = cpu.run1(cpu.pc);
+        cpu.run1(cpu.pc);
 
         // If we are spinning in a loop waiting for RI, just introduce
         // a bit of delay if we keep seeing RI=0.
