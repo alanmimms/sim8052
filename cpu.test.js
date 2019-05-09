@@ -700,11 +700,12 @@ describe('op:MOV', () => {
 
   test(`A,dir (SFR)`, () => {
     const v = 0x43;
+    const notV = v ^ 0xFF;
     const dir = 0xD0;           // PSW
     clearIRAM();
     putCode(0x1000, 0xE5);        // MOV A,dir
     putCode(0x1001, dir, false);
-    cpu.ACC = 0xAA;
+    cpu.ACC = notV;
     cpu.PSW = v;
 
     cpu.run1(0x1000);               // MOV
