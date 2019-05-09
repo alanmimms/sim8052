@@ -2435,15 +2435,15 @@ describe.each([
 describe.each([
   // x   y  or
   [  0,  0,  0],
-  [  0,  1,  0],
-  [  1,  0,  0],
+  [  0,  1,  1],
+  [  1,  0,  1],
   [  1,  1,  1],
 ]) ('op:ORL',
   (x, y, or)  => {
     test(`C,bit 0x82 ${x}|${y}=${or}`, () => {
       const bit = 0x72;
       clearIRAM();
-      putCode(0x100, 0x82);       // ORL C,bit
+      putCode(0x100, 0x72);       // ORL C,bit
       putCode(0x101, bit, false);
       cpu.PSW = 0;
 
