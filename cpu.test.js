@@ -938,6 +938,26 @@ describe('op:MOV', () => {
       expect(cpu.ACC).toBe(0xAA);
       expect(cpu.iram[r]).toBe(v);
     });
+
+    test(`dir,R${r}`, () => {
+      const v = 0x43;
+      const notV = v ^ 0xFF;
+      const dir = 0x72
+      clearIRAM();
+      putCode(0x1000, 0x88 | r);        // MOV dir,Rr
+      putCode(0x1001, dir, false);
+      cpu.ACC = notV;
+      cpu.PSW = 0;
+      cpu.iram[r] = v;
+      cpu.iram[dir] = notV;
+
+      cpu.run1(0x1000);               // MOV
+      expect(cpu.PC).toBe(0x1002);
+      expect(cpu.PSW).toBe(0);
+      expect(cpu.ACC).toBe(notV);
+      expect(cpu.iram[r]).toBe(v);
+      expect(cpu.iram[dir]).toBe(v);
+    });
   });
 });
 
@@ -2698,21 +2718,24 @@ describe.each([
       expect(cpu.iram[dir]).toBe(y);
     });
 
-    test(`A,Rn ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
+    _.range(0,8).forEach(r => {
+      test(`A,R${r} ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
       clearIRAM();
       cpu.PSW = 0;
-      putCode(0x100, 0x9B);       // SUBB A,R3
-      cpu.iram[3] = y;              // R3
+      putCode(0x100, 0x98 | r);     // SUBB A,Rr
+      cpu.iram[r] = y;              // Rr
       cpu.ACC = x;
       cpu.CY = inCY;
 
-      cpu.run1(0x100);              // SUBB A,R3
+      cpu.run1(0x100);              // SUBB A,Rr
       expect(cpu.PC).toBe(0x101);
       expect(cpu.ACC).toBe(diff);
       expect(cpu.CY).toBe(cy);
       expect(cpu.OV).toBe(ov);
       expect(cpu.AC).toBe(ac);
-      expect(cpu.iram[3]).toBe(y);
+      expect(cpu.iram[r]).toBe(y);
+      });
+
     });
 
     test(`A,@Ri ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
