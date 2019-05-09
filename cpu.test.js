@@ -210,7 +210,7 @@ describe.each([0x0000, 0x0800,
 
     clearIRAM();
 
-    [0, 3, 5, 7].forEach(toMid => {
+    _.range(0, 8).forEach(toMid => {
       const toOffset = 0x33;
       const jmpTarget = fromPage | toMid << 8 | toOffset;
       putCode(jmpBase, toMid << 5 | 0x01);      // AJMP pageN
@@ -1270,19 +1270,21 @@ describe.each([
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
     });
-    test(`DEC R3, R3=${toHex2(x)} result=${toHex2(dec)}`, () => {
-      clearIRAM();
-      cpu.code[0x100] = 0x1B;       // DEC R3
-      cpu.PSW = 0;
-      cpu.iram[3] = x;
 
-      cpu.run1(0x100);              // DEC R3
+    _.range(0,8).forEach(r => test(`DEC R${r}, R${r}=${toHex2(x)} result=${toHex2(dec)}`, () => {
+      clearIRAM();
+      putCode(0x100, 0x18 | r);       // DEC Rr
+      cpu.PSW = 0;
+      cpu.iram[r] = x;
+
+      cpu.run1(0x100);              // DEC Rr
       expect(cpu.PC).toBe(0x101);
-      expect(cpu.iram[3]).toBe(dec);
+      expect(cpu.iram[r]).toBe(dec);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
-    });
+    }));
+
     test(`DEC dir, dir=${toHex2(x)} result=${toHex2(dec)}`, () => {
       const dir = 0x42;
       clearIRAM();
@@ -1697,41 +1699,41 @@ describe.each([
       expect(cpu.iram[dir]).toBe(x);
     });
 
-    test(`A,Rn ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
+    _.range(0,8).forEach(r => test(`A,R${r} ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
       clearIRAM();
       cpu.PSW = 0;
-      putCode(0x100, 0x2B);       // ADD A,R3
-      cpu.iram[3] = x;              // R3
+      putCode(0x100, 0x28 | r);       // ADD A,Rr
+      cpu.iram[r] = x;              // Rr
       cpu.ACC = y;
       cpu.CY = inCY;
 
-      cpu.run1(0x100);              // ADD A,R3
+      cpu.run1(0x100);              // ADD A,Rr
       expect(cpu.PC).toBe(0x101);
       expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
-      expect(cpu.iram[3]).toBe(x);
-    });
+      expect(cpu.iram[r]).toBe(x);
+    }));
 
-    test(`A,@Ri ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
+    _.range(0,2).forEach(r => test(`A,@R${r} ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
       const dir = 0x42;
       clearIRAM();
-      putCode(0x100, 0x27);       // ADD A,@R1
-      cpu.iram[1] = dir;            // Set R1=dir for @R1
+      putCode(0x100, 0x26 | r);       // ADD A,@Rr
+      cpu.iram[r] = dir;            // Set Rr=dir for @Rr
       cpu.iram[dir] = x;
 
       cpu.PSW = 0;
       cpu.ACC = y;
       cpu.CY = inCY;
 
-      cpu.run1(0x100);              // ADD A,@R1
+      cpu.run1(0x100);              // ADD A,@Rr
       expect(cpu.PC).toBe(0x101);
       expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
-      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[r]).toBe(dir);
       expect(cpu.iram[dir]).toBe(x);
-    });
+    }));
 
     test(`A,#imm ${toHex2(x)}+${toHex2(y)}=${toHex2(addSum)},CY=${addCY}`, () => {
       const imm = x;
@@ -1790,41 +1792,41 @@ describe.each([
       expect(cpu.iram[dir]).toBe(x);
     });
 
-    test(`A,Rn ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
+    _.range(0,8).forEach(r => test(`A,R${r} ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
       clearIRAM();
       cpu.PSW = 0;
-      putCode(0x100, 0x3B);       // ADDC A,R3
-      cpu.iram[3] = x;              // R3
+      putCode(0x100, 0x38 | r);       // ADDC A,Rr
+      cpu.iram[r] = x;              // Rr
       cpu.ACC = y;
       cpu.CY = inCY;
 
-      cpu.run1(0x100);              // ADDC A,R3
+      cpu.run1(0x100);              // ADDC A,Rr
       expect(cpu.PC).toBe(0x101);
       expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
-      expect(cpu.iram[3]).toBe(x);
-    });
+      expect(cpu.iram[r]).toBe(x);
+    }));
 
-    test(`A,@Ri ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
+    _.range(0,2).forEach(r => test(`A,@R${r} ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
       const dir = 0x42;
       clearIRAM();
-      putCode(0x100, 0x37);       // ADDC A,@R1
-      cpu.iram[1] = dir;            // Set R1=dir for @R1
+      putCode(0x100, 0x36 | r);       // ADDC A,@Rr
+      cpu.iram[r] = dir;            // Set Rr=dir for @Rr
       cpu.iram[dir] = x;
 
       cpu.PSW = 0;
       cpu.ACC = y;
       cpu.CY = inCY;
 
-      cpu.run1(0x100);              // ADDC A,dir
+      cpu.run1(0x100);              // ADDC A,@Rr
       expect(cpu.PC).toBe(0x101);
       expect(cpu.ACC).toBe(addSum);
       expect(cpu.CY).toBe(addCY);
       expect(cpu.AC).toBe(addAC);
-      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[r]).toBe(dir);
       expect(cpu.iram[dir]).toBe(x);
-    });
+    }));
 
     test(`ADDC A,#imm ${toHex2(x)}+${toHex2(y)},CY=${inCY}=${toHex2(addSum)},CY=${addCY}`, () => {
       const imm = x;
