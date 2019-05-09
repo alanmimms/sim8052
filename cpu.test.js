@@ -1298,22 +1298,23 @@ describe.each([
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
     });
-    test(`DEC @R1 x=${toHex2(x)}, result=${toHex2(dec)}`, () => {
+
+    _.range(0,2).forEach(r => test(`DEC @R$[r} x=${toHex2(x)}, result=${toHex2(dec)}`, () => {
       const dir = 0x42;
       clearIRAM();
-      putCode(0x100, 0x17);       // DEC @R1
+      putCode(0x100, 0x16 | r);       // DEC @Rr
       cpu.PSW = 0;
       cpu.iram[dir] = x;
-      cpu.iram[1] = dir;            // R1
+      cpu.iram[r] = dir;            // Rr
 
-      cpu.run1(0x100);              // DEC @R1
+      cpu.run1(0x100);              // DEC @Rr
       expect(cpu.PC).toBe(0x101);
-      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[r]).toBe(dir);
       expect(cpu.iram[dir]).toBe(dec);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
-    });
+    }));
   });
 
 
@@ -1417,19 +1418,20 @@ describe.each([
       expect(cpu.OV).toBe(0);
     });
 
-    test(`R3, R3=${toHex2(x)} result=${toHex2(inc)}`, () => {
+    _.range(0,8).forEach(r => test(`R${r}, R${r}=${toHex2(x)} result=${toHex2(inc)}`, () => {
       clearIRAM();
-      putCode(0x100, 0x0B);       // INC R3
+      putCode(0x100, 0x08 | r);       // INC Rr
       cpu.PSW = 0;
-      cpu.iram[3] = x;
+      cpu.iram[r] = x;
 
       cpu.run1(0x100);              // INC R3
       expect(cpu.PC).toBe(0x101);
-      expect(cpu.iram[3]).toBe(inc);
+      expect(cpu.iram[r]).toBe(inc);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
-    });
+    }));
+
     test(`dir, dir=${toHex2(x)} result=${toHex2(inc)}`, () => {
       const dir = 0x42;
       clearIRAM();
@@ -1445,22 +1447,23 @@ describe.each([
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
     });
-    test(`@R1 x=${toHex2(x)}, result=${toHex2(inc)}`, () => {
+
+    _.range(0,2).forEach(r => test(`@R${r} x=${toHex2(x)}, result=${toHex2(inc)}`, () => {
       const dir = 0x42;
       clearIRAM();
-      putCode(0x100, 0x07);       // INC @R1
+      putCode(0x100, 0x06 | r);       // INC @Rr
       cpu.PSW = 0;
       cpu.iram[dir] = x;
-      cpu.iram[1] = dir;            // R1
+      cpu.iram[r] = dir;            // Rr
 
-      cpu.run1(0x100);              // INC @R1
+      cpu.run1(0x100);              // INC @Rr
       expect(cpu.PC).toBe(0x101);
-      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[r]).toBe(dir);
       expect(cpu.iram[dir]).toBe(inc);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
-    });
+    }));
   });
 
 
