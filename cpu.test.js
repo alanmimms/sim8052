@@ -18,10 +18,11 @@ const coverage = Array(256).fill(0);
 
 
 // Use this function to store a code byte into cpu.code[] to account
-// for code coverage of the op.
-function putCode(addr, op) {
+// for code coverage of the op. Can also be use to write non-opcode
+// data into code array with false as third parameter.
+function putCode(addr, op, countCoverage = true) {
   cpu.code[addr] = op
-  ++coverage[op];
+  if (countCoverage) ++coverage[op];
   return op;
 }
 
@@ -66,9 +67,9 @@ describe.each([0, 1, 2, 3, 4, 5, 6, 7])('op:ACALL/op:RET', fromPage => {
 
     for (let toPage = 0; toPage < 8; ++toPage) {
       const callTarget = (toPage * 0x100) + pageOffset;
-      putCode(callBase, (toPage * 0x20) + 0x11);      // ACALL pageN
-      putCode(callBase + 1, pageOffset);
-      putCode(callTarget, 0x22);                      // RET
+      putCode(callBase, (toPage * 0x20) + 0x11);        // ACALL pageN
+      putCode(callBase + 1, pageOffset, false);
+      putCode(callTarget, 0x22);                 // RET
 
       cpu.ACC = 0x42;
       cpu.PSW = 0;
@@ -109,8 +110,8 @@ describe.each([
 
     clearIRAM();
     putCode(callBase, 0x12);      // LCALL
-    putCode(callBase + 1, newPC >>> 8);
-    putCode(callBase + 2, newPC & 0xFF);
+    putCode(callBase + 1, newPC >>> 8, false);
+    putCode(callBase + 2, newPC & 0xFF, false);
     putCode(newPC, 0x32);         // RETI
 
     cpu.ACC = acBase;
@@ -150,8 +151,8 @@ describe.each([
 
     clearIRAM();
     putCode(callBase, 0x02);      // LJMP
-    putCode(callBase + 1, newPC >>> 8);
-    putCode(callBase + 2, newPC & 0xFF);
+    putCode(callBase + 1, newPC >>> 8, false);
+    putCode(callBase + 2, newPC & 0xFF, false);
 
     cpu.ACC = acBase;
     cpu.PSW = 0;
@@ -182,7 +183,7 @@ describe.each([
 
     clearIRAM();
     putCode(pc, 0x80);      // SJMP
-    putCode(pc + 1, rela);
+    putCode(pc + 1, rela, false);
     cpu.ACC = acBase;
     cpu.PSW = 0;
 
@@ -214,7 +215,7 @@ describe.each([0x0000, 0x0800,
       const toOffset = 0x33;
       const jmpTarget = fromPage | toMid << 8 | toOffset;
       putCode(jmpBase, toMid << 5 | 0x01);      // AJMP pageN
-      putCode(jmpBase + 1, jmpTarget & 0xFF);
+      putCode(jmpBase + 1, jmpTarget & 0xFF, false);
 
       cpu.ACC = acBase;
       cpu.PSW = 0;
@@ -247,8 +248,8 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0xB5);       // CJNE A,dir,rela
-      putCode(0x101, dir);
-      putCode(0x102, rela);
+      putCode(0x101, dir, false);
+      putCode(0x102, rela, false);
       cpu.PSW = 0;
       cpu.ACC = x;
       cpu.iram[dir] = y;
@@ -266,8 +267,8 @@ describe.each([
       const imm = y;
       clearIRAM();
       putCode(0x100, 0xB4);       // CJNE A,dir,rela
-      putCode(0x101, imm);
-      putCode(0x102, rela);
+      putCode(0x101, imm, false);
+      putCode(0x102, rela, false);
       cpu.PSW = 0;
       cpu.ACC = x;
 
@@ -283,8 +284,8 @@ describe.each([
       const imm = y;
       clearIRAM();
       putCode(0x100, 0xBB);       // CJNE R3,#imm,rela
-      putCode(0x101, imm);
-      putCode(0x102, rela);
+      putCode(0x101, imm, false);
+      putCode(0x102, rela, false);
       cpu.PSW = 0;
       cpu.iram[3] = x;
 
@@ -301,8 +302,8 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0xB7);       // CJNE @R1,#imm,rela
-      putCode(0x101, imm);
-      putCode(0x102, rela);
+      putCode(0x101, imm, false);
+      putCode(0x102, rela, false);
       cpu.PSW = 0;
       cpu.iram[dir] = x;
       cpu.iram[1] = dir;
@@ -333,8 +334,8 @@ describe.each([
       const rela = -0x10 & 0xFF;
       clearIRAM();
       putCode(0x100, 0xD5);       // DJNZ dir,rela
-      putCode(0x101, dir);
-      putCode(0x102, rela);
+      putCode(0x101, dir, false);
+      putCode(0x102, rela, false);
       cpu.PSW = 0;
       cpu.ACC = acBase;
       cpu.iram[dir] = x;
@@ -353,7 +354,7 @@ describe.each([
       const rela = -0x10 & 0xFF;
       clearIRAM();
       putCode(0x100, 0xDB);       // DJNZ R3,rela
-      putCode(0x101, rela);
+      putCode(0x101, rela, false);
       cpu.PSW = 0;
       cpu.ACC = acBase;
       cpu.iram[3] = x;
@@ -376,8 +377,8 @@ test(`op:JB bit,rel bit=0`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x20);       // JB bit,rela
-  putCode(0x101, bit);
-  putCode(0x102, rela);
+  putCode(0x101, bit, false);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.setBIT(bit, 0);
@@ -397,8 +398,8 @@ test(`op:JB bit,rel bit=1`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x20);       // JB bit,rela
-  putCode(0x101, bit);
-  putCode(0x102, rela);
+  putCode(0x101, bit, false);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.setBIT(bit, 1);
@@ -420,8 +421,8 @@ test(`op:JBC bit,rel bit=0`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x10);       // JBC bit,rela
-  putCode(0x101, bit);
-  putCode(0x102, rela);
+  putCode(0x101, bit, false);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.setBIT(bit, 0);
@@ -441,8 +442,8 @@ test(`op:JBC bit,rel bit=1`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x10);       // JBC bit,rela
-  putCode(0x101, bit);
-  putCode(0x102, rela);
+  putCode(0x101, bit, false);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.setBIT(bit, 1);
@@ -464,8 +465,8 @@ test(`op:JNB bit,rel bit=0`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x30);       // JNB bit,rela
-  putCode(0x101, bit);
-  putCode(0x102, rela);
+  putCode(0x101, bit, false);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.setBIT(bit, 0);
@@ -485,8 +486,8 @@ test(`op:JNB bit,rel bit=1`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x30);       // JNB bit,rela
-  putCode(0x101, bit);
-  putCode(0x102, rela);
+  putCode(0x101, bit, false);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.setBIT(bit, 1);
@@ -507,7 +508,7 @@ test(`op:JC rel CY=0`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x40);       // JC rela
-  putCode(0x101, rela);
+  putCode(0x101, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.CY = 0;
@@ -525,7 +526,7 @@ test(`op:JC rel CY=1`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x40);       // JC rela
-  putCode(0x102, rela);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.CY = 1;
@@ -545,7 +546,7 @@ test(`op:JNC rel CY=0`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x50);       // JNC rela
-  putCode(0x101, rela);
+  putCode(0x101, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.CY = 0;
@@ -563,7 +564,7 @@ test(`op:JNC rel CY=1`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x50);       // JNC rela
-  putCode(0x102, rela);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
   cpu.CY = 1;
@@ -583,7 +584,7 @@ test(`op:JZ rel AC=55`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x60);       // JZ rela
-  putCode(0x101, rela);
+  putCode(0x101, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
 
@@ -600,7 +601,7 @@ test(`op:JZ rel AC=00`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x60);       // JZ rela
-  putCode(0x102, rela);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
 
@@ -619,7 +620,7 @@ test(`op:JNZ rel AC=55`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x70);       // JNZ rela
-  putCode(0x101, rela);
+  putCode(0x101, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
 
@@ -636,7 +637,7 @@ test(`op:JNZ rel AC=00`, () => {
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x70);       // JNZ rela
-  putCode(0x102, rela);
+  putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
 
@@ -685,7 +686,7 @@ describe('op:MOV', () => {
     const dir = 0x42;
     clearIRAM();
     putCode(0x1000, 0xE5);        // MOV A,dir
-    putCode(0x1001, dir);
+    putCode(0x1001, dir, false);
     cpu.ACC = 0xAA;
     cpu.PSW = 0;
     cpu.iram[dir] = v;
@@ -702,7 +703,7 @@ describe('op:MOV', () => {
     const dir = 0xD0;           // PSW
     clearIRAM();
     putCode(0x1000, 0xE5);        // MOV A,dir
-    putCode(0x1001, dir);
+    putCode(0x1001, dir, false);
     cpu.ACC = 0xAA;
     cpu.PSW = v;
 
@@ -719,7 +720,7 @@ describe('op:MOV', () => {
     const dir = 0x83;           // DPH
     clearIRAM();
     putCode(0x1000, 0xF5);        // MOV dir,A
-    putCode(0x1001, dir);
+    putCode(0x1001, dir, false);
     cpu.ACC = 0xAA;
     cpu.PSW = 0;
     cpu.DPH = notV;
@@ -740,8 +741,8 @@ describe('op:MOV', () => {
     const sdir = 0x71;
     clearIRAM();
     putCode(0x1000, 0x85);        // MOV dir,A
-    putCode(0x1001, ddir);        // Destination address
-    putCode(0x1002, sdir);        // Source address
+    putCode(0x1001, ddir, false);        // Destination address
+    putCode(0x1002, sdir, false);        // Source address
     cpu.ACC = notV;
     cpu.PSW = 0;
     cpu.iram[ddir] = notV;
@@ -763,7 +764,7 @@ describe('op:MOV', () => {
     const dir = 0xD0;           // PSW
     clearIRAM();
     putCode(0x1000, 0xE5);        // MOV A,dir
-    putCode(0x1001, dir);
+    putCode(0x1001, dir, false);
     cpu.ACC = notV;
     expect(cpu.iram[0xE0]).toBe(notV); // ACC
     cpu.PSW = v;
@@ -814,6 +815,29 @@ describe('op:MOV', () => {
       expect(cpu.iram[dir]).toBe(v);
       expect(cpu.iram[r]).toBe(dir);
     });
+
+    test(`dir,@R${r}`, () => {
+      const v = 0x43;
+      const notV = v ^ 0xFF;
+      const rdir = 0x42;
+      const ddir = 0x71;
+      clearIRAM();
+      putCode(0x1000, 0x86 | r);        // MOV dir,@Rr
+      putCode(0x1001, ddir, false);
+      cpu.ACC = notV;
+      cpu.PSW = 0;
+      cpu.iram[r] = rdir;
+      cpu.iram[rdir] = v;
+      cpu.iram[ddir] = notV;
+
+      cpu.run1(0x1000);               // MOV
+      expect(cpu.PC).toBe(0x1002);
+      expect(cpu.PSW).toBe(0);
+      expect(cpu.ACC).toBe(notV);
+      expect(cpu.iram[rdir]).toBe(v);
+      expect(cpu.iram[ddir]).toBe(v);
+      expect(cpu.iram[r]).toBe(rdir);
+    });
   });
 
   test(`dir,#imm`, () => {
@@ -822,8 +846,8 @@ describe('op:MOV', () => {
     const dir = 0x42;
     clearIRAM();
     putCode(0x1000, 0x75);        // MOV dir,#imm
-    cpu.code[0x1001] = dir;       // dir
-    cpu.code[0x1002] = v;         // #imm
+    putCode(0x1001, dir, false);       // dir
+    putCode(0x1002, v, false);         // #imm
     cpu.ACC = notV;
     cpu.PSW = 0;
     cpu.iram[dir] = notV;
@@ -839,7 +863,7 @@ describe('op:MOV', () => {
     const v = 0x43;
     clearIRAM();
     putCode(0x1000, 0x74);        // MOV A,#imm
-    putCode(0x1001, v);
+    putCode(0x1001, v, false);
     cpu.ACC = 0xAA;
     cpu.PSW = 0;
 
@@ -885,7 +909,7 @@ describe('op:MOV', () => {
       const dir = 0x42;
       clearIRAM();
       putCode(0x1000, 0xA8 | r);        // MOV Rr,dir
-      putCode(0x1001, dir);
+      putCode(0x1001, dir, false);
       cpu.ACC = 0xAA;
       cpu.PSW = 0;
       cpu.iram[dir] = v;
@@ -903,7 +927,7 @@ describe('op:MOV', () => {
       const v = 0x43;
       clearIRAM();
       putCode(0x1000, 0x78 | r);        // MOV Rr,#imm
-      putCode(0x1001, v);
+      putCode(0x1001, v, false);
       cpu.ACC = 0xAA;
       cpu.PSW = 0;
       cpu.iram[r] = 0x42;
@@ -923,7 +947,7 @@ test(`op:MOV C,sbit=0`, () => {
   const bit = 0x42;
   clearIRAM();
   putCode(0x100, 0xA2);       // MOV C,sbit
-  putCode(0x101, bit);
+  putCode(0x101, bit, false);
   cpu.PSW = 0;
   cpu.ACC = 0xAA;
   cpu.CY = 0;
@@ -942,7 +966,7 @@ test(`op:MOV C,sbit=1`, () => {
   const bit = 0x42;
   clearIRAM();
   putCode(0x100, 0x92);       // MOV dbit,C
-  putCode(0x101, bit);
+  putCode(0x101, bit, false);
   cpu.PSW = 0;
   cpu.ACC = 0xAA;
   cpu.CY = 1;
@@ -963,8 +987,8 @@ test(`op:MOV DPTR,#data16`, () => {
   const d = 0x1234;
   clearIRAM();
   putCode(0x100, 0x90);       // MOV DPTR,#imm
-  putCode(0x101, d >>> 8);
-  putCode(0x102, d & 0xFF);
+  putCode(0x101, d >>> 8, false);
+  putCode(0x102, d & 0xFF, false);
   cpu.PSW = 0;
   cpu.ACC = 0xAA;
   cpu.DPTR = 0x9977;
@@ -996,7 +1020,7 @@ describe.each([
       cpu.PSW = 0;
       cpu.ACC = a;
       cpu.DPTR = y;
-      putCode(entAddr, newA);
+      putCode(entAddr, newA, false);
 
       cpu.run1(0x100);              // MOVC
       expect(cpu.PC).toBe(0x101);
@@ -1015,7 +1039,7 @@ describe.each([
       cpu.PSW = 0;
       cpu.ACC = a;
       cpu.DPTR = 0x1111;
-      putCode(entAddr, newA);
+      putCode(entAddr, newA, false);
 
       cpu.run1(y-1);              // MOVC
       expect(cpu.PC).toBe(y);
@@ -1143,7 +1167,7 @@ test('op:CLR bit', () => {
   const acBase = 0xAA;
   clearIRAM();
   putCode(0x100, 0xC2);       // CLR bit
-  putCode(0x101, bit);
+  putCode(0x101, bit, false);
   cpu.setBIT(bit, 1);
   cpu.ACC = acBase;
   cpu.PSW = 0;
@@ -1177,7 +1201,7 @@ test('op:SETB bit', () => {
   const acBase = 0xAA;
   clearIRAM();
   putCode(0x100, 0xD2);       // SETB bit
-  putCode(0x101, bit);
+  putCode(0x101, bit, false);
   cpu.setBIT(bit, 0);
   cpu.ACC = acBase;
   cpu.PSW = 0;
@@ -1226,7 +1250,7 @@ test('op:CPL bit=1', () => {
   const acBase = 0xAA;
   clearIRAM();
   putCode(0x100, 0xB2);       // CPL bit
-  putCode(0x101, bit);
+  putCode(0x101, bit, false);
   cpu.setBIT(bit, 1);
   cpu.ACC = acBase;
   cpu.PSW = 0;
@@ -1245,7 +1269,7 @@ test('op:CPL bit=0', () => {
   const acBase = 0xAA;
   clearIRAM();
   putCode(0x100, 0xB2);       // CPL bit
-  putCode(0x101, bit);
+  putCode(0x101, bit, false);
   cpu.setBIT(bit, 0);
   cpu.ACC = acBase;
   cpu.PSW = 0;
@@ -1332,7 +1356,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x15);       // DEC dir
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
       cpu.PSW = 0;
       cpu.iram[dir] = x;
 
@@ -1481,7 +1505,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x05);       // INC dir
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
       cpu.PSW = 0;
       cpu.iram[dir] = x;
 
@@ -1541,6 +1565,86 @@ describe.each([
       expect(cpu.OV).toBe(0);
     });
   });
+
+
+//////////// RL ////////////
+test('op:RL A=0x80,CY=0 = A=01,CY=0', () => {
+  clearIRAM();
+  putCode(0x100, 0x23);       // RL A
+  cpu.ACC = 0x80;
+  cpu.PSW = 0;
+  cpu.CY = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x01);
+});
+
+test('op:RL A=0x08,CY=0 = A=10,CY=0', () => {
+  clearIRAM();
+  putCode(0x100, 0x23);       // RL A
+  cpu.ACC = 0x08;
+  cpu.PSW = 0;
+  cpu.CY = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x10);
+});
+
+test('op:RL A=0x80,CY=1 = A=01,CY=1', () => {
+  clearIRAM();
+  putCode(0x100, 0x23);       // RL A
+  cpu.ACC = 0x80;
+  cpu.PSW = 0;
+  cpu.CY = 1;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x01);
+});
+
+test('op:RL A=0x08,CY=1 = A=10,CY=1', () => {
+  clearIRAM();
+  putCode(0x100, 0x23);       // RL A
+  cpu.ACC = 0x08;
+  cpu.PSW = 0;
+  cpu.CY = 1;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x10);
+});
+
+test('op:RL CY=1 bit walk', () => {
+  clearIRAM();
+  putCode(0x100, 0x23);       // RL A
+  cpu.ACC = 0x80;
+  cpu.PSW = 0;
+  cpu.CY = 1;
+
+  for (let k = 0; k < 8; ++k) {
+    cpu.run1(0x100);
+    expect(cpu.PC).toBe(0x101);
+    expect(cpu.CY).toBe(1);
+    expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+    expect(cpu.ACC).toBe(0x01 << k);
+  }
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x01);
+});
 
 
 //////////// RLC ////////////
@@ -1620,6 +1724,86 @@ test('op:RLC CY=1 bit walk', () => {
   expect(cpu.CY).toBe(1);
   expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
+});
+
+
+//////////// RR ////////////
+test('op:RR A=0x01,CY=0 = A=80,CY=0', () => {
+  clearIRAM();
+  putCode(0x100, 0x03);       // RR A
+  cpu.ACC = 0x01;
+  cpu.PSW = 0;
+  cpu.CY = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x80);
+});
+
+test('op:RR A=0x08,CY=0 = A=04,CY=0', () => {
+  clearIRAM();
+  putCode(0x100, 0x03);       // RR A
+  cpu.ACC = 0x08;
+  cpu.PSW = 0;
+  cpu.CY = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x04);
+});
+
+test('op:RR A=0x80,CY=1 = A=40,CY=1', () => {
+  clearIRAM();
+  putCode(0x100, 0x03);       // RR A
+  cpu.ACC = 0x80;
+  cpu.PSW = 0;
+  cpu.CY = 1;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x40);
+});
+
+test('op:RR A=0x08,CY=1 = A=04,CY=1', () => {
+  clearIRAM();
+  putCode(0x100, 0x03);       // RR A
+  cpu.ACC = 0x08;
+  cpu.PSW = 0;
+  cpu.CY = 1;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x04);
+});
+
+test('op:RR CY=1 bit walk', () => {
+  clearIRAM();
+  putCode(0x100, 0x03);       // RR A
+  cpu.ACC = 0x01;
+  cpu.PSW = 0;
+  cpu.CY = 1;
+
+  for (let k = 0; k < 8; ++k) {
+    cpu.run1(0x100);
+    expect(cpu.PC).toBe(0x101);
+    expect(cpu.CY).toBe(1);
+    expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+    expect(cpu.ACC).toBe(0x80 >>> k);
+  }
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.CY).toBe(1);
+  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.ACC).toBe(0x80);
 });
 
 
@@ -1726,7 +1910,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x25);       // ADD A,dir
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
 
       cpu.iram[dir] = x;
 
@@ -1782,7 +1966,7 @@ describe.each([
       const imm = x;
       clearIRAM();
       putCode(0x100, 0x24);       // ADD A,#imm
-      putCode(0x101, imm);
+      putCode(0x101, imm, false);
 
       cpu.PSW = 0;
       cpu.ACC = y;
@@ -1819,7 +2003,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x35);       // ADDC A,dir
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
 
       cpu.iram[dir] = x;
 
@@ -1875,7 +2059,7 @@ describe.each([
       const imm = x;
       clearIRAM();
       putCode(0x100, 0x34);       // ADDC A,#imm
-      putCode(0x101, imm);
+      putCode(0x101, imm, false);
 
       cpu.PSW = 0;
       cpu.ACC = y;
@@ -1912,8 +2096,8 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x35);       // ADDC A,dir
-      putCode(0x101, dir);
-      putCode(0x102, 0xD4);       // DA A
+      putCode(0x101, dir, false);
+      putCode(0x102, 0xD4, false);       // DA A
 
       cpu.iram[dir] = x;
 
@@ -1959,7 +2143,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x55);       // ANL A,dir
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
 
       cpu.iram[dir] = x;
 
@@ -2011,7 +2195,7 @@ describe.each([
       const imm = x;
       clearIRAM();
       putCode(0x100, 0x54);       // ANL A,#imm
-      putCode(0x101, imm);
+      putCode(0x101, imm, false);
 
       cpu.PSW = 0;
       cpu.ACC = y;
@@ -2027,7 +2211,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x52);       // ANL dir,A
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
 
       cpu.PSW = 0;
       cpu.iram[dir] = x;
@@ -2046,8 +2230,8 @@ describe.each([
       const imm = x;
       clearIRAM();
       putCode(0x100, 0x53);       // ANL dir,#imm
-      putCode(0x101, dir);
-      putCode(0x102, imm);
+      putCode(0x101, dir, false);
+      putCode(0x102, imm, false);
       cpu.PSW = 0;
       cpu.ACC = 0xBA;
       cpu.iram[dir] = y;
@@ -2075,7 +2259,7 @@ describe.each([
       const bit = 0x42;
       clearIRAM();
       putCode(0x100, 0x82);       // ANL C,bit
-      putCode(0x101, bit);
+      putCode(0x101, bit, false);
       cpu.PSW = 0;
 
       cpu.setBIT(bit, y);
@@ -2105,7 +2289,7 @@ describe.each([
         const bit = 0x42;
         clearIRAM();
         putCode(0x100, 0xB0);       // ANL C,bit
-        putCode(0x101, bit);
+        putCode(0x101, bit, false);
         cpu.PSW = 0;
 
         cpu.setBIT(bit, y);
@@ -2144,7 +2328,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x45);       // ORL A,dir
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
 
       cpu.iram[dir] = x;
 
@@ -2196,7 +2380,7 @@ describe.each([
       const imm = x;
       clearIRAM();
       putCode(0x100, 0x44);       // ORL A,#imm
-      putCode(0x101, imm);
+      putCode(0x101, imm, false);
 
       cpu.PSW = 0;
       cpu.ACC = y;
@@ -2212,7 +2396,7 @@ describe.each([
       const dir = 0x47;
       clearIRAM();
       putCode(0x100, 0x42);       // ORL dir,A
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
 
       cpu.PSW = 0;
       cpu.iram[dir] = x;
@@ -2231,8 +2415,8 @@ describe.each([
       const imm = x;
       clearIRAM();
       putCode(0x100, 0x43);       // ORL dir,#imm
-      putCode(0x101, dir);
-      putCode(0x102, imm);
+      putCode(0x101, dir, false);
+      putCode(0x102, imm, false);
       cpu.iram[dir] = y;
       cpu.PSW = 0;
       cpu.ACC = 0xDA;
@@ -2260,7 +2444,7 @@ describe.each([
       const bit = 0x72;
       clearIRAM();
       putCode(0x100, 0x82);       // ORL C,bit
-      putCode(0x101, bit);
+      putCode(0x101, bit, false);
       cpu.PSW = 0;
 
       cpu.setBIT(bit, y);
@@ -2290,7 +2474,7 @@ describe.each([
         const bit = 0x33;
         clearIRAM();
         putCode(0x100, 0xA0);       // ORL C,/bit
-        putCode(0x101, bit);
+        putCode(0x101, bit, false);
         cpu.PSW = 0;
 
         cpu.setBIT(bit, y);
@@ -2326,7 +2510,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x65);       // XRL A,dir
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
       cpu.iram[dir] = x;
 
       cpu.PSW = 0;
@@ -2377,7 +2561,7 @@ describe.each([
       const imm = x;
       clearIRAM();
       putCode(0x100, 0x64);       // XRL A,#imm
-      putCode(0x101, imm);
+      putCode(0x101, imm, false);
 
       cpu.PSW = 0;
       cpu.ACC = y;
@@ -2393,7 +2577,7 @@ describe.each([
       const dir = 0x62;
       clearIRAM();
       putCode(0x100, 0x62);       // XRL dir,A
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
 
       cpu.PSW = 0;
       cpu.iram[dir] = x;
@@ -2412,8 +2596,8 @@ describe.each([
       const imm = x;
       clearIRAM();
       putCode(0x100, 0x63);       // XRL dir,#imm
-      putCode(0x101, dir);
-      putCode(0x102, imm);
+      putCode(0x101, dir, false);
+      putCode(0x102, imm, false);
       cpu.iram[dir] = y;
       cpu.PSW = 0;
       cpu.ACC = 0xDA;
@@ -2435,7 +2619,7 @@ describe('op:POP', () => {
     const spBase = 0x20;
     clearIRAM();
     putCode(0x100, 0xD0);     // POP dir
-    putCode(0x101, dir);
+    putCode(0x101, dir, false);
     cpu.iram[spBase] = 0xFE;
     cpu.iram[dir] = 0xAA;
     cpu.SP = spBase;
@@ -2459,7 +2643,7 @@ describe('op:PUSH', () => {
     const spBase = 0x20;
     clearIRAM();
     putCode(0x100, 0xC0);     // PUSH dir
-    putCode(0x101, dir);
+    putCode(0x101, dir, false);
     cpu.iram[dir] = 0x73;
     cpu.SP = spBase;
     cpu.PSW = 0;
@@ -2497,7 +2681,7 @@ describe.each([
       const dir = 0x42;
       clearIRAM();
       putCode(0x100, 0x95);       // SUBB A,dir
-      putCode(0x101, dir);
+      putCode(0x101, dir, false);
 
       cpu.iram[dir] = y;
 
@@ -2556,7 +2740,7 @@ describe.each([
       const imm = y;
       clearIRAM();
       putCode(0x100, 0x94);       // SUBB A,#imm
-      putCode(0x101, imm);
+      putCode(0x101, imm, false);
 
       cpu.PSW = 0;
       cpu.ACC = x;
@@ -2621,7 +2805,7 @@ describe('op:XCH', () => {
     const dir = 0x42;
     clearIRAM();
     putCode(0x100, 0xC5);     // XCH A,dir
-    putCode(0x101, dir);
+    putCode(0x101, dir, false);
     cpu.iram[dir] = 0x73;
     cpu.ACC = 0x32;
     cpu.PSW = 0;
