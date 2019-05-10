@@ -465,8 +465,8 @@ ${briefState(bh.state)}`);
     const ope = cpu.ops[op];
 
     if (!ope || !ope.nBytes) {
-      console.log(`Undefined opcodes[${op}] pc=${pc}`);
-      this.dumpFetchHistory();
+      console.log(`Undefined opcodes[${toHex2(op)}] pc=${toHex4(pc)}`);
+//      this.dumpFetchHistory();
     }
 
     const nextPC = pc + ope.nBytes;
