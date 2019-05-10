@@ -105,11 +105,11 @@ class BitFieldSFR extends SFR {
     Object.defineProperty(cpu, name, {
 
       get: function() {
-        return sfr.bitNames.reduce((a, bit, x) => cpu[bit] << (7 - x), 0);
+        return sfr.bitNames.reverse().reduce((a, bit, x) => cpu[bit] << x, 0);
       },
 
       set: function(v) {
-        sfr.bitNames.forEach((bit, x) => cpu[bit] = +!!(v & (1 << (7 - x))));
+        sfr.bitNames.reverse().forEach((bit, x) => cpu[bit] = +!!(v & (1 << x)));
       },
     });
   }
@@ -155,6 +155,9 @@ class CPU8052 {
       PCON: new BitFieldSFR('PCON', 0x87, 'smod . . . gf1 gf0 pd idl', C),
     };
 
+    const psw = C.SFRs.PSW;
+    console.log(`PSW: ${psw.bitNames.join(' ')}`);
+    console.log(`PSW.cyMask=${toHex2(psw.cyMask)}, cyShift=${psw.cyShift}, cyBit=${toHex2(psw.cyBit)}`);
 
     C.ops = [];
     C.reset();
