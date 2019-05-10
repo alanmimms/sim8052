@@ -30,13 +30,17 @@ const parityTable = [
 ];
 
 
+const DIRtoSFR = [];
+module.exports.DIRtoSFR = DIRtoSFR;
+
 class SFR {
 
   constructor(name, addr, cpu, resetValue, defineProps) {
     this.name = name;
-    this.addr = addr;
+    this.addr = +addr;
     this.cpu = cpu;
     this.resetValue = resetValue || 0x00;
+    DIRtoSFR[addr] = name;
     this.defineGetSet(cpu, name);
   }
 
@@ -854,10 +858,21 @@ ${list.length} ops unimplemented`;})()}`);
 
   // TODO: this.the getDIR and setDIR accessors need to switch on address
   // and access the appropriate SFRs member instance where needed.
-  getDIR(ea) { return this.iram[ea] }
+  getDIR(ea) {
+    ea = +ea;
+    const v = ea < 0x80 ? this.iram[ea] : this[DIRtoSFR[ea]];
+    return v;
+  }
 
   setDIR(ea, v) {
-    this.iram[ea] = v;
+    ea = +ea;
+
+    if (ea < 0x80)
+      this.iram[ea] = v;
+    else {
+      const sfr = DIRtoSFR[ea];
+      this[sfr] = v;
+    }
   };
 
 
@@ -872,7 +887,7 @@ ${list.length} ops unimplemented`;})()}`);
       return +!!(this.iram[ea] & mask);
     } else {
       const ea = bn & 0xF8;
-      return +!!(this.SFR[ea] & mask);
+      return +!!(this[DIRtoSFR[ea]] & mask);
     }
   }
 
@@ -890,11 +905,12 @@ ${list.length} ops unimplemented`;})()}`);
       }
     } else {
       const ea = bn & 0xF8;
+      const sfr = DIRtoSFR[ea];
 
       if (v) {
-        this.SFR[ea] |= mask;
+        this[sfr] |= mask;
       } else {
-        this.SFR[ea] &= ~mask;
+        this[sfr] &= mask;
       }
     }
   }
