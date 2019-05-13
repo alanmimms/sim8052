@@ -56,6 +56,19 @@ test('op:NOP', () => {
   expect(cpu.ACC).toBe(0x42);
 });
 
+
+//////////// A5 ////////////
+test('op:A5', () => {
+  putCode(0x100, 0xA5);
+  cpu.ACC = 0x42;
+  cpu.PSW = 0;
+
+  cpu.run1(0x100);
+  expect(cpu.PC).toBe(0x101);
+  expect(cpu.PSW).toBe(0);
+  expect(cpu.ACC).toBe(0x42);
+});
+
 //////////// ACALL/RET ////////////
 describe.each([0, 1, 2, 3, 4, 5, 6, 7])('op:ACALL/op:RET', fromPage => {
 
@@ -742,8 +755,8 @@ describe('op:MOV', () => {
     const sdir = 0x71;
     clearIRAM();
     putCode(0x1000, 0x85);        // MOV dir,A
-    putCode(0x1001, ddir, false);        // Destination address
-    putCode(0x1002, sdir, false);        // Source address
+    putCode(0x1001, sdir, false);        // Source address
+    putCode(0x1002, ddir, false);        // Destination address
     cpu.ACC = notV;
     cpu.PSW = 0;
     cpu.iram[ddir] = notV;
@@ -815,6 +828,28 @@ describe('op:MOV', () => {
       expect(cpu.ACC).toBe(notV);
       expect(cpu.iram[dir]).toBe(v);
       expect(cpu.iram[r]).toBe(dir);
+    });
+
+    test(`@R1,dir`, () => {
+      const v = 0x43;
+      const notV = v ^ 0xFF;
+      const ddir = 0x71;
+      const sdir = 0x42;
+      clearIRAM();
+      putCode(0x1000, 0xA6 | r);        // MOV @Ri,dir
+      cpu.code[0x1001] = sdir;          // source dir
+      cpu.ACC = notV;
+      cpu.PSW = 0;
+      cpu.iram[r] = ddir;
+      cpu.iram[ddir] = notV;
+      cpu.iram[sdir] = v;
+
+      cpu.run1(0x1000);               // MOV
+      expect(cpu.PC).toBe(0x1002);
+      expect(cpu.PSW).toBe(0);
+      expect(cpu.ACC).toBe(notV);
+      expect(cpu.iram[r]).toBe(ddir);
+      expect(cpu.iram[ddir]).toBe(v);
     });
 
     test(`dir,@R${r}`, () => {
@@ -2739,26 +2774,26 @@ describe.each([
 
     });
 
-    test(`A,@Ri ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
+    _.range(0,2).forEach(r => test(`A,@${r} ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
       const dir = 0x42;
       clearIRAM();
-      putCode(0x100, 0x97);       // SUBB A,@R1
-      cpu.iram[1] = dir;            // Set R1=dir for @R1
+      putCode(0x100, 0x96 + r);         // SUBB A,@Rr
+      cpu.iram[r] = dir;                // Set Rr=dir for @Rr
       cpu.iram[dir] = y;
 
       cpu.PSW = 0;
       cpu.ACC = x;
       cpu.CY = inCY;
 
-      cpu.run1(0x100);              // SUBB A,dir
+      cpu.run1(0x100);              // SUBB A,@Rr
       expect(cpu.PC).toBe(0x101);
       expect(cpu.ACC).toBe(diff);
       expect(cpu.CY).toBe(cy);
       expect(cpu.OV).toBe(ov);
       expect(cpu.AC).toBe(ac);
-      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[r]).toBe(dir);
       expect(cpu.iram[dir]).toBe(y);
-    });
+    }));
 
     test(`A,#imm ${toHex2(x)}-${toHex2(y)},CY=${inCY}=${toHex2(diff)},CY=${cy},OV=${ov},AC=${ac}`, () => {
       const imm = y;
