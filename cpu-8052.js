@@ -14,10 +14,6 @@ const {toHex1, toHex2, toHex4} = require('./simutils');
 // get. A set changes the value of the property on the CPU8052 object
 // for an SFR and disaggregates the bit flag values for a BitFieldSFR.
 
-
-//  mathMask: pswBits.ovMask | pswBits.acMask | pswBits.cyMask,
-//  rsMask: pswBits.rs0Mask | pswBits.rs1Mask,
-
 const parityTable = [
   0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
   1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
@@ -78,16 +74,16 @@ class BitFieldSFR extends SFR {
     // bit #n and rightmost is bit #0 and '.' is used for a reserved
     // bit.
     bitNames.split(/\s+/)
-      .reverse()
+      .reverse()                // First bit is leftmost
       .map((name, index) => {
         const ucName = name.toUpperCase();
 
         if (name !== '.') {
           const mask = 1 << index;
 
-          this[name + 'Shift'] = index;
-          this[name + 'Mask'] = mask;
-          this[name + 'Bit'] = addr + index;
+          cpu[name + 'Shift'] = index;
+          cpu[name + 'Mask'] = mask;
+          cpu[name + 'Bit'] = addr + index;
 
           // Define zeroed flag on our parent object (CPU8052
           // instance) with uppercase version of this bit name.
@@ -95,7 +91,7 @@ class BitFieldSFR extends SFR {
         }
       });
 
-    this.bitNames = bitNames.toUpperCase().split(/\s+/);
+    this.bitNames = bitNames.toUpperCase().split(/\s+/).reverse();
   }
 
 
@@ -105,11 +101,15 @@ class BitFieldSFR extends SFR {
     Object.defineProperty(cpu, name, {
 
       get: function() {
-        return sfr.bitNames.reverse().reduce((a, bit, x) => cpu[bit] << x, 0);
+        return sfr.bitNames.reduce((a, bit, x) => {
+          a |= cpu[bit] << x;
+//          console.log(`get ${name}.${bit} = ${cpu[bit]}  a=${toHex2(a)}  x=${x}`);
+          return a;
+        }, 0);
       },
 
       set: function(v) {
-        sfr.bitNames.reverse().forEach((bit, x) => cpu[bit] = +!!(v & (1 << x)));
+        sfr.bitNames.forEach((bit, x) => cpu[bit] = +!!(v & (1 << x)));
       },
     });
   }
@@ -154,10 +154,6 @@ class CPU8052 {
       SBUF: new SFR('SBUF', 0x99, C),
       PCON: new BitFieldSFR('PCON', 0x87, 'smod . . . gf1 gf0 pd idl', C),
     };
-
-    const psw = C.SFRs.PSW;
-    console.log(`PSW: ${psw.bitNames.join(' ')}`);
-    console.log(`PSW.cyMask=${toHex2(psw.cyMask)}, cyShift=${psw.cyShift}, cyBit=${toHex2(psw.cyBit)}`);
 
     C.ops = [];
     C.reset();

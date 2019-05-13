@@ -714,7 +714,7 @@ describe('op:MOV', () => {
   test(`A,dir (SFR)`, () => {
     const v = 0x43;
     const notV = v ^ 0xFF;
-    const dir = 0xD0;           // PSW
+    const dir = 0xD0;           // Address of PSW
     clearIRAM();
     putCode(0x1000, 0xE5);        // MOV A,dir
     putCode(0x1001, dir, false);
@@ -724,7 +724,6 @@ describe('op:MOV', () => {
     cpu.run1(0x1000);               // MOV
     expect(cpu.PC).toBe(0x1002);
     expect(cpu.PSW).toBe(v);
-    expect(cpu.iram[dir]).toBe(v);
     expect(cpu.ACC).toBe(v);
   });
 
@@ -735,17 +734,15 @@ describe('op:MOV', () => {
     clearIRAM();
     putCode(0x1000, 0xF5);        // MOV dir,A
     putCode(0x1001, dir, false);
-    cpu.ACC = 0xAA;
     cpu.PSW = 0;
+    cpu.ACC = v;
     cpu.DPH = notV;
-    expect(cpu.iram[dir]).toBe(notV);
 
     cpu.run1(0x1000);               // MOV
     expect(cpu.PC).toBe(0x1002);
     expect(cpu.PSW).toBe(0);
     expect(cpu.ACC).toBe(v);
     expect(cpu.DPH).toBe(v);
-    expect(cpu.iram[dir]).toBe(v);
   });
 
   test(`dir,dir`, () => {
@@ -770,25 +767,6 @@ describe('op:MOV', () => {
     expect(cpu.ACC).toBe(notV);
     expect(cpu.iram[sdir]).toBe(v);
     expect(cpu.iram[ddir]).toBe(v);
-  });
-
-  test(`A,dir (SFR)`, () => {
-    const v = 0x43;
-    const notV = v ^ 0xFF;
-    const dir = 0xD0;           // PSW
-    clearIRAM();
-    putCode(0x1000, 0xE5);        // MOV A,dir
-    putCode(0x1001, dir, false);
-    cpu.ACC = notV;
-    expect(cpu.iram[0xE0]).toBe(notV); // ACC
-    cpu.PSW = v;
-    expect(cpu.iram[dir]).toBe(v); // PSW
-
-    cpu.run1(0x1000);               // MOV
-    expect(cpu.PC).toBe(0x1002);
-    expect(cpu.PSW).toBe(v);
-    expect(cpu.iram[dir]).toBe(v);
-    expect(cpu.ACC).toBe(v);
   });
 
   _.range(0,2).forEach(r => {
@@ -1655,7 +1633,7 @@ test('op:RL A=0x80,CY=0 = A=01,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x01);
 });
 
@@ -1669,7 +1647,7 @@ test('op:RL A=0x08,CY=0 = A=10,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x10);
 });
 
@@ -1683,7 +1661,7 @@ test('op:RL A=0x80,CY=1 = A=01,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x01);
 });
 
@@ -1697,7 +1675,7 @@ test('op:RL A=0x08,CY=1 = A=10,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x10);
 });
 
@@ -1712,14 +1690,14 @@ test('op:RL CY=1 bit walk', () => {
     cpu.run1(0x100);
     expect(cpu.PC).toBe(0x101);
     expect(cpu.CY).toBe(1);
-    expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+    expect(cpu.PSW & ~cpu.cyMask).toBe(0);
     expect(cpu.ACC).toBe(0x01 << k);
   }
 
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x01);
 });
 
@@ -1735,7 +1713,7 @@ test('op:RLC A=0x80,CY=0 = A=00,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
 });
 
@@ -1749,7 +1727,7 @@ test('op:RLC A=0x08,CY=0 = A=10,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x10);
 });
 
@@ -1763,7 +1741,7 @@ test('op:RLC A=0x80,CY=1 = A=01,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x01);
 });
 
@@ -1777,7 +1755,7 @@ test('op:RLC A=0x08,CY=1 = A=11,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x11);
 });
 
@@ -1792,14 +1770,14 @@ test('op:RLC CY=1 bit walk', () => {
     cpu.run1(0x100);
     expect(cpu.PC).toBe(0x101);
     expect(cpu.CY).toBe(0);
-    expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+    expect(cpu.PSW & ~cpu.cyMask).toBe(0);
     expect(cpu.ACC).toBe(0x01 << k);
   }
 
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
 });
 
@@ -1815,7 +1793,7 @@ test('op:RR A=0x01,CY=0 = A=80,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x80);
 });
 
@@ -1829,7 +1807,7 @@ test('op:RR A=0x08,CY=0 = A=04,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x04);
 });
 
@@ -1843,7 +1821,7 @@ test('op:RR A=0x80,CY=1 = A=40,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x40);
 });
 
@@ -1857,7 +1835,7 @@ test('op:RR A=0x08,CY=1 = A=04,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x04);
 });
 
@@ -1872,14 +1850,14 @@ test('op:RR CY=1 bit walk', () => {
     cpu.run1(0x100);
     expect(cpu.PC).toBe(0x101);
     expect(cpu.CY).toBe(1);
-    expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+    expect(cpu.PSW & ~cpu.cyMask).toBe(0);
     expect(cpu.ACC).toBe(0x80 >>> k);
   }
 
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x80);
 });
 
@@ -1895,7 +1873,7 @@ test('op:RRC A=0x01,CY=0 = A=00,CY=1', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
 });
 
@@ -1909,7 +1887,7 @@ test('op:RRC A=0x08,CY=0 = A=04,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x04);
 });
 
@@ -1923,7 +1901,7 @@ test('op:RRC A=0x80,CY=1 = A=C0,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0xC0);
 });
 
@@ -1937,7 +1915,7 @@ test('op:RRC A=0x08,CY=1 = A=84,CY=0', () => {
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(0);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x84);
 });
 
@@ -1952,14 +1930,14 @@ test('op:RRC CY=1 bit walk', () => {
     cpu.run1(0x100);
     expect(cpu.PC).toBe(0x101);
     expect(cpu.CY).toBe(0);
-    expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+    expect(cpu.PSW & ~cpu.cyMask).toBe(0);
     expect(cpu.ACC).toBe(0x80 >>> k);
   }
 
   cpu.run1(0x100);
   expect(cpu.PC).toBe(0x101);
   expect(cpu.CY).toBe(1);
-  expect(cpu.PSW & ~cpu.PSW.cyMask).toBe(0);
+  expect(cpu.PSW & ~cpu.cyMask).toBe(0);
   expect(cpu.ACC).toBe(0x00);
 });
 
