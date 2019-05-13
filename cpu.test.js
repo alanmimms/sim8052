@@ -293,42 +293,42 @@ describe.each([
       expect(cpu.OV).toBe(0);
     });
 
-    test(`R3,#imm,rel R3=${toHex2(x)} imm=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
+    _.range(0,8).forEach(r => test(`R${r},#imm,rel R${r}=${toHex2(x)} imm=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
       const imm = y;
       clearIRAM();
-      putCode(0x100, 0xBB);       // CJNE R3,#imm,rela
+      putCode(0x100, 0xB8 + r);       // CJNE Rr,#imm,rela
       putCode(0x101, imm, false);
       putCode(0x102, rela, false);
       cpu.PSW = 0;
-      cpu.iram[3] = x;
+      cpu.iram[r] = x;
 
-      cpu.run1(0x100);              // CJNE A,#imm,rela
+      cpu.run1(0x100);              // CJNE Rr,#imm,rela
       expect(cpu.PC).toBe(jump ? 0x103 + toSigned(rela) : 0x103);
-      expect(cpu.iram[3]).toBe(x);
+      expect(cpu.iram[r]).toBe(x);
       expect(cpu.CY).toBe(ltCY);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
-    });
+    }));
 
-    test(`@R1,#imm,rel @R1=${toHex2(x)} imm=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
+    _.range(0,2).forEach(r => test(`@R${r},#imm,rel @R${r}=${toHex2(x)} imm=${toHex2(y)}, ltCY=${ltCY}) rela=${toHex2(rela)} jump=${jump}`, () => {
       const imm = y;
       const dir = 0x42;
       clearIRAM();
-      putCode(0x100, 0xB7);       // CJNE @R1,#imm,rela
+      putCode(0x100, 0xB6 + r);       // CJNE @Rr,#imm,rela
       putCode(0x101, imm, false);
       putCode(0x102, rela, false);
       cpu.PSW = 0;
       cpu.iram[dir] = x;
-      cpu.iram[1] = dir;
+      cpu.iram[r] = dir;
 
-      cpu.run1(0x100);              // CJNE @R1,#imm,rela
+      cpu.run1(0x100);              // CJNE @Rr,#imm,rela
       expect(cpu.PC).toBe(jump ? 0x103 + toSigned(rela) : 0x103);
-      expect(cpu.iram[1]).toBe(dir);
+      expect(cpu.iram[r]).toBe(dir);
       expect(cpu.iram[dir]).toBe(x);
       expect(cpu.CY).toBe(ltCY);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
-    });
+    }));
   });
 
 
@@ -2153,7 +2153,7 @@ describe.each([
       clearIRAM();
       putCode(0x100, 0x35);       // ADDC A,dir
       putCode(0x101, dir, false);
-      putCode(0x102, 0xD4, false);       // DA A
+      putCode(0x102, 0xD4, true);       // DA A
 
       cpu.iram[dir] = x;
 
@@ -2846,19 +2846,19 @@ describe.each([
 
 describe('op:XCH', () => {
 
-  test('A,R3', () => {
+  _.range(0,8).forEach(r => test('A,R${r}', () => {
     clearIRAM();
-    putCode(0x100, 0xCB);     // XCH A,R3
-    cpu.iram[3] = 0x73;
+    putCode(0x100, 0xC8 + r);     // XCH A,Rr
+    cpu.iram[r] = 0x73;
     cpu.ACC = 0x32;
     cpu.PSW = 0;
 
     cpu.run1(0x100);            // XCH
     expect(cpu.PC).toBe(0x101);
-    expect(cpu.iram[3]).toBe(0x32);
+    expect(cpu.iram[r]).toBe(0x32);
     expect(cpu.ACC).toBe(0x73);
     expect(cpu.PSW).toBe(0);
-  });
+  }));
 
   test('A,dir', () => {
     const dir = 0x42;
@@ -2876,22 +2876,22 @@ describe('op:XCH', () => {
     expect(cpu.PSW).toBe(0);
   });
 
-  test('A,@R1', () => {
+  _.range(0,2).forEach(r => test('A,@R${r}', () => {
     const dir = 0x42;
     clearIRAM();
-    putCode(0x100, 0xC7);     // XCH A,@R1
-    cpu.iram[1] = dir;
+    putCode(0x100, 0xC6 + r);     // XCH A,@Rr
+    cpu.iram[r] = dir;
     cpu.iram[dir] = 0x73;
     cpu.ACC = 0x32;
     cpu.PSW = 0;
 
     cpu.run1(0x100);            // XCH
     expect(cpu.PC).toBe(0x101);
-    expect(cpu.iram[1]).toBe(dir);
+    expect(cpu.iram[r]).toBe(dir);
     expect(cpu.iram[dir]).toBe(0x32);
     expect(cpu.ACC).toBe(0x73);
     expect(cpu.PSW).toBe(0);
-  });
+  }));
 });
 
 
