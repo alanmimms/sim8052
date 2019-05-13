@@ -362,24 +362,24 @@ describe.each([
       expect(cpu.OV).toBe(0);
     });
 
-    test(`DJNZ R3,rel R3=${toHex2(y)}, jump=${jump}`, () => {
+    _.range(0,8).forEach(r => test(`DJNZ R${r},rel R3=${toHex2(y)}, jump=${jump}`, () => {
       const acBase = 0xAA;
       const rela = -0x10 & 0xFF;
       clearIRAM();
-      putCode(0x100, 0xDB);       // DJNZ R3,rela
+      putCode(0x100, 0xD8 + r);       // DJNZ Rr,rela
       putCode(0x101, rela, false);
       cpu.PSW = 0;
       cpu.ACC = acBase;
-      cpu.iram[3] = x;
+      cpu.iram[r] = x;
 
-      cpu.run1(0x100);              // DJNZ R3,rela
+      cpu.run1(0x100);              // DJNZ Rr,rela
       expect(cpu.PC).toBe(jump ? 0x102 + toSigned(rela) : 0x102);
-      expect(cpu.iram[3]).toBe(y);
+      expect(cpu.iram[r]).toBe(y);
       expect(cpu.ACC).toBe(acBase);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
-    });
+    }));
   });
 
 
@@ -792,7 +792,7 @@ describe('op:MOV', () => {
   });
 
   _.range(0,2).forEach(r => {
-    test(`A,@R1`, () => {
+    test(`A,@R${r}`, () => {
       const v = 0x43;
       const dir = 0x42;
       clearIRAM();
@@ -810,7 +810,7 @@ describe('op:MOV', () => {
       expect(cpu.iram[r]).toBe(dir);
     });
 
-    test(`@R1,#imm`, () => {
+    test(`@R${r},#imm`, () => {
       const v = 0x43;
       const notV = v ^ 0xFF;
       const dir = 0x42;
@@ -830,7 +830,7 @@ describe('op:MOV', () => {
       expect(cpu.iram[r]).toBe(dir);
     });
 
-    test(`@R1,dir`, () => {
+    test(`@R${r},dir`, () => {
       const v = 0x43;
       const notV = v ^ 0xFF;
       const ddir = 0x71;
@@ -848,6 +848,25 @@ describe('op:MOV', () => {
       expect(cpu.PC).toBe(0x1002);
       expect(cpu.PSW).toBe(0);
       expect(cpu.ACC).toBe(notV);
+      expect(cpu.iram[r]).toBe(ddir);
+      expect(cpu.iram[ddir]).toBe(v);
+    });
+
+    test(`@R${r},A`, () => {
+      const v = 0x43;
+      const notV = v ^ 0xFF;
+      const ddir = 0x71;
+      clearIRAM();
+      putCode(0x1000, 0xF6 | r);        // MOV @Ri,A
+      cpu.ACC = v;
+      cpu.PSW = 0;
+      cpu.iram[r] = ddir;
+      cpu.iram[ddir] = notV;
+
+      cpu.run1(0x1000);               // MOV
+      expect(cpu.PC).toBe(0x1001);
+      expect(cpu.PSW).toBe(0);
+      expect(cpu.ACC).toBe(v);
       expect(cpu.iram[r]).toBe(ddir);
       expect(cpu.iram[ddir]).toBe(v);
     });
@@ -1119,25 +1138,49 @@ describe.each([
   [0x0048, 0x87],
 ]) ('op:MOVX',
   (addr, v)  => {
-    test(`A,@R1 addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
-      clearCode();
-      clearIRAM();
-      clearXRAM();
-      putCode(0x100, 0xE3);       // MOVX A,@R1
-      cpu.PSW = 0;
-      cpu.ACC = 0x99;
-      cpu.P2 = addr >>> 8;
-      cpu.iram[1] = addr & 0xFF;
-      cpu.xram[addr] = v;
+    _.range(0,2).forEach(r => {
+      test(`A,@R${r} addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
+        clearCode();
+        clearIRAM();
+        clearXRAM();
+        putCode(0x100, 0xE2 + r);       // MOVX A,@Rr
+        cpu.PSW = 0;
+        cpu.ACC = 0x99;
+        cpu.P2 = addr >>> 8;
+        cpu.iram[r] = addr & 0xFF;
+        cpu.xram[addr] = v;
 
-      cpu.run1(0x100);              // MOVX
-      expect(cpu.PC).toBe(0x101);
-      expect(cpu.ACC).toBe(v);
-      expect(cpu.P2).toBe(addr >>> 8);
-      expect(cpu.iram[1]).toBe(addr & 0xFF);
-      expect(cpu.CY).toBe(0);
-      expect(cpu.AC).toBe(0);
-      expect(cpu.OV).toBe(0);
+        cpu.run1(0x100);              // MOVX
+        expect(cpu.PC).toBe(0x101);
+        expect(cpu.ACC).toBe(v);
+        expect(cpu.P2).toBe(addr >>> 8);
+        expect(cpu.iram[r]).toBe(addr & 0xFF);
+        expect(cpu.CY).toBe(0);
+        expect(cpu.AC).toBe(0);
+        expect(cpu.OV).toBe(0);
+      });
+      
+      test(`@R${r},A addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
+        clearCode();
+        clearIRAM();
+        clearXRAM();
+        putCode(0x100, 0xF2 + r);       // MOVX @Rr,A
+        cpu.PSW = 0;
+        cpu.ACC = v;
+        cpu.P2 = addr >>> 8;
+        cpu.iram[r] = addr & 0xFF;
+        cpu.xram[addr] = v;
+
+        cpu.run1(0x100);              // MOVX
+        expect(cpu.PC).toBe(0x101);
+        expect(cpu.ACC).toBe(v);
+        expect(cpu.P2).toBe(addr >>> 8);
+        expect(cpu.iram[r]).toBe(addr & 0xFF);
+        expect(cpu.xram[addr]).toBe(v);
+        expect(cpu.CY).toBe(0);
+        expect(cpu.AC).toBe(0);
+        expect(cpu.OV).toBe(0);
+      });
     });
 
     test(`A,@DPTR addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
@@ -1154,28 +1197,6 @@ describe.each([
       expect(cpu.PC).toBe(0x101);
       expect(cpu.ACC).toBe(v);
       expect(cpu.DPTR).toBe(addr);
-      expect(cpu.CY).toBe(0);
-      expect(cpu.AC).toBe(0);
-      expect(cpu.OV).toBe(0);
-    });
-
-    test(`@R1,A addr=${toHex4(addr)},v=${toHex2(v)} `, () => {
-      clearCode();
-      clearIRAM();
-      clearXRAM();
-      putCode(0x100, 0xF3);       // MOVX @R1,A
-      cpu.PSW = 0;
-      cpu.ACC = v;
-      cpu.P2 = addr >>> 8;
-      cpu.iram[1] = addr & 0xFF;
-      cpu.xram[addr] = v;
-
-      cpu.run1(0x100);              // MOVX
-      expect(cpu.PC).toBe(0x101);
-      expect(cpu.ACC).toBe(v);
-      expect(cpu.P2).toBe(addr >>> 8);
-      expect(cpu.iram[1]).toBe(addr & 0xFF);
-      expect(cpu.xram[addr]).toBe(v);
       expect(cpu.CY).toBe(0);
       expect(cpu.AC).toBe(0);
       expect(cpu.OV).toBe(0);
@@ -2897,22 +2918,22 @@ describe('op:XCH', () => {
 
 describe('op:XCHD', () => {
 
-  test('A,@R1', () => {
+  _.range(0,2).forEach(r => test('A,@R${r}', () => {
     const dir = 0x42;
     clearIRAM();
-    putCode(0x100, 0xD7);     // XCHD A,@R1
-    cpu.iram[1] = dir;
+    putCode(0x100, 0xD6 + r);     // XCHD A,@Rr
+    cpu.iram[r] = dir;
     cpu.iram[dir] = 0x75;
     cpu.ACC = 0x32;
     cpu.PSW = 0;
 
     cpu.run1(0x100);            // XCHD
     expect(cpu.PC).toBe(0x101);
-    expect(cpu.iram[1]).toBe(dir);
+    expect(cpu.iram[r]).toBe(dir);
     expect(cpu.iram[dir]).toBe(0x72);
     expect(cpu.ACC).toBe(0x35);
     expect(cpu.PSW).toBe(0);
-  });
+  }));
 });
 
 
