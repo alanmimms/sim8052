@@ -792,11 +792,13 @@ function displayableBit(ba) {
 function displayableAddress(x, space = 'c') {
   const [closestSym, closestOffset] = findClosestSymbol(x, space);
 
+  const toHex = (space === 'c' || space === 'x') ? toHex4 : toHex2;
+
   if (closestSym) {
-    return closestSym.name + (closestOffset ? "+" + toHex4(closestOffset) : "") +
-      `=${toHex4(x)}`;
+    return closestSym.name + (closestOffset ? "+" + toHex(closestOffset) : "") +
+      `=${toHex(x)}`;
   } else {
-    return toHex4(x) + 'H';
+    return toHex(x) + 'H';
   }
 }
 
