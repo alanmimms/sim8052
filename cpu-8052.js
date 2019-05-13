@@ -494,7 +494,7 @@ ${list.length} ops unimplemented`;})()}`);
         nBytes,
 
         f: C => {
-          const rel = C.code[(C.opPC + 2) & 0xFFFF];
+          const rel = C.code[(C.opPC + nBytes - 1) & 0xFFFF];
           C.PC = (C.PC + nBytes) & 0xFFFF;
           let b = getF();
           if (put0) putBIT(0);
