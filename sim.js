@@ -16,12 +16,6 @@ const {CPU8052} = require('./cpu-8052');
 const {toHex1, toHex2, toHex4} = require('./simutils');
 
 
-// Table of opcode information and handlers for disassembly and
-// function for simulation of the instruction whose opcode is the
-// index.
-const {opcodes} = require('./8052-insn');
-
-
 const debugBASIC2 = false;
 const debugTB51 = true;
 
@@ -555,15 +549,6 @@ ${_.range(0, 8)
     this.fetchHistoryX = (this.fetchHistoryX + 1) & this.fetchHistoryMask;
     this.fetchHistory[this.fetchHistoryX] = this.pc;
 
-    const op = code[insnPC];
-    const ope = opcodes[op];
-
-    if (!ope) {
-      console.error(`pc=${insnPC}=${toHex4(insnPC)}, op=${op}=${toHex2(op)} is undefined`);
-      this.dumpFetchHistory();
-      debugger;
-    }
-
     cpu.run1(this.pc);
     ++this.instructionsExecuted;
   },
@@ -852,7 +837,6 @@ function doList(words) {
 
   if (words.length < 2) {
     const op = cpu.code[lastX];
-    const ope = opcodes[op];
     x = lastX + ope.n;
   } else {
     x = getAddress(words);
@@ -1378,7 +1362,6 @@ if (require.main === module) {
   else
     doGo(['go']);
 } else {
-  module.exports.opcodes = opcodes;
   module.exports.toHex2 = toHex2;
   module.exports.toHex4 = toHex4;
   module.exports.cpu = cpu;
