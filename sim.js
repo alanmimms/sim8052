@@ -1212,10 +1212,6 @@ node ${argv[0]} hex-file-name lst-file-name`);
     process.exit(1);
   }
 
-  const insnJSStat = fs.statSync("./8052-insn.js");
-  const insnStat = fs.statSync("./8052.insn");
-  if (insnStat && insnStat.mtime > insnJSStat.mtime) usageExit(`You need to run yarn build`);
-
   if (argv.length < 2 || argv.length > 3) usageExit('[missing parameter]');
 
   const hexName = argv[1];
