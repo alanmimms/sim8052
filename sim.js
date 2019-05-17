@@ -396,6 +396,7 @@ const sim = {
 
       case cpu.P3.addr:
         cpu.P3 ^= 1;          // Fake RxD toggling
+        console.log(`Toggle P3 now ${toHex2(cpu.P3)}`);
         return cpu.P3;
 
       case cpu.SCON.addr:
@@ -1353,6 +1354,7 @@ node ${argv[0]} hex-file-name lst-file-name`);
 if (require.main === module) {
   setupSimulator();
   cpu = new CPU8052(code, xram);
+  cpu.P3 = 1;               // "Pullup resistor" so that TB51 BASIC does not RUNROM
 
   console.log('[Control-\\ will interrupt execution and return to prompt]');
 
