@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --no-deprecation
 'use strict';
 
 // TOOD: Move SFR emulation stuff into CPU class and make callbacks to
@@ -6,6 +6,9 @@
 
 // For `put` style functions, convention is put(address, value).
 // For `get` convention is get(address).
+
+// Make sure we do not use deprecated (and noisy) old new Buffer(n) API.
+var Buffer = require('safe-buffer').Buffer;
 
 const fs = require('fs');
 const util = require('util');

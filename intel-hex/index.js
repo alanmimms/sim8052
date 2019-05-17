@@ -1,3 +1,5 @@
+var Buffer = require('safe-buffer').Buffer;
+
 //Intel Hex record types
 const DATA = 0,
 	END_OF_FILE = 1,
