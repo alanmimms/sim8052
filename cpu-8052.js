@@ -31,17 +31,21 @@ module.exports.DIRtoSFR = DIRtoSFR;
 
 class SFR {
 
-  constructor(name, addr, cpu, resetValue, defineProps) {
+  // This uses the class property `options` to define wrappers for
+  // getters and setters for the SFR values so the simulator can
+  // simulated connected peripherals and passing time and such.
+  constructor(name, addr, cpu, resetValue) {
     this.name = name;
     this.addr = +addr;
     this.cpu = cpu;
     this.resetValue = resetValue || 0x00;
     DIRtoSFR[addr] = name;
-    this.defineGetSet(cpu, name);
+    this.defineGetSet(cpu, name, SFR.options[name]);
   }
 
 
-  defineGetSet(cpu, name) {
+  defineGetSet(cpu, name, options) {
+    console.log(`${name} options=${util.inspect(options)}`);
 
     Object.defineProperty(cpu, name, {
 
@@ -56,6 +60,8 @@ class SFR {
     });
   }
 };
+
+module.exports.SFR = SFR;
 
 
 // This class is for SFRs where the bits are kept separately as flags
@@ -95,8 +101,10 @@ class BitFieldSFR extends SFR {
   }
 
 
-   defineGetSet(cpu, name) {
+  defineGetSet(cpu, name, options) {
     const sfr = this;
+
+    console.log(`${name} options=${util.inspect(options)}`);
 
     Object.defineProperty(cpu, name, {
 
@@ -118,13 +126,15 @@ class BitFieldSFR extends SFR {
 
 class CPU8052 {
 
-  constructor(code, xram) {
+  constructor(code, xram, sfrOptions = {}) {
     const C = this;
 
     C.code = code || Buffer.alloc(0x10000, 0x00, 'binary');
     C.xram = xram || Buffer.alloc(0x10000, 0x00, 'binary');
     C.iram = Buffer.alloc(0x100, 0x00, 'binary');
     C.SFR = {};
+
+    SFR.options = sfrOptions;
 
     C.SFRs = {
       PSW: new BitFieldSFR('PSW', 0xD0, 'cy ac f0 rs1 rs0 ov ud p', C),
