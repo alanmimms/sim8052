@@ -1350,11 +1350,77 @@ node ${argv[0]} hex-file-name lst-file-name`);
 }
 
 
+const parityTable = [
+  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
+  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
+  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
+  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
+  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
+  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
+  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
+  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
+];
+
+
+// This is fill of properties named for SFRs whose get/set behavior
+// needs to be wrapped by the simulation. Each property has object
+// value with `get` and/or `set` properties which are functions to
+// wrap the get/set function in CPU8052.
+const sfrOptions = {
+
+  PSW: {
+
+    get(v) {
+      // Update parity before returning PSW
+      if (parityTable[cpu.ACC]) v |= this.cpu.PMask;
+      return v;
+    },
+  },
+
+
+  P3: {
+
+    get(v) {
+      this.cpu.SFR.P3 ^= 1;          // Fake RxD toggling
+      console.log(`Toggle P3 now ${toHex2(cpu.P3)}`);
+      return this.cpu.SFR.P3;
+    },
+  },
+
+
+  SCON: {
+
+    get(v) {
+      if (sbufQueue.length !== 0) v |= this.cpu.RIMask;
+      return v;
+    },
+  },
+
+
+  SBUF: {
+
+    get(v) {
+      return sbufQueue.length ? sbufQueue.shift() : 0x00;
+    },
+
+    set(v) {
+      process.stdout.write(String.fromCharCode(v));
+
+      // Transmitting a character immediately signals TI saying it is done.
+      this.cpu.TI = 1;
+
+      // TODO: Make this do an interrupt
+      return v;
+    },
+  },
+};
+
+
 // Only start the thing if we are not loaded via require.
 if (require.main === module) {
   setupSimulator();
-  cpu = new CPU8052(code, xram);
-  cpu.P3 = 1;               // "Pullup resistor" so that TB51 BASIC does not RUNROM
+  cpu = new CPU8052(code, xram, sfrOptions);
+  cpu.P3 = 1;               // "Pullup resistor" on RxD so TB51 BASIC does not RUNROM
 
   console.log('[Control-\\ will interrupt execution and return to prompt]');
 

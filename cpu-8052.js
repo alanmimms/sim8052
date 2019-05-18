@@ -14,18 +14,6 @@ const {toHex1, toHex2, toHex4} = require('./simutils');
 // get. A set changes the value of the property on the CPU8052 object
 // for an SFR and disaggregates the bit flag values for a BitFieldSFR.
 
-const parityTable = [
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,
-  1,0,0,1,0,1,1,0,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,1,0,0,1,0,1,1,0,
-];
-
-
 const DIRtoSFR = [];
 module.exports.DIRtoSFR = DIRtoSFR;
 
@@ -40,22 +28,25 @@ class SFR {
     this.cpu = cpu;
     this.resetValue = resetValue || 0x00;
     DIRtoSFR[addr] = name;
-    this.defineGetSet(cpu, name, SFR.options[name]);
+    this.defineGetSet(cpu, name, SFR.options[name] || {});
   }
 
 
   defineGetSet(cpu, name, options) {
+    const sfr = this;
+
     console.log(`${name} options=${util.inspect(options)}`);
 
     Object.defineProperty(cpu, name, {
 
       get: function() {
-        const v = cpu.SFR[name];
-        return v;
+        const v = cpu.SFRvalue[name];
+        return options.get ? options.get.call(sfr, v) : v;
       },
 
       set: function(v) {
-        cpu.SFR[name] = v;
+        v = options.set ? options.set.call(sfr, v) : v;
+        cpu.SFRvalue[name] = v;
       },
     });
   }
@@ -109,14 +100,12 @@ class BitFieldSFR extends SFR {
     Object.defineProperty(cpu, name, {
 
       get: function() {
-        return sfr.bitNames.reduce((a, bit, x) => {
-          a |= cpu[bit] << x;
-//          console.log(`get ${name}.${bit} = ${cpu[bit]}  a=${toHex2(a)}  x=${x}`);
-          return a;
-        }, 0);
+        const v = sfr.bitNames.reduce((a, bit, x) => a | cpu[bit] << x, 0);
+        return options.get ? options.get.call(sfr, v) : v;
       },
 
       set: function(v) {
+        v = options.set ? options.set.call(sfr, v) : v;
         sfr.bitNames.forEach((bit, x) => cpu[bit] = +!!(v & (1 << x)));
       },
     });
@@ -132,7 +121,7 @@ class CPU8052 {
     C.code = code || Buffer.alloc(0x10000, 0x00, 'binary');
     C.xram = xram || Buffer.alloc(0x10000, 0x00, 'binary');
     C.iram = Buffer.alloc(0x100, 0x00, 'binary');
-    C.SFR = {};
+    C.SFRvalue = {};
 
     SFR.options = sfrOptions;
 
