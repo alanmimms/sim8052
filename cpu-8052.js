@@ -513,9 +513,8 @@ ${list.length} ops unimplemented`;})()}`);
 
       genSimple('ACALL', p << 5 | 0x11, 2, C => {
         const lo = C.code[(C.opPC + 1) & 0xFFFF];
-        let pc = (C.PC + 2) & 0xFFFF;
-        C.push16(pc);
-        C.PC = (pc & 0xF800) | p << 8 | lo;
+        C.push16(C.PC);
+        C.PC = (C.PC & 0xF800) | p << 8 | lo;
       });
     }
 
