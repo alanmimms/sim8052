@@ -346,69 +346,6 @@ const sim = {
   branchHistoryX: -1,           // Always points to most recent entry
 
 
-  // Direct accesses in 0x00..0x7F are internal RAM.
-  // Above that, direct accesses are to SFRs.
-  DIR: new Proxy(iram, {
-
-    set(target, ea, value) {
-      ea = +ea;                 // Proxy always gets `property` parameter as string
-
-      if (ea < 0x80) {
-        iram[ea] = value;
-      } else {
-
-        switch (ea) {
-        case cpu.SBUF.addr:
-          process.stdout.write(String.fromCharCode(value));
-
-          // Transmitting a character immediately signals TI saying it is done.
-          cpu.TI = 1;
-
-          // TODO: Make this do an interrupt
-          break;
-
-        default:
-          cpu.SFR[ea] = value;
-          break;
-        }
-      }
-
-      return true;
-    },
-
-    get(target, ea) {
-      let v;
-
-      ea = +ea;                 // Proxy always gets `property` parameter as string
-
-      if (ea < 0x80) {
-        return iram[ea];
-      }        
-
-      switch (ea) {
-      case cpu.SBUF.addr:
-        return sbufQueue.length ? sbufQueue.shift() : 0x00;
-
-      case cpu.PSW.addr:
-        // Update parity before returning PSW
-        cpu.P = parityTable[cpu.ACC];
-        return cpu.PSW;
-
-      case cpu.P3.addr:
-        cpu.P3 ^= 1;          // Fake RxD toggling
-        console.log(`Toggle P3 now ${toHex2(cpu.P3)}`);
-        return cpu.P3;
-
-      case cpu.SCON.addr:
-        return cpu.SCON.RI = +(sbufQueue.length !== 0);
-
-      default:
-        return cpu.SFR[ea];
-      }
-    }
-  }),
-
-
   bitName(bn) {
     bn = +bn;
 
