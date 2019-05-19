@@ -464,7 +464,6 @@ ${briefState(bh.state)}`);
 
     if (!ope || !ope.nBytes) {
       console.log(`Undefined opcodes[${toHex2(op)}] pc=${toHex4(pc)}`);
-//      this.dumpFetchHistory();
     }
 
     const nextPC = pc + ope.nBytes;
@@ -1381,9 +1380,11 @@ const sfrOptions = {
   P3: {
 
     get(v) {
-      this.cpu.SFR.P3 ^= 1;          // Fake RxD toggling
-      console.log(`Toggle P3 now ${toHex2(cpu.P3)}`);
-      return this.cpu.SFR.P3;
+      const was = v;
+      v ^= 1;          // Fake RxD toggling
+      cpu.P3 = v;
+      console.log(`Toggle P3 was ${toHex2(was)}, now ${toHex2(v)}`);
+      return v;
     },
   },
 
@@ -1420,7 +1421,6 @@ const sfrOptions = {
 if (require.main === module) {
   setupSimulator();
   cpu = new CPU8052(code, xram, sfrOptions);
-  cpu.P3 = 1;               // "Pullup resistor" on RxD so TB51 BASIC does not RUNROM
 
   console.log('[Control-\\ will interrupt execution and return to prompt]');
 
