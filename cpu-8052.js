@@ -168,6 +168,7 @@ class CPU8052 {
     const putDIR = v => C.setDIR(C.code[(C.opPC + 1) & 0xFFFFF], v);
     const putDIR2 = v => C.setDIR(C.code[(C.opPC + 2) & 0xFFFFF], v);
     const putBIT = v => C.setBIT(C.code[(C.opPC + 1) & 0xFFFF], v);
+    const clearBIT = () => putBIT(0);
     const putR = v => C.setR(C.op & 0x7, v);
     const putRi = v => C.iram[C.getR(C.op & 0x1)] = v;
     const putDPTR = v => {C.DPH = v >>> 8; C.DPL = v};
@@ -315,13 +316,13 @@ class CPU8052 {
     const yesB = b => b;
     const notB = b => !b;
 
-    genJxx('JBC', 0x10, 3, getBIT, true, yesB);
-    genJxx('JB', 0x20, 3, getBIT, false, yesB);
-    genJxx('JNB', 0x30, 3, getBIT, false, notB);
-    genJxx('JC', 0x40, 2, getCY, false, yesB);
-    genJxx('JNC', 0x50, 2, getCY, false, notB);
-    genJxx('JZ', 0x60, 2, getA, false, notB);
-    genJxx('JNZ', 0x70, 2, getA, false, yesB);
+    genJxx('JBC', 0x10, 3, getBIT, clearBIT, yesB);
+    genJxx('JB', 0x20, 3, getBIT, null, yesB);
+    genJxx('JNB', 0x30, 3, getBIT, null, notB);
+    genJxx('JC', 0x40, 2, getCY, null, yesB);
+    genJxx('JNC', 0x50, 2, getCY, null, notB);
+    genJxx('JZ', 0x60, 2, getA, null, notB);
+    genJxx('JNZ', 0x70, 2, getA, null, yesB);
 
     genCJNE('CJNE', 0xB4, 3, getA, getIMM);
     genCJNE('CJNE', 0xB5, 3, getA, getDIR);
@@ -482,7 +483,7 @@ ${list.length} ops unimplemented`;})()}`);
     }
 
 
-    function genJxx(mnemonic, op, nBytes, getF, put0, brTestF) {
+    function genJxx(mnemonic, op, nBytes, getF, putBit, brTestF) {
 
       return C.ops[op] = {
         mnemonic,
@@ -492,7 +493,7 @@ ${list.length} ops unimplemented`;})()}`);
           const rel = C.code[(C.opPC + nBytes - 1) & 0xFFFF];
           C.PC = (C.PC + nBytes) & 0xFFFF;
           let b = getF();
-          if (put0) putBIT(0);
+          if (putBit) putBit();
           if (brTestF(b)) C.PC = (C.PC + toSigned(rel)) & 0xFFFF;
         },
       };
@@ -897,12 +898,12 @@ ${list.length} ops unimplemented`;})()}`);
       }
     } else {
       const ea = bn & 0xF8;
-      const sfr = DIRtoSFR[ea];
+      const sfrName = DIRtoSFR[ea];
 
       if (v) {
-        this[sfr] |= mask;
+        this[sfrName] |= mask;
       } else {
-        this[sfr] &= mask;
+        this[sfrName] &= ~mask;
       }
     }
   }
