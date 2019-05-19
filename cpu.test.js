@@ -449,9 +449,12 @@ test(`op:JBC bit,rel bit=0`, () => {
   expect(cpu.OV).toBe(0);
 });
 
-test(`op:JBC bit,rel bit=1`, () => {
+test(`op:JBC bit,rel bit=1 non-SFR`, () => {
   const bit = 0x42;
   const acBase = 0x55;
+  const dir = 0x20 + (bit >>> 3);
+  const mask = 1 << (bit & 7);
+  const v = 0x5A | mask;
   const rela = -0x13 & 0xFF;
   clearIRAM();
   putCode(0x100, 0x10);       // JBC bit,rela
@@ -459,11 +462,37 @@ test(`op:JBC bit,rel bit=1`, () => {
   putCode(0x102, rela, false);
   cpu.PSW = 0;
   cpu.ACC = acBase;
-  cpu.setBIT(bit, 1);
+  cpu.iram[dir] = v;
 
   cpu.run1(0x100);              // JBC bit,rela
   expect(cpu.PC).toBe(0x103 + toSigned(rela));
   expect(cpu.getBIT(bit)).toBe(0);
+  expect(cpu.iram[dir]).toBe(v & ~mask);
+  expect(cpu.ACC).toBe(acBase);
+  expect(cpu.CY).toBe(0);
+  expect(cpu.AC).toBe(0);
+  expect(cpu.OV).toBe(0);
+});
+
+test(`op:JBC bit,rel bit=1 SFR`, () => {
+  const bit = 0xF3;             // SFR name is 'B'
+  const dir = bit & 0xF8;
+  const acBase = 0x55;
+  const mask = 1 << (bit ^ dir);
+  const v = 0x5A | mask;
+  const rela = -0x13 & 0xFF;
+  clearIRAM();
+  putCode(0x100, 0x10);       // JBC bit,rela
+  putCode(0x101, bit, false);
+  putCode(0x102, rela, false);
+  cpu.PSW = 0;
+  cpu.ACC = acBase;
+  cpu.B = v;
+
+  cpu.run1(0x100);              // JBC bit,rela
+  expect(cpu.PC).toBe(0x103 + toSigned(rela));
+  expect(cpu.getBIT(bit)).toBe(0);
+  expect(cpu.B).toBe(v & ~mask);
   expect(cpu.ACC).toBe(acBase);
   expect(cpu.CY).toBe(0);
   expect(cpu.AC).toBe(0);
