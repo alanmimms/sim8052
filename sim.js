@@ -222,7 +222,7 @@ const disOp = [
   "1:bit",              // B2 CPL:2
   "C",                  // B3 CPL:1
   "A,1:immed,2:rela",   // B4 CJNE:3
-  "A,1:dir,2:rela",     // B5 CJNE:3
+  "A,1:direct,2:rela",  // B5 CJNE:3
   "@Ri,1:immed,2:rela", // B6 CJNE:3
   "@Ri,1:immed,2:rela", // B7 CJNE:3
   "Ri,1:immed,2:rela",  // B8 CJNE:3
@@ -432,9 +432,8 @@ ${briefState(bh.state)}`);
           .map(opnd => {
             let [offset, handler] = opnd.split(/:/);
             handler = handler || opcodeHandlers[offset] || 'verbatum';
-            return {handler, offset};
+            return handlers[handler](offset);
           })
-          .map(x => handlers[x.handler](x.offset))
           .join(',');
 
     return `\
