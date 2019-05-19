@@ -1308,7 +1308,7 @@ const sfrOptions = {
 
     get(v) {
       // Update parity before returning PSW
-      if (parityTable[cpu.ACC]) v |= this.cpu.PMask;
+      if (parityTable[cpu.ACC]) v |= this.cpu.pMask;
       return v;
     },
   },
@@ -1329,7 +1329,7 @@ const sfrOptions = {
   SCON: {
 
     get(v) {
-      if (sbufQueue.length !== 0) v |= this.cpu.RIMask;
+      if (sbufQueue.length !== 0) v |= this.cpu.riMask;
       return v;
     },
   },
