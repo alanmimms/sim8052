@@ -35,8 +35,6 @@ class SFR {
   defineGetSet(cpu, name, options) {
     const sfr = this;
 
-    console.log(`${name} options=${util.inspect(options)}`);
-
     Object.defineProperty(cpu, name, {
 
       get: function() {
@@ -94,8 +92,6 @@ class BitFieldSFR extends SFR {
 
   defineGetSet(cpu, name, options) {
     const sfr = this;
-
-    console.log(`${name} options=${util.inspect(options)}`);
 
     Object.defineProperty(cpu, name, {
 
@@ -505,8 +501,7 @@ ${list.length} ops unimplemented`;})()}`);
 
     function genAJMP(p) {
 
-      // Note nBytes=0 here since this is a JMP instruction
-      genSimple('AJMP', p << 5 | 0x01, 0, C => {
+      genSimple('AJMP', p << 5 | 0x01, 2, C => {
         const lo = C.code[(C.opPC + 1) & 0xFFFF];
         C.PC = ((C.PC + 2) & 0xF800) | (p << 8) | lo;
       });
@@ -515,8 +510,7 @@ ${list.length} ops unimplemented`;})()}`);
 
     function genACALL(p) {
 
-      // Note nBytes=0 here since this is a JMP instruction
-      genSimple('ACALL', p << 5 | 0x11, 0, C => {
+      genSimple('ACALL', p << 5 | 0x11, 2, C => {
         const lo = C.code[(C.opPC + 1) & 0xFFFF];
         let pc = (C.PC + 2) & 0xFFFF;
         C.push16(pc);
