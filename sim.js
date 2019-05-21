@@ -185,7 +185,7 @@ const disOp = [
   "1:direct,Ri",        // 8D MOV:2
   "1:direct,Ri",        // 8E MOV:2
   "1:direct,Ri",        // 8F MOV:2
-  "1:immed16",          // 90 MOV:3
+  "DPTR,1:immed16",     // 90 MOV:3
   "1:addr11",           // 91 ACALL:2
   "1:bit,C",            // 92 MOV:2
   "A,@A+DPTR",          // 93 MOVC:1
