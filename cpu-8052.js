@@ -355,16 +355,16 @@ class CPU8052 {
     const doDEC = v => (v - 1) & 0xFF;
 
 
-    genINCDEC('DEC', 0x14, 1, getA, putA, doDEC);
-    genINCDEC('DEC', 0x15, 2, getDIR, putDIR, doDEC);
-    _.range(8).forEach(r => genINCDEC('DEC', 0x18 + r, 1, getR, putR, doDEC));
-    _.range(2).forEach(i => genINCDEC('DEC', 0x16 + i, 1, getRi, putRi, doDEC));
+    genINCDEC('DEC', 0x14, 1, getA, doDEC, putA);
+    genINCDEC('DEC', 0x15, 2, getDIR, doDEC, putDIR);
+    _.range(8).forEach(r => genINCDEC('DEC', 0x18 + r, 1, getR, doDEC, putR));
+    _.range(2).forEach(i => genINCDEC('DEC', 0x16 + i, 1, getRi, doDEC, putRi));
 
-    genINCDEC('INC', 0x04, 1, getA, putA, doINC);
-    genINCDEC('INC', 0x05, 2, getDIR, putDIR, doINC);
-    _.range(8).forEach(r => genINCDEC('INC', 0x08 + r, 1, getR, putR, doINC));
-    _.range(2).forEach(i => genINCDEC('INC', 0x06 + i, 1, getRi, putRi, doINC));
-    genINCDEC('INC', 0xA3, 1, getDPTR, putDPTR, doINC16);
+    genINCDEC('INC', 0x04, 1, getA, doINC, putA);
+    genINCDEC('INC', 0x05, 2, getDIR, doINC, putDIR);
+    _.range(8).forEach(r => genINCDEC('INC', 0x08 + r, 1, getR, doINC, putR));
+    _.range(2).forEach(i => genINCDEC('INC', 0x06 + i, 1, getRi, doINC, putRi));
+    genINCDEC('INC', 0xA3, 1, getDPTR, doINC16, putDPTR);
 
     _.range(8).forEach(r => genMOV('MOV', 0xE8 + r, 1, getR, putA));
     genMOV('MOV', 0xE5, 2, getDIR, putA);
@@ -437,7 +437,7 @@ ${list.length} ops unimplemented`;})()}`);
     }
     
 
-    function genINCDEC(mnemonic, op, nBytes, getV, putV, opF) {
+    function genINCDEC(mnemonic, op, nBytes, getV, opF, putV) {
       
       return C.ops[op] = {
         mnemonic,
