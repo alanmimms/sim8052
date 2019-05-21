@@ -44,7 +44,7 @@ class SFR {
 
       set: function(v) {
         v = options.set ? options.set.call(sfr, v) : v;
-        cpu.SFRvalue[name] = v;
+        cpu.SFRvalue[name] = v & 0xFF;
       },
     });
   }
