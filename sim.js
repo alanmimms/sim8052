@@ -1319,7 +1319,6 @@ const sfrOptions = {
       const was = v;
       v ^= 1;          // Fake RxD toggling
       cpu.P3 = v;
-      console.log(`Toggle P3 was ${toHex2(was)}, now ${toHex2(v)}`);
       return v;
     },
   },
