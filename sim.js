@@ -1151,10 +1151,19 @@ node ${argv[0]} hex-file-name lst-file-name`);
     process.exit(1);
   }
 
+
+  function findFile(hint, ext) {
+    if (fs.existsSync(hint)) return hint;
+    if (fs.existsSync(hint + ext)) return hint + ext;
+    if (fs.existsSync(hint + ext.toLowerCase())) return hint + ext.toLowerCase();
+    return null;
+  }
+  
+
   if (argv.length < 2 || argv.length > 3) usageExit('[missing parameter]');
 
-  const hexName = argv[1];
-  const lstName = argv[2] || (hexName.split(/\./).slice(0, -1).join('.') + '.LST');
+  const hexName = findFile(argv[1], '.HEX');
+  const lstName = findFile(argv[2] || hexName.split(/\./).slice(0, -1).join('.'), '.LST');
   let hex, sym;
 
   try {
