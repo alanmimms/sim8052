@@ -1,4 +1,3 @@
-#!/usr/bin/env -S node --no-deprecation
 'use strict';
 
 // TOOD: Move SFR emulation stuff into CPU class and make callbacks to
@@ -1156,6 +1155,7 @@ node ${argv[0]} hex-file-name lst-file-name`);
     if (fs.existsSync(hint)) return hint;
     if (fs.existsSync(hint + ext)) return hint + ext;
     if (fs.existsSync(hint + ext.toLowerCase())) return hint + ext.toLowerCase();
+    usageExit(`Missing ${ext} file or file name`);
     return null;
   }
   
