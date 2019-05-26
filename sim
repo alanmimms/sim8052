@@ -1,1 +1,2 @@
-sim.js
+#!/bin/bash
+exec node --no-deprecation ./sim.js "$@"
