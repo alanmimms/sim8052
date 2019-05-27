@@ -588,12 +588,12 @@ const commands = [
 
   {name: 'sfr',
    description: 'Display SFR at specified address.',
-   doFn: words => doDumpMem(cpu.SFR, cpu.SFR.length, words),
+   doFn: words => doDumpMem(cpu.aSFR, 0x100, words),
   },
 
   {name: 'iram',
    description: 'Display IRAM at specified address.',
-   doFn: words => doDumpMem(cpu.iram, cpu.iram.length, words),
+   doFn: words => doDumpMem(cpu.iram, 0x100, words),
   },
 
   {name: 'list',

@@ -150,6 +150,20 @@ class CPU8052 {
       PCON: new BitFieldSFR('PCON', 0x87, 'smod . . . gf1 gf0 pd idl', C),
     };
 
+
+    C.aSFR = new Proxy({}, {
+
+      get: function(target, ea) {
+        return C[DIRtoSFR[+ea]];
+      },
+
+      set: function(target, ea, v) {
+        C[DIRtoSFR[+ea]] = v;
+        return true;
+      },
+    });
+
+
     C.ops = [];
     C.reset();
     C.ipl = -1;
@@ -852,7 +866,7 @@ ${list.length} ops unimplemented`;})()}`);
   // and access the appropriate SFRs member instance where needed.
   getDIR(ea) {
     ea = +ea;
-    const v = ea < 0x80 ? this.iram[ea] : this[DIRtoSFR[ea]];
+    const v = ea < 0x80 ? this.iram[ea] : this.aSFR[ea];
     return v;
   }
 
@@ -862,8 +876,7 @@ ${list.length} ops unimplemented`;})()}`);
     if (ea < 0x80)
       this.iram[ea] = v;
     else {
-      const sfr = DIRtoSFR[ea];
-      this[sfr] = v;
+      this.aSFR[ea] = v;
     }
   };
 
@@ -879,7 +892,7 @@ ${list.length} ops unimplemented`;})()}`);
       return +!!(this.iram[ea] & mask);
     } else {
       const ea = bn & 0xF8;
-      return +!!(this[DIRtoSFR[ea]] & mask);
+      return +!!(this.aSFR[ea] & mask);
     }
   }
 
@@ -897,12 +910,11 @@ ${list.length} ops unimplemented`;})()}`);
       }
     } else {
       const ea = bn & 0xF8;
-      const sfrName = DIRtoSFR[ea];
 
       if (v) {
-        this[sfrName] |= mask;
+        this.aSFR[ea] |= mask;
       } else {
-        this[sfrName] &= ~mask;
+        this.aSFR[ea] &= ~mask;
       }
     }
   }
