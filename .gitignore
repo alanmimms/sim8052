@@ -3,7 +3,4 @@
 node_modules
 yarn-error.log
 debugout.txt
-ast.log
-handlers.log
-8052-insn.js
 other-sims/emu8051
