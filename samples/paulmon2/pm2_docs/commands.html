@@ -1,0 +1,251 @@
+<head>
+<title>PAULMON2 Docs, Standard Commands</title>
+</head>
+<body>
+
+<a href="index.html">
+<img align=right src="/~paul/icons/up.gif" height=37 width=34>
+</a>
+
+<center>
+<font size=+2><b>PAULMON2</b></font>
+<br><font size=+1>Standard Commands</font>
+</center>
+<hr>
+
+
+PAULMON2 has nine built-in commands.  The keys assigned to each
+command can be configured when PAULMON2 is assembled.  The letters
+shown here represent the default keys for each command
+<dl>
+
+<a name="m">
+<dt><b>M</b> - List programs
+<dd>
+Attempt to locate programs in memory and display a list.  To find
+a program, if must have a 64 byte program header.  For example:
+<pre>
+PAULMON2 (beta4) Loc:0100 > List programs
+
+Program Name                     Location      Type
+  List                             1000      External command
+  Single-Step                      1400      External command
+  On-Line Docs                     1700      External command
+</pre>
+
+<a name="r">
+<dt><b>R</b> - Run program
+<dd>
+Allows you to run programs which have a 64 byte header indicating
+they are programs.  This provides a simple means to run a program
+without having to specify which memory location to jump to.  For
+programs without the 64 byte header, use the
+<a href="#j">Jump</a> command.  While the program is running,
+it has complete control over the processor... PAULMON2 is not
+still running.  If the program crashes (infinite loop), the only
+way to return to PAULMON2 is to reset the processor. 
+<p>
+
+<a name="d">
+<dt><b>D</b> - Download
+<dd>
+The download command allows PAULMON2 to receive an Intel-Hex file,
+which is written into memory as it is received.  After executing
+this command, you need to transmit your intel-hex file to PAULMON2.
+Since the Intel-Hex is a text only format, the ascii-send feature
+in your terminal emulation program should work.  A protocol such
+as xmodem or zmodem should not be used.  The Intel-Hex format includes
+information specifing where the data is to be written into memory,
+so the memory pointer value is not used.
+<p>
+When downloading to RAM,
+PAULMON2 can accept data at the maximum possible rate, so it is
+not necessary to use character pacing or other delays.  To abort
+a download, just press <ESC>.  As PAULMON2 receives each line of
+Intel-Hex data, it prints a period.  When a download is finished or
+aborted, a brief summary is shown.
+<pre>
+PAULMON2 (beta4) Loc:2000 > Download
+
+Begin ascii transfer of Intel hex file, or ESC to abort
+
+........................................................................
+........................................................................
+........................................................................
+.................................
+Download completed
+
+Summary:
+ 249  lines received
+ 3923  bytes received
+ 3923  bytes written
+No errors detected
+</pre>
+If the download command reports errors attempting to write, such as:
+<pre>
+Summary:
+ 246  lines received
+ 3834  bytes received
+ 630  bytes written
+Errors:
+ 3204  bytes unable to write
+</pre>
+then it has correctly received the Intel-Hex, but the memory which
+was specifed by the Intel-Hex file is read-only.  In this example,
+many of the read-only memory locations contained the same data
+(because it was a new
+revision of the same code), so PAULMON2 verfied 630 of the bytes
+as correctly written.
+<p>
+When PAULMON2 received a corrupted input, a summary similar to
+this will be printed:
+<pre>
+Summary:
+ 3  lines received
+ 62  bytes received
+ 62  bytes written
+Errors:
+ 1  bad checksums
+ 2  unexpected begin of line
+ 17  unexpected hex digits
+ 2  unexpected non hex digits
+</pre>
+
+<a name="u">
+<dt><b>U</b> - Upload
+<dd>
+The upload command allows you to specify a portion of memory which
+is to be transmitted to your computer in Intel-Hex format.  After the
+memory range is specified, PAULMON2 prompts for a keypress before
+transmitting, so you can activate a "capture" feature in your
+terminal emulation program to save the incoming data to disk.  A
+typical upload may look like this:
+<pre>
+PAULMON2 (beta4) Loc:0100 > Upload
+
+First Location: 0000
+Last Location:  003A
+
+Sending Intel hex file from  0000  to  003A
+Press any key: 
+:100000000208A60220037420116A2202200B742D1C
+:10001000116A22022013020A72FFFF02201BFFFF57
+:10002000FFFFFF0220230209AAFFFF02202B216EFF
+:0B003000016A0162215D217F218C012B
+:00000001FF
+</pre>
+
+<a name="n">
+<dt><b>N</b> - New location
+<dd>
+This allow you to change the memory pointer:
+<pre>
+PAULMON2 (beta6) Loc:8000 > New location
+
+New memory location: 2C00
+
+PAULMON2 (beta6) Loc:2C00 >
+</pre>
+
+<a name="j">
+<dt><b>J</b> - Jump to memory location
+<dd>
+The Jump command allows you to jump directly to a program.  PAULMON2
+pushes 0000 onto the stack, so a program which terminates with "RET"
+will rerun PAULMON2.  If the program crashes (infinite loop), the
+only way to return to PAULMON2 is to reset the processor.
+<p>
+
+<a name="h">
+<dt><b>H</b> - Hex dump memory
+<dd>
+The Hex Dump command allows you to inspect the external memory.  256
+bytes are printed in hexidecimal and ascii, beginning at the location
+of the memory pointer.  The data is read from code memory (with MOVC).
+<pre>
+PAULMON2 (beta6) Loc:2100 &gt; Hex dump memory
+
+2100: FD 31 3F 40 C6 CD 12 20 6A ED C0 E0 31 1D D0 E0   }1?@FM  jm@`1 P`
+2110: 2A FA E4 3B FB DC B4 C3 8A 82 8B 83 22 EB C4 54   *zd;{\4C    &quot;kDT
+2120: F0 FB EA C4 54 0F 4B FB EA C4 54 F0 FA 22 EA C4   p{jDT K{jDTpz&quot;jD
+2130: 54 0F FA EB C4 54 F0 4A FA EB C4 54 0F FB 22 C3   T zkDTpJzkDT {&quot;C
+2140: C0 F0 94 30 F5 F0 94 0A 40 06 E5 F0 94 07 F5 F0   @p 0up  @ ep  up
+2150: E5 F0 C3 54 F0 60 01 D3 E5 F0 D0 F0 22 C0 E0 C4   epCTp` SepPp&quot;@`D
+2160: 54 0F 24 F6 50 02 24 07 24 3A 11 6A D0 E0 C0 E0   T $vP $ $: jP`@`
+2170: 54 0F 24 F6 50 02 24 07 24 3A 11 6A D0 E0 22 C0   T $vP $ $: jP`&quot;@
+2180: E0 E5 83 31 5D E5 82 31 5D D0 E0 22 C0 E0 E4 93   `e 1]e 1]P`&quot;@`d 
+2190: A3 60 0A A2 E7 54 7F 11 6A 40 02 80 F1 D0 E0 22   #` &quot;gT j@  qP`&quot;
+21A0: 90 2D 50 11 45 EF 31 5D EE 31 5D 11 06 75 83 10    -P Eo1]n1]  u  
+21B0: F1 BB 50 2F 75 82 08 E4 93 B4 A5 23 05 82 E4 93   q;P/u  d 4%#  d 
+21C0: B4 64 1C C0 83 74 DA C0 E0 74 21 C0 E0 05 82 E4   4d @ tZ@`t!@`  d
+21D0: 93 C0 E0 05 82 E4 93 C0 E0 22 D0 83 12 20 06 05    @`  d @`&quot;P     
+21E0: 83 21 B0 90 2D 60 31 8C 11 62 11 16 75 F0 A0 C0    !0 -`1  b  up @
+21F0: F0 75 F0 21 C0 F0 F5 F0 90 10 00 F1 BB 50 21 75   pup!@pup   q;P!u
+</pre>
+
+<dt><b>I</b> - Hex dump internal memory
+<dd>
+This command displays a dump of the internal memory, for example:
+
+<pre>
+PAULMON2 (beta7) Loc:FFF0 > Hex dump internal memory
+
+00: <font color=#C00000>00 00 00 00 43 03 F0 FF</font> 55 55 55 55 AA AA AA AA
+10: <font color=#C00000>55 55 55 55 AA AA AA AA 55 55 55 55 AA AA AA AA</font>
+20: 55 55 55 55 AA AA AA AA 55 55 55 55 AA AA AA AA
+30: 55 <font color=#C00000>A0 01 E6 07 0A 00 01 43 31 0F 48 0B 00 0B AA</font>
+40: <font color=#C00000>55</font> 55 55 55 AA AA AA AA 55 55 55 55 AA AA AA AA
+50: 55 55 55 55 AA AA AA AA 55 55 55 55 AA AA AA AA
+60: 55 55 55 55 AA AA AA AA 55 55 55 55 AA AA AA AA
+70: 55 55 55 55 AA AA AA AA <font color=#C00000>E2 33 AA FF</font> AA AA AA AA
+</pre>
+This function can be useful to examine the internal memory after
+a user program has run.  However, PAULMON2 uses internal RAM, so
+the following memory ranges are likely to have been overwritten
+by PAULMON2, shown in <font color=#C00000>red</font> above.
+<p>
+<center><table border>
+<tr><th>Memory Range</th><th>Usage by PAULMON2</th></tr>
+<tr><td>00 to 07</td><td>Registers R0 to R7</td></tr>
+<tr><td>10 to 1F</td><td>Used during Download (Error counts)</td></tr>
+<tr><td>31 to 40</td><td>Stack</td></tr>
+<tr><td>78 to 7B</td><td>Baud rate storage for warm reset</td></tr>
+</table></center>
+<p>
+
+
+<a name="e">
+<dt><b>E</b> - Editing external ram
+<dd>
+The Edit command allows you to write directly into the external memory.
+
+(add some more here...)
+<p>
+
+<a name="c">
+<dt><b>C</b> - Clear memory
+<dd>
+The Clear command provides an easy way to fill a range of memory with
+zeros.  Because RAM chips often power up with "garbage" in them, this
+is usually used to get a "clean" memory, so it's easy to see the "real"
+data.
+<p>
+
+</dl>
+
+<hr size=3>
+PAULMON2 Documentation, Paul Stoffregen
+<br>http://www.ece.orst.edu/~paul/8051-goodies/pm2_docs/commands.html
+<!--#config timefmt="%A, %d %B %Y"-->
+<br>Last updated: <!--#echo var="LAST_MODIFIED"-->
+<br>Status: This page almost done... need to do edit command
+<br>Suggestions, comments, bug reports???
+<a href="mailto:paul@ece.orst.edu">&lt;paul@ece.orst.edu&gt;</a>
+<hr size=3>
+
+<a href="index.html">
+<img align=middle src="/~paul/icons/up.gif" height=37 width=34>
+Return to PAULMON2 Documentation, Table of Contents
+</a>
+</body>
+

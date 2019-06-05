@@ -1,0 +1,47 @@
+; If you include these lines in your program, you can easily
+; make calls to the routines built-in to PAULMON2.  See the
+; code below for an example.
+
+; ---------------cut here--------------------------------------
+                                   
+.equ    Cout, 0x0030            ;Send Acc to serial port
+.equ    Cin, 0x0032             ;Get Acc from serial port
+.equ    pHex, 0x0034            ;Print Hex value of Acc
+.equ    pHex16, 0x0036          ;Print Hex value of DPTR
+.equ    pString, 0x0038         ;Print string pointed to by DPTR,
+                                ;must be terminated by 0 or a high bit set
+                                ;pressing ESC will stop the printing
+.equ    gHex, 0x003A            ;Get Hex input into Acc
+                                ;Carry set if ESC has been pressed
+.equ    gHex16, 0x003C          ;Get Hex input into DPTR
+                                ;Carry set if ESC has been pressed
+.equ    ESC, 0x003E             ;Check for ESC key
+                                ;Carry set if ESC has been pressed
+.equ    Upper, 0x0040           ;Convert Acc to uppercase
+                                ;Non-ASCII values are unchanged
+.equ    Init, 0x0042            ;Initialize serial port
+.equ	newline, 0x0048		;print CR/LF (13 and 10)
+.equ	lenstr, 0x004A		;return the length of a string @DPTR (in R0)
+.equ    pint8u, 0x004D		;print Acc at an integer, 0 to 255
+.equ    pint8, 0x0050		;print Acc at an integer, -128 to 127
+.equ    pint16u, 0x0053		;print DPTR as an integer, 0 to 65535
+
+;----------------cut here--------------------------------------
+
+
+;   Example:
+;
+;TEST:   MOV     DPTR,#PROMPT1  ;LOCATION OF PROMPT TEXT
+;        LCALL   PSTRING        ;PRINT THE PROMPT
+;        LCALL   CIN            ;GET A CHARACTER
+;        LCALL   COUT           ;ECHO IT BACK
+;        MOV     DPTR,#PROMPT2  ;LOCATION OF THE OTHER TEXT
+;        LCALL   PSTRING        ;PRINT IT
+;        LCALL   PHEX           ;AND PRINT IT IN HEX
+;        MOV     A,#13          ;13=CARRIAGE RETURN
+;        LCALL   COUT           ;PRINT THE CR
+;        RET                    ;WE'RE DONE
+;
+;PROMPT1:.DB     "Press a Key > ",0  ;DON'T FORGET THE NULL
+;PROMPT2:.DB     "  Its ASCII value (in HEX) is: ",0
+

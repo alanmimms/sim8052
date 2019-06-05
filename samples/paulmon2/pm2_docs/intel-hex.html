@@ -1,0 +1,75 @@
+<head>
+<title>PAULMON2 Docs, Intel-Hex Format</title>
+</head>
+<body>
+
+<a href="index.html">
+<img align=right src="/~paul/icons/up.gif" height=37 width=34>
+</a>
+
+<center>
+<font size=+2><b>PAULMON2</b></font>
+<br><font size=+1>Intel-Hex Format</font>
+</center>
+<hr>
+
+
+
+PAULMON2 exchanges data with a PC computer using Intel-Hex format.
+Ordinarily it is not necessary to know much about Intel-Hex, but
+in cases where the downloaded data is not written to memory, but
+the memory appears to work properly with the memory editor, it can
+be helpful to take a look at the data in Intel-Hex format.
+<p>
+
+Intel-Hex is an ASCII only format which also includes address
+and checksum information for each line.  Here are three lines of
+data in Intel-Hex format:
+
+<pre>
+:10202E00216E016A0162215D217F218C017F01C336
+:10203E0001260116022940022AAD0172022A9A02D5
+:10204E0029D00229D6022A1402287D02284302270B
+ ^ ^   ^ ^                               ^
+ | |   | |                               |
+ | |   | |       checksum----------------+
+ | |   | +-------data bytes
+ | |   +---------record type (00=data, 01=end of file) 
+ | +-------------address for this line of data
+ +---------------number of bytes of data in this line
+</pre>
+
+A common problem is incorrect addresses, usually because of a
+missing or incorrect <b>ORG</b> directive in the assembly language
+code which was used to produce the Intel-Hex data.  In this example,
+the data is to be stored in memory at the following locations:
+
+<pre>
+Line #1: 16 bytes  @  0x202E to 0x203D  (8238 to 8253)
+Line #2: 16 bytes  @  0x203E to 0x204D  (8254 to 8269)
+Line #2: 16 bytes  @  0x204E to 0x205D  (8270 to 8285)
+</pre>
+
+Because Intel-Hex is an ASCII only format, it's easy to copy-n-paste
+into email messages.  If you have having trouble getting PAULMON2
+to understand your Intel-Hex code, and you decide to send a email
+asking for help, please include a copy of the Intel-Hex data in
+question.
+
+
+<hr size=3>
+PAULMON2 Documentation, Paul Stoffregen
+<br>http://www.ece.orst.edu/~paul/8051-goodies/pm2_docs/intel-hex.html
+<!--#config timefmt="%A, %d %B %Y"-->
+<br>Last updated: <!--#echo var="LAST_MODIFIED"-->
+<br>Status: The PAULMON2 Docs need a lot of work...
+<br>Suggestions, comments, bug reports???
+<a href="mailto:paul@ece.orst.edu">&lt;paul@ece.orst.edu&gt;</a>
+<hr size=3>
+
+<a href="index.html">
+<img align=middle src="/~paul/icons/up.gif" height=37 width=34>
+Return to PAULMON2 Documentation, Table of Contents
+</a>
+</body>
+

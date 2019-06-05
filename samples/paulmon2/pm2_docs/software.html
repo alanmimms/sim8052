@@ -1,0 +1,89 @@
+<head>
+<title>PAULMON2 Docs, Required Software</title>
+</head>
+<body>
+
+<a href="index.html">
+<img align=right src="/~paul/icons/up.gif" height=37 width=34>
+</a>
+
+<center>
+<font size=+2><b>PAULMON2</b></font>
+<br><font size=+1>Software Requirements</font>
+</center>
+<hr>
+
+
+Two programs are required to run on your PC to use PAULMON.
+
+<h3>Terminal Emulation</h3>
+
+<a name="terminal">
+A terminal emulation program is required to communicate with your
+8051 based hardware which is running PAULMON.  Though nearly any
+terminal emulation program should work, the following programs
+have been reported to work:
+<ul>
+<li>ProComm (MSDOS)
+<li>Seyon (X11, Linux)
+<li>Terminal (Windows 3.1)
+<li>HyperTerminal (Windows 95) - note: new settings may not take effect
+	until you quit and restart.
+</ul>
+The data format is 8 bits, no parity, 1 stop bit, <b>no flow control</b>.
+If you have a copy of PAULMON which is configured for a particular
+baud rate and crystal, then you must use that baud rate.  Otherwise
+PAULMON will attempt to detect the baud rate setting of your terminal
+emulator program at start-up when you press Enter (ASCII code 13 is
+expected).  Of course, only baud rates which the 8051 can produce
+with your cyrstal can be detected... it's best to try a slow baud
+rate first (300 or 1200) and try faster baud rates each time you
+restart (power off, not just a reset).
+<p>
+Some terminal emulation programs may send data when they are started,
+which can confuse the automatic baud rate detection in PAULMON.  It
+is best to plug the 8051 board into the PC (with its power off), run
+the terminal emulation program, and then apply power to the board
+and press Enter.
+<p>
+Nearly all of the PAULMON features do not actually require emulation
+of any particular terminal.  The memory editor in the extras package
+is an exception, which requires VT100 terminal emulation to work.  If
+VT100 terminal emulation isn't working, the other features will not
+be affected.
+<p>
+
+
+
+<h3>Assembler</h3>
+
+<a name="assembler">
+An assembler is not strictly required to use PAULMON, but without
+the assembler it is very difficult to write code which
+can be downloaded to the 8051 based hardware via the
+<a href="commands.html#d">Download Command</a>.
+<p>
+Nearly any 8051 assembler which produces
+<a href="intel-hex.html">Intel-Hex</a>
+output will
+work, though many 8051 assemblers have slightly different input
+syntax.  PAULMON2 is written using the AS31 assembler, which is
+available for free.
+
+
+<hr size=3>
+PAULMON2 Documentation, Paul Stoffregen
+<br>http://www.ece.orst.edu/~paul/8051-goodies/pm2_docs/software.html
+<!--#config timefmt="%A, %d %B %Y"-->
+<br>Last updated: <!--#echo var="LAST_MODIFIED"-->
+<br>Status: finsihed
+<br>Suggestions, comments, bug reports???
+<a href="mailto:paul@ece.orst.edu">&lt;paul@ece.orst.edu&gt;</a>
+<hr size=3>
+
+<a href="index.html">
+<img align=middle src="/~paul/icons/up.gif" height=37 width=34>
+Return to PAULMON2 Documentation, Table of Contents
+</a>
+</body>
+

@@ -1,0 +1,183 @@
+<head>
+<title>PAULMON2 Docs, Extra Pkg Commands</title>
+</head>
+<body>
+
+<a href="index.html">
+<img align=right src="/~paul/icons/up.gif" height=37 width=34>
+</a>
+
+<center>
+<font size=+2><b>PAULMON2</b></font>
+<br><font size=+1>Extras Package Commands</font>
+</center>
+<hr>
+
+<h2>Extras Package</h2>
+
+Versions of PAULMON2 which are intended for systems with at least
+8k of EPROM space (e.g. the 87C52 chip) are built with an "extras"
+package which includes
+three additional commands.  Versions which fit into only 4k of
+EPROM (e.g. the 87C51 chip) do not contain these extra commands.
+
+<dl>
+<a name="l">
+<dt><b>L</b> - List
+<dd>This command disassembles data from memory to show the
+code with mnunonics and operands.  For example:
+
+<pre>
+PAULMON2 (beta7) Loc:0000 >  List
+
+0000: 02 08 F1      LJMP    08F1
+0003: 02 20 03      LJMP    2003
+0006: 74 20         MOV     A, #20
+0008: 11 6A         ACALL   006A
+000A: 22            RET     
+000B: 02 20 0B      LJMP    200B
+000E: 74 2D         MOV     A, #2D
+0010: 11 6A         ACALL   006A
+0012: 22            RET     
+0013: 02 20 13      LJMP    2013
+0016: 02 0A BD      LJMP    0ABD
+0019: FF            MOV     R7, A
+001A: FF            MOV     R7, A
+001B: 02 20 1B      LJMP    201B
+001E: FF            MOV     R7, A
+001F: FF            MOV     R7, A
+0020: FF            MOV     R7, A
+0021: FF            MOV     R7, A
+0022: FF            MOV     R7, A
+0023: 02 20 23      LJMP    2023
+</pre>
+
+Here PAULMON2 shows the actual instructions in its own code.  As
+expected, at location 0003 (an interrupt vector), there is a LJMP
+instruction to 2003.
+<p>
+
+<a name="s">
+<dt><b>S</b> - Single-Step
+<dd>This command will attempt to run a program in single-step
+mode.  For more information, see the
+<a href="single-step.html">section about single-step</a>.
+<p>
+
+<a name="e">
+<dt><b>E</b> - Memory Editor 
+<dd>This command replaces the simple E command which is built into
+the main PAULMON2 program with a much nicer version.  <b>VT100 terminal
+emulation is required</b>, because this memory editor require
+cursor positioning control.  When run with a VT100 terminal, it should
+appear like this:
+
+<pre>
+CODE        8051 External Memory Editor, Paul Stoffregen, 1996
+ADDR: +0 +1 +2 +3 +4 +5 +6 +7 +8 +9 +A +B +C +D +E +F   ASCII EQUIVILANT
+------------------------------------------------------------------------
+0000: 02 08 F1 02 20 03 74 20 11 6A 22 02 20 0B 74 2D     q   t  j&quot;   t-
+0010: 11 6A 22 02 20 13 02 0A BD FF FF 02 20 1B FF FF    j&quot;     =       
+0020: FF FF FF 02 20 23 02 09 F5 FF FF 02 20 2B 21 6E        #  u    +!n
+0030: 01 6A 01 62 21 5D 21 7F 21 8C 01 7F 01 C3 01 26    j b!]! !    C &amp;
+0040: 01 16 02 09 76 02 0A E3 01 72 02 0A D0 02 0A 06       v  c r  P   
+0050: 02 0A 0C 02 0A 4A 02 08 B3 02 08 79 02 08 1B 02        J  3  y    
+0060: 07 F1 30 98 <b>FD</b> C2 98 E5 99 22 30 99 FD C2 99 F5    q0 <b>}</b>B e &quot;0 }B u
+0070: 99 22 C0 E0 74 0D 11 6A 74 0A 11 6A D0 E0 22 C2    &quot;@`t  jt  jP`&quot;B
+0080: D5 11 62 11 16 B4 1B 03 D3 E4 22 B4 0D 05 D2 D5   U b  4  Sd&quot;4  RU
+0090: C3 E4 22 FA 31 3F 40 E9 CA 11 6A 11 62 11 16 B4   Cd&quot;z1?@iJ j b  4
+00A0: 1B 02 80 E4 B4 0D 03 EA C3 22 B4 08 04 11 6A 80      d4  jC&quot;4   j 
+00B0: D0 B4 15 02 80 F7 FB 31 3F 40 E0 CB 11 6A EA C4   P4   w{1?@`K jjD
+00C0: 4B C3 22 7A 00 7B 00 7C 04 C2 D5 11 62 11 16 B4   KC&quot;z { | BU b  4
+00D0: 1B 07 D3 E4 F5 83 F5 82 22 B4 08 02 80 03 B4 7F     Sdu u &quot;4    4 
+00E0: 0C BC 04 02 80 E5 11 6A 31 2E 0C 80 DE B4 0D 10    &lt;   e j1.  ^4  
+00F0: 8B 83 8A 82 BC 04 07 E4 F5 83 F5 82 D2 D5 C3 22       &lt;  du u RUC&quot;
+------------------------------------------------------------------------
+^A=ASCII  ^X=<b>Hex</b>  ^F=Fill  ^G=Goto  ^C=Code  ^D=Data  ^L=Redraw  ^Q=Quit
+</pre>
+
+The memory editor has the following commands:<p>
+<dl>
+<dt>CTRL-E - Enable/Disable Editing Mode
+<dd>When in editing mode, typing ordinary characters (without CTRL) will
+cause the memory to be edited, so by default editing is disabled until
+CTRL-E is typed.  When editing is disabled, the bottom line will not
+display the <code><nobr>^A=ASCII  ^X=Hex  ^F=Fill</nobr></code>
+and instead will show only <code>^E-Edit</code>.  The screen display
+always reflects the actual contents of memory (CODE or DATA), so attempting
+to edit READ-ONLY memory will have no effect, even if editing is enabled.
+<p>
+
+<dt>CTRL-A - Select ASCII Editing Mode
+<dd>In the ASCII editing mode, and text typed will be written directly
+into memory starting at the cursor's current position. The word "ASCII"
+will be highlighed to remind you that ASCII entry is selected.
+<p>
+
+<dt>CTRL-X - Select HEX Editing Mode
+<dd>In the HEX editing mode, data may be entered as HEX numbers, which
+will be written into memory starting at the cursor's current position.
+The word "HEX" will be highlighed to remind you that HEX entry is selected.
+<p>
+
+<dt>CTRL-F - Fill a block of memory
+<dd>This command fills a block of memory with a particular byte.  Prompts
+will appear asking for the first and last memory locations, and the byte
+to write.  Pressing ESC will abort.  Of course, this command is only
+available if editing is enabled.
+<p>
+
+<dt>CTRL-G - Goto a new memory location
+<dd>This command allow you to move to another place in memory.  A prompt
+will appear to ask for the new location.
+<p>
+
+<dt>CTRL-C - Display as CODE (MOVC) memory
+<dd>Force the editor to display memory by reading with as CODE memory.
+The editor will make all reads using MOVC, which ulitimatly uses the
+PSEN signal to enable reading memory.  The current read setting is
+shown in the upper left corner of the screen.  Even when in CODE memory
+<i>display</i> mode, all write attempts are preformed with MOVX, because
+there is no instruction which can write to CODE memory.  Editing is not
+disabled when CODE memory is selected.
+<p>
+
+<dt>CTRL-D - Display as DATA (MOVX) memory
+<dd>Force the editor to display memory by reading with as DATA memory.
+The editor will make all reads using MOVX, which ulitimatly uses the
+RD signal to enable reading memory.  The current read setting is
+shown in the upper left corner of the screen.
+<p>
+
+<dt>CTRL-L - Redraw Screen
+<dd>Completely redraw the screen... useful with programs that have
+poor VT100 terminal emulation, or slow PCs with a 16450 or 8250 
+UART where characters are sometimes lost.
+<p>
+
+<dt>CTRL-Q (or ESC): Quit
+<dd>Quit the memory editor and return the PAULMON2.
+
+</dl>
+
+
+
+
+</dl>
+
+<hr size=3>
+PAULMON2 Documentation, Paul Stoffregen
+<br>http://www.ece.orst.edu/~paul/8051-goodies/pm2_docs/extras.html
+<!--#config timefmt="%A, %d %B %Y"-->
+<br>Last updated: <!--#echo var="LAST_MODIFIED"-->
+<br>Status: Finished
+<br>Suggestions, comments, bug reports???
+<a href="mailto:paul@ece.orst.edu">&lt;paul@ece.orst.edu&gt;</a>
+<hr size=3>
+
+<a href="index.html">
+<img align=middle src="/~paul/icons/up.gif" height=37 width=34>
+Return to PAULMON2 Documentation, Table of Contents
+</a>
+</body>
+

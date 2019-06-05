@@ -1,0 +1,174 @@
+<head>
+<title>PAULMON2 Docs, Program Headers</title>
+</head>
+<body>
+
+<a href="index.html">
+<img align=right src="/~paul/icons/up.gif" height=37 width=34>
+</a>
+
+<center>
+<font size=+2><b>PAULMON2</b></font>
+<br><font size=+1>Program Headers</font>
+</center>
+<hr>
+
+Programs developed to run with PAULMON2 may begin with a 64 byte
+header, which allows PAULMON2 to detect that a program is stored
+in memory.  There are currently three types of program headers:
+<ul>
+<li>Normal Program
+<li>Start-Up Program
+<li>Command
+</ul>
+
+These 64-byte headers must begin on a 256-byte page boundry.
+
+
+<h3>Normal Programs</h3>
+
+Placing this type of a header on a program makes it appear in the
+<a href="commands.html#r">Run Command</a> menu.  For example, the
+lines to add at the beginning of the program:
+<pre>
+.equ    locat, 0x8000           ;Location for this program
+.org    locat
+.db     0xA5,0xE5,0xE0,0xA5     ;signiture bytes
+.db     35,255,0,0              ;id (35=prog)
+.db     0,0,0,0                 ;prompt code vector
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;user defined
+.db     255,255,255,255         ;length and checksum (255=unused)
+.db     "Program Name",0	;max 31 characters, plus the zero
+.org    locat+64                ;executable code begins here
+</pre>
+
+Admittedly using the <a href="commands.html#r">Run Command</a>
+instead of the <a href="commands.html#j">Jump Command</a> isn't
+a big advantage.  The most compelling reason to use the normal
+program header is because it is later quite easy to change it
+into the startup header.
+
+<h3>Start-Up Program</h3>
+
+By changing a byte in the header, a normal program can be turned into
+a startup program.  After PAULMON2 has initialized the hardware, and
+after the baud rate and serial port are initialized, but before the
+welcome message and prompt are printed, PAULMON2 will run all of the
+startup programs.
+<p>
+Startup programs are really only useful when used with nonvolatile
+memory.  With <a href="flash.html">Flash ROM</a>, programs may be
+written via the Download command, but they will remain in memory.
+<p>
+Instead of replacing PAULMON2 (at 0000), the final application  program
+can be turned into a
+startup program by changing a byte in it's header.  If Flash ROM is
+used, the board will always startup to the intended program.  The
+lines to add to define a startup header should look like this:
+<pre>
+.equ    locat, 0x8000           ;Location for this program
+.org    locat
+.db     0xA5,0xE5,0xE0,0xA5     ;signiture bytes
+.db     253,255,0,0             ;id (253=startup)
+.db     0,0,0,0                 ;prompt code vector
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;user defined
+.db     255,255,255,255         ;length and checksum (255=unused)
+.db     "Program Name",0        ;max 31 characters, plus the zero
+.org    locat+64                ;executable code begins here
+</pre>
+PAULMON2 has a feature where an <b>erase pin</b> may be defined.  If
+this pin is held low after a reset as PAULMON2 starts up, it will
+attempt to erase the Flash ROM.  By providing a jumper which pulls
+this pin low when installed, the application program (in Flash ROM)
+may be deleted and a new version may be downloaded without having
+to pull the EPROM, as would be necessary in a system without PAULMON2
+and Flash ROM.  The default <b>erase pin</b> is P3.5 (T1, pin 15).
+<p>
+The startup program header feature is intended work together
+with <a href="flash.html">Flash ROM</a>
+to provide a quick and
+easy way to make the application under development <i>permanent</i>,
+without pulling any chips, without having to worry if the program will
+correctly initialize the hardware without having run PAULMON2 first,
+and with a simple (and well tested) mechanism to erase and download
+a new version of the <i>permanent</i> startup program should changes
+become necessary.
+<p>
+It should be noted that startup programs are run <b>after</b> the
+baud rate and serial port is configured, so that they may perform
+serial I/O.  In most <i>permanent</i> applications, the automatic
+baud rate detection (requiring a carriage return after power is
+first applied) is not desirable, so it will probably be necessary
+to
+<a href="customize.html">customize PAULMON2</a> with a fixed baud
+rate for use the hardware's
+crystal frequency.
+<p>
+In some cases, it may be desirable to install a startup program
+which initializes hardware or performs some startup function but
+then allows PAULMON2 to begin normally.  In this case, the startup
+program must terminate with a RET instruction to return back to
+PAULMON2.  Obviously the stack must point to the return address
+which PAULMON2 originally pushed before running the startup program.
+
+<h3>Commands</h3>
+
+Perhaps the most interesting use for program header is to add
+additional commands to PAULMON2.  The 
+<a href="extras.html#l">List</a>, 
+<a href="single-step.html">Single-Step</a>, and
+<a href="extras.html#e">Memory Editor</a>
+which come with versions of PAULMON2 that fit in 8k are actually
+examples of programs with headers that make them appear as
+commands within PAULMON2.  A header for a command should look like this:
+
+<pre>
+.equ    locat, 0x8000           ;Location for this program
+.org    locat
+.db     0xA5,0xE5,0xE0,0xA5     ;signiture bytes
+.db     254,'A',0,0             ;id (254=command, key='A')
+.db     0,0,0,0                 ;prompt code vector
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;reserved
+.db     0,0,0,0                 ;user defined
+.db     255,255,255,255         ;length and checksum (255=unused)
+.db     "Command Name",0        ;max 31 characters, plus the zero
+.org    locat+64                ;executable code begins here
+</pre>
+
+In this example, the command will be executed when the user presses
+the 'A' key.  The specified character must be uppercase, because
+PAULMON2 calls the
+<a href="functions.html#upper">upper</a> function to make the user
+interface case insensitive.
+<p>
+For more detailed information about
+<a href="addons.html">Adding Commands to PAULMON2</a>, 
+and some examples, please refer to that section.
+
+
+
+
+<hr size=3>
+PAULMON2 Documentation, Paul Stoffregen
+<br>http://www.ece.orst.edu/~paul/8051-goodies/pm2_docs/headers.html
+<!--#config timefmt="%A, %d %B %Y"-->
+<br>Last updated: <!--#echo var="LAST_MODIFIED"-->
+<br>Status: This page is finished
+<br>Suggestions, comments, bug reports???
+<a href="mailto:paul@ece.orst.edu">&lt;paul@ece.orst.edu&gt;</a>
+<hr size=3>
+
+<a href="index.html">
+<img align=middle src="/~paul/icons/up.gif" height=37 width=34>
+Return to PAULMON2 Documentation, Table of Contents
+</a>
+</body>
+

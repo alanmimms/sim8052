@@ -1,0 +1,144 @@
+<head>
+<title>PAULMON2 Docs, Built-In Functions</title>
+</head>
+<body>
+
+<a href="index.html">
+<img align=right src="/~paul/icons/up.gif" height=37 width=34>
+</a>
+
+<center>
+<font size=+2><b>PAULMON2</b></font>
+<br><font size=+1>Using Built-In Functions</font>
+</center>
+<hr>
+
+PAULMON2 has built-in functions which you can call from your
+programs.  Most of these functions provide I/O with the serial
+port.  To use these, you must copy lines from the
+<a href="../paulmon2.equ">PAULMON2.EQU</a> file, or call directly to
+the address for the desired function.
+
+
+<dl>
+
+<dt>phex1
+<dd>Print a single digit in HEX.  Acc should contain a value from
+
+0 to 15.
+<dt>cout
+<dd>Print the byte in Acc to the serial port.
+
+<dt>cin
+<dd>Get a character from the serial port.  This routine will wait
+until a character arrives, if one is not already in the buffer.  The
+received character is returned in Acc.
+
+<dt>phex
+<dd>Print the value of Acc as a 2-digit Hex number
+
+<dt>phex16
+<dd>Print the value of DPTR as a 4-digit Hex number
+
+<dt>pstr
+<dd>Print a string, which is located in CODE memory.  DPTR should be
+loaded with the address of the first byte of the string.  The string
+should be terminated with a zero (which is not sent), or a byte with
+the most significant bit set (which is send, with the msb cleared).
+DPTR is returned with it's value pointing to the next byte in memory
+after the end of the string.
+
+<dt>ghex
+<dd>Get a 2-digit HEX number from the serial port, which is returned in
+Acc.  If the user presses ESC, C is set (clear otherwise) and Acc is
+unknown.  If the user presses Enter with no input, PSW.5 is set (clear
+otherwise), and Acc is unknown.  R2 and R3 are changed.
+
+<dt>ghex16
+<dd>Get a 4-digit HEX number from the serial port, which is returned in
+DPTR.  If the user presses ESC, C is set (clear otherwise) and DPTR is
+unknown.  If the user presses Enter with no input, PSW.5 is set (clear
+otherwise), and DPTR is unknown.  Acc, R2, R3, R4, and R5 are changed.
+
+<dt>esc
+<dd>Checks to see if <ESC> is waiting on serial port
+C=clear if no <ESC>, C=set if <ESC> pressed buffer is flushed
+
+<dt>upper
+<dd>Convert the character in Acc to uppercase, if it is a lowercase letter.
+If a non-alpha character is in Acc, it is not changed.
+
+<dt>autobaud
+<dd>Do an automatic baud rate detection (wait for user to press Enter)
+
+<dt>pcstr
+<dd>Print a string in compressed format.  The format of the on-the-fly
+string compression used in PAULMON2 is not documented, unfortunately.
+
+<dt>newline
+<dd>Print a carriage return and a newline to the serial port.
+
+<dt>lenstr
+<dd>Measure the length of a  string, which is located in CODE memory.
+DPTR should be
+loaded with the address of the first byte of the string.  The string
+should be terminated as described above in pstr.
+DPTR is returned with it's value pointing to the next byte in memory
+after the end of the string.  The length of the string is returned in
+R0.  Obviously strings longer than 255 characters can't be measured,
+but pstr should handle long strings without trouble.
+
+<dt>pint8u
+<dd>Print the value in Acc as an unsigned (ordinary base 10) integer.
+In other words, a number between 0 to 255 will be printed.  Flag F0 is
+changed.
+
+<dt>pint8
+<dd>Print the value in Acc as a signed (ordinary base 10) integer.
+In other words, a number between -128 to 127 will be printed.  Flag F0 is
+changed.
+
+<dt>pint16u
+<dd>Print the value in DPTR as an unsigned (ordinary base 10) integer.
+In other words, a number between 0 to 65535 will be printed.  Registers
+R2, R3, R4, R5, and flag PSW.5 are changed.
+
+<dt>smart_wr
+<dd>Attempt to write a byte in Acc to memory at location specified
+by DPTR.  If PAULMON2 is configured for a Flash ROM, and the specified
+memory location is in the Flash ROM, then <b>smart_wr</b> will call
+<b>prgm</b> so that the byte is written with the flash programming
+algorithm.  Carry is cleared if the byte was written sucessfully,
+or set if the byte could not be verified.
+
+<dt>prgm
+<dd>Write a byte in Acc to Flash ROM at DPTR.
+Carry is cleared if the byte was written sucessfully,
+or set if the byte could not be verified.  Interrupts are disabled for
+brief periods of time.
+
+<dt>erall
+<dd>Erase the Flash ROM.  This can time quite some time.
+
+<dt>find
+<dd>Find a program header in memory.  This function is unfortunately
+not well documented.
+</dl>
+
+
+<hr size=3>
+PAULMON2 Documentation, Paul Stoffregen
+<br>http://www.ece.orst.edu/~paul/8051-goodies/pm2_docs/functions.html
+<!--#config timefmt="%A, %d %B %Y"-->
+<br>Last updated: <!--#echo var="LAST_MODIFIED"-->
+<br>Status: This page could use a bit more work
+<br>Suggestions, comments, bug reports???
+<a href="mailto:paul@ece.orst.edu">&lt;paul@ece.orst.edu&gt;</a>
+<hr size=3>
+
+<a href="index.html">
+<img align=middle src="/~paul/icons/up.gif" height=37 width=34>
+Return to PAULMON2 Documentation, Table of Contents
+</a>
+</body>
+

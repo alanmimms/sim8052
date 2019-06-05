@@ -1,0 +1,99 @@
+<head>
+<title>PAULMON2 Docs, Example Programs</title>
+</head>
+<body>
+
+<a href="index.html">
+<img align=right src="/~paul/icons/up.gif" height=37 width=34>
+</a>
+
+<center>
+<font size=+2><b>PAULMON2</b></font>
+<br><font size=+1>Example Programs</font>
+</center>
+<hr>
+<h3>Example #1: Simple Banner</h3>
+This program prompts the user to enter a short string and then prints
+the string in large block letters.  When PAULMON2 receives the program
+via the Download command, the terminal emulation windows should display
+the following message:
+
+<pre>
+PAULMON2 (beta7) Loc:2000 > Download
+
+Begin ascii transfer of Intel hex file, or ESC to abort
+
+.................................
+Download completed
+
+Summary:
+ 33  lines received
+ 505  bytes received
+ 505  bytes written
+No errors detected
+</pre>
+
+Be sure to download the correct version.  Three ready-to-use object
+files are provided, for memory at 2000, 4000, or 8000.  If you
+download the wrong one for your hardware, there will probably be
+a message about "unable to write".
+<p>
+When the program is run, it should produce this result:
+
+<pre>
+Please type a word (9 char max): PAULMON
+
+
+######      #     ##   ##  ##       ##   ##   #####   ##   ##  
+#######    ###    ##   ##  ##       ### ###  #######  ###  ##  
+##   ##    ###    ##   ##  ##       #######  ##   ##  ###  ##  
+##   ##   ## ##   ##   ##  ##       ## # ##  ##   ##  #### ##  
+#######   ## ##   ##   ##  ##       ## # ##  ##   ##  ## # ##  
+######    #####   ##   ##  ##       ##   ##  ##   ##  ## ####  
+##       #######  ##   ##  ##       ##   ##  ##   ##  ##  ###  
+##       ##   ##  #######  #######  ##   ##  #######  ##   ##  
+##       ##   ##   #####   #######  ##   ##   #####   ##   ##  
+
+
+Press any key
+</pre>
+
+Of course, you may type any string you like.
+<p>
+Here are the files for Example #1:
+<table border>
+<tr><td><a href="ex1.asm">ex1.asm</a></td>
+<td>Assembly language source (use
+<a href="../goodies-index.html#as31_assembler">as31</a>)</td></tr>
+<tr><td><a href="ex1_2.obj">ex1_2.obj</a></td>
+<td>Ready to use intel-hex, RAM at 2000 hex</td></tr>
+<tr><td><a href="ex1_4.obj">ex1_4.obj</a></td>
+<td>Ready to use intel-hex, RAM at 4000 hex</td></tr>
+<tr><td><a href="ex1_8.obj">ex1_8.obj</a></td>
+<td>Ready to use intel-hex, RAM at 8000 hex</td></tr>
+<tr><td><a href="ex1.zip">ex1.zip</a></td>
+<td>ZIP file with all four of these</td></tr>
+</table>
+
+
+
+
+
+
+
+<hr size=3>
+PAULMON2 Documentation, Paul Stoffregen
+<br>http://www.ece.orst.edu/~paul/8051-goodies/pm2_docs/examples.html
+<!--#config timefmt="%A, %d %B %Y"-->
+<br>Last updated: <!--#echo var="LAST_MODIFIED"-->
+<br>Status: more examples ???
+<br>Suggestions, comments, bug reports???
+<a href="mailto:paul@ece.orst.edu">&lt;paul@ece.orst.edu&gt;</a>
+<hr size=3>
+
+<a href="index.html">
+<img align=middle src="/~paul/icons/up.gif" height=37 width=34>
+Return to PAULMON2 Documentation, Table of Contents
+</a>
+</body>
+
