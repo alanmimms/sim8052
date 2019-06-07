@@ -58,7 +58,7 @@ module.exports.SFR = SFR;
 // disaggregated to the separate flags in the setter.
 class BitFieldSFR extends SFR {
 
-  constructor(name, addr, bitNames, cpu, resetValue) {
+  constructor(name, addr, bitNames, cpu, affectsInt, resetValue) {
 
     super(name, addr, cpu, resetValue);
 
@@ -86,6 +86,7 @@ class BitFieldSFR extends SFR {
         }
       });
 
+    this.affectsInt = affectsInt;
     this.bitNames = bitNames.toUpperCase().split(/\s+/).reverse();
   }
 
@@ -101,6 +102,7 @@ class BitFieldSFR extends SFR {
       },
 
       set: function(v) {
+        if (sfr.affectsInt) cpu.intChange = true;
         v = options.set ? options.set.call(sfr, v) : v;
         sfr.bitNames.forEach((bit, x) => cpu[bit] = +!!(v & (1 << x)));
       },
@@ -121,6 +123,12 @@ class CPU8052 {
 
     SFR.options = sfrOptions;
 
+    // Set this flag whenever interrupt conditions change in any way.
+    // This triggers the interrupt dispatching code to walk through
+    // the sources, figure out priorities, and trigger an interrupt
+    // cycle if it is warranted.
+    C.intChange = false;
+    
     C.SFRs = {
       PSW: new BitFieldSFR('PSW', 0xD0, 'cy ac f0 rs1 rs0 ov ud p', C),
       ACC: new SFR('ACC', 0xE0, C),
@@ -132,11 +140,11 @@ class CPU8052 {
       P1: new SFR('P1', 0x90, C, null, 0xFF),
       P2: new SFR('P2', 0xA0, C, null, 0xFF),
       P3: new SFR('P3', 0xB0, C, null, 0xFF),
-      IP: new BitFieldSFR('IP', 0xB8, '. . pt2 ps pt1 px1 pt0 px0', C),
-      IE: new BitFieldSFR('IE', 0xA8, 'ea . et2 es et1 ex1 et0 ex0', C),
+      IP: new BitFieldSFR('IP', 0xB8, '. . pt2 ps pt1 px1 pt0 px0', C, true),
+      IE: new BitFieldSFR('IE', 0xA8, 'ea . et2 es et1 ex1 et0 ex0', C, true),
       TMOD: new BitFieldSFR('TMOD', 0x89, 'gate1 ct1 t1m1 t1m0 gate0 ct0 t0m1 t0m0', C),
-      TCON: new BitFieldSFR('TCON', 0x88, 'tf1 tr1 tf0 tr0 ie1 it1 ie0 it0', C),
-      T2CON: new BitFieldSFR('T2CON', 0xC8, 'tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2', C),
+      TCON: new BitFieldSFR('TCON', 0x88, 'tf1 tr1 tf0 tr0 ie1 it1 ie0 it0', C, true),
+      T2CON: new BitFieldSFR('T2CON', 0xC8, 'tf2 exf2 rclk tclk exen2 tr2 ct2 cprl2', C, true),
       TH0: new SFR('TH0', 0x8C, C),
       TL0: new SFR('TL0', 0x8A, C),
       TH1: new SFR('TH1', 0x8D, C),
@@ -145,7 +153,7 @@ class CPU8052 {
       TL2: new SFR('TL2', 0xCC, C),
       RCAP2H: new SFR('RCAP2H', 0xCB, C),
       RCAP2L: new SFR('RCAP2L', 0xCA, C),
-      SCON: new BitFieldSFR('SCON', 0x98, 'sm0 sm1 sm2 ren tb8 rb8 ti ri', C),
+      SCON: new BitFieldSFR('SCON', 0x98, 'sm0 sm1 sm2 ren tb8 rb8 ti ri', C, true),
       SBUF: new SFR('SBUF', 0x99, C),
       PCON: new BitFieldSFR('PCON', 0x87, 'smod . . . gf1 gf0 pd idl', C),
     };
@@ -848,10 +856,65 @@ ${list.length} ops unimplemented`;})()}`);
 
     C.SP = sp;
   }
+
+
+  handleInterruptChange() {
+    const C = this;
+
+    C.intChange = false;       // No change remains
+
+    const ie = C.IE;           // Faster and easier to type
+    let ip = C.IP & ie;        // Result of masking ints at each level
+    if (!ie) return;           // Nothing enabled = nothing to do
+
+    handlePending(1, C.IP & ie) || handlePending(0, ie);
+
+
+    // Called for each interrupt priority `level` with mask of
+    // interrupts possibly `pending` at that level. Checks for
+    // interrupt actually pending, and, if so, handles interrupt
+    // `LCALL` to appropriate IRQ vector and sets the IPL to match the
+    // level of the interrupt we are handling. Returns `true` if we
+    // are handling an interrupt.
+    function handlePending(level, pending) {
+
+      if (C.ipl >= level) return false;
+
+      const intHandlers = [
+        {pendingMask: 0x01, prioMask: 'IE0',  vector: 0x0003},
+        {pendingMask: 0x04, prioMask: 'TF0',  vector: 0x000B},
+        {pendingMask: 0x02, prioMask: 'IE1',  vector: 0x0013},
+        {pendingMask: 0x08, prioMask: 'TF1',  vector: 0x001B},
+        {pendingMask: 0x10, prioMask: 'RI',   vector: 0x0023},
+        {pendingMask: 0x10, prioMask: 'TI',   vector: 0x0023},
+        {pendingMask: 0x20, prioMask: 'TF2',  vector: 0x002B},
+        {pendingMask: 0x20, prioMask: 'EXF2', vector: 0x002B},
+      ];
+
+      for (let h of intHandlers) {
+
+        if ((pending & h.pendingMask) && C[h.prioMask]) {
+          C.push16(C.PC);
+          C.PC = h.vector;
+          C.ipl = level;
+          return true;
+        }
+      }
+
+      return false;
+    }
+  }
   
 
   run1(pc = this.PC) {
     const C = this;
+
+    // If we have a change in anything in the interrupt system, go
+    // look into it. If an interrupt handler needs to run,
+    // C.handleInterruptChange() pushes the current PC, changes the
+    // IPL, and sets the PC to the vector for the interrupt.
+    if (C.intChange) C.handleInterruptChange();
+
     C.opPC = C.PC = pc;
     C.op = C.code[pc];
     C.ops[C.op].f(C);
