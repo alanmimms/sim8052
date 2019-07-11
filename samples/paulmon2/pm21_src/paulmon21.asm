@@ -77,8 +77,8 @@
 ; To set the baud rate, use this formula or set to 0 for auto detection
 ; baud_const = 256 - (crystal / (12 * 16 * baud))
 
-.equ	baud_const, 0		;automatic baud rate detection
-;.equ	baud_const, 255		;57600 baud w/ 11.0592 MHz
+;.equ	baud_const, 0		;automatic baud rate detection
+.equ	baud_const, 255		;57600 baud w/ 11.0592 MHz
 ;.equ	baud_const, 253		;19200 baud w/ 11.0592 MHz
 ;.equ	baud_const, 252		;19200 baud w/ 14.7456 MHz
 ;.equ	baud_const, 243		;4808 baud w/ 12 MHz
