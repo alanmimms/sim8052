@@ -1305,6 +1305,19 @@ const parityTable = [
 ];
 
 
+// This is used to make get/set of SFRs we care about be noisy.
+const noisyOptions = {
+  get(v) {
+    console.log(`${toHex4(this.cpu.PC)}: ${this.name} get=${toHex2(v)}`);
+    return v;
+  },
+
+  set(v) {
+    console.log(`${toHex4(this.cpu.PC)}: ${this.name} set=${toHex2(v)}`);
+    return v;
+  },
+};
+
 // This is fill of properties named for SFRs whose get/set behavior
 // needs to be wrapped by the simulation. Each property has object
 // value with `get` and/or `set` properties which are functions to
@@ -1357,6 +1370,25 @@ const sfrOptions = {
       return v;
     },
   },
+
+
+  P0: noisyOptions,
+  P1: noisyOptions,
+  P2: noisyOptions,
+
+  TMOD: noisyOptions,
+  TCON: noisyOptions,
+  T2CON: noisyOptions,
+  TH0: noisyOptions,
+  TL0: noisyOptions,
+  TH1: noisyOptions,
+  TL1: noisyOptions,
+  TH2: noisyOptions,
+  TL2: noisyOptions,
+
+  RCAP2H: noisyOptions,
+  RCAP2L: noisyOptions,
+  PCON: noisyOptions,
 };
 
 
