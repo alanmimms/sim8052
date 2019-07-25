@@ -326,10 +326,11 @@ const sim = {
   instructionsExecuted: 0,
   executionTime: 0,
 
-  debugFlags: `debugSCON debugDirect`.split(/\s+/),
+  debugFlags: `debugSCON debugDirect noisySPRs`.split(/\s+/),
 
   debugSCON: false,
   debugDirect: false,
+  noisySPRs: false,
 
 
   // Trace of PC instruction fetches
@@ -534,6 +535,11 @@ const commands = [
   {name: 'dump',
    description: 'Dump processor state',
    doFn: doDump,
+  },
+  
+  {name: 'upload',
+   description: 'Upload a file to the serial (SCON) input',
+   doFn: doUpload,
   },
   
   {name: 'step',
@@ -793,7 +799,7 @@ function doDebug(words) {
       .reduce((prev, cur) => cur.length > prev ? cur.length : prev, 0);
     console.log("\nCurrent debug flags and their values:\n");
     sim.debugFlags.forEach(f => {
-      console.log(`  ${_.padStart(f, maxWidth)}: ${cpu[f]}`);
+      console.log(`  ${_.padStart(f, maxWidth)}: ${sim[f]}`);
     });
     console.log("");
   } else {
@@ -806,18 +812,30 @@ function doDebug(words) {
     } else {
 
       if (words.length < 3)
-	cpu[f] = !cpu[f];	// Toggle if not specified
+	sim[f] = !sim[f];	// Toggle if not specified
       else
-        cpu[f] = !!words[2];
+        sim[f] = !!words[2];
     }
 
-    console.log(`${f} is now ${cpu[f]}.`);
+    console.log(`${f} is now ${sim[f]}.`);
   }
 }
 
 
 function doDump(words) {
   sim.dumpState();
+}
+
+
+function doUpload(words) {
+
+  try {
+    const contents = fs.readFileSync(words[1], {encoding: 'utf-8'});
+    sbufQueue.push(Array.from(contents));
+    console.log(`Uploading ${toHex4(contents.length)}h bytes...`);
+  } catch(e) {
+    console.log(`Unable to read Upload file: ${e.message}`);
+  }
 }
 
 
@@ -1027,8 +1045,6 @@ function sbufRx(c) {
   if ((cpu.REN) === 0) return;
 
   sim.sbufQueue.push(c);
-
-  // TODO: Make this do RI interrupt
 }
 
 
@@ -1308,12 +1324,20 @@ const parityTable = [
 // This is used to make get/set of SFRs we care about be noisy.
 const noisyOptions = {
   get(v) {
-    console.log(`${toHex4(this.cpu.PC)}: ${this.name} get=${toHex2(v)}`);
+
+    if (sim.noisySPRs) {
+      console.log(`${toHex4(this.cpu.PC)}: ${this.name} get=${toHex2(v)}`);
+    }
+    
     return v;
   },
 
   set(v) {
-    console.log(`${toHex4(this.cpu.PC)}: ${this.name} set=${toHex2(v)}`);
+
+    if (sim.noisySPRs) {
+      console.log(`${toHex4(this.cpu.PC)}: ${this.name} set=${toHex2(v)}`);
+    }
+    
     return v;
   },
 };
@@ -1357,7 +1381,9 @@ const sfrOptions = {
   SBUF: {
 
     get(v) {
-      return sbufQueue.length ? sbufQueue.shift() : 0x00;
+      if (!sbufQueue.length) return 0;
+      if ((sbufQueue.length & 0xFF) === 0) console.log('.');
+      return sbufQueue.shift();
     },
 
     set(v) {
