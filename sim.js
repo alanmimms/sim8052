@@ -832,6 +832,7 @@ function doUpload(words) {
   try {
     const contents = fs.readFileSync(words[1], {encoding: 'utf-8'});
     sbufQueue.push(Array.from(contents));
+    cpu.RI = 1;                 // Interrupt for rx input
     console.log(`Uploading ${toHex4(contents.length)}h bytes...`);
   } catch(e) {
     console.log(`Unable to read Upload file: ${e.message}`);
@@ -1045,6 +1046,7 @@ function sbufRx(c) {
   if ((cpu.REN) === 0) return;
 
   sim.sbufQueue.push(c);
+  cpu.RI = 1;                   // Set interrupt for character
 }
 
 
@@ -1369,24 +1371,31 @@ const sfrOptions = {
   },
 
 
-  SCON: {
-
-    get(v) {
-      if (sbufQueue.length !== 0) v |= this.cpu.riMask;
-      return v;
-    },
-  },
-
-
   SBUF: {
 
     get(v) {
+
+      if (sim.noisySPRs) {
+        console.log(`${toHex4(this.cpu.PC)}: ${this.name} get=${toHex2(v)}`);
+      }
+      
       if (!sbufQueue.length) return 0;
       if ((sbufQueue.length & 0xFF) === 0) console.log('.');
-      return sbufQueue.shift();
+
+      const ch = sbufQueue.shift();
+
+      // If we still have characters, enable RI interrupt bit.
+      if (sbufQueue.length !== 0) this.cpu.RI = 1;
+
+      return ch;
     },
 
     set(v) {
+
+      if (sim.noisySPRs) {
+//        console.log(`${toHex4(this.cpu.PC)}: ${this.name} set=${toHex2(v)}`);
+      }
+      
       process.stdout.write(String.fromCharCode(v));
 
       // Transmitting a character immediately signals TI saying it is done.
@@ -1415,6 +1424,8 @@ const sfrOptions = {
   RCAP2H: noisyOptions,
   RCAP2L: noisyOptions,
   PCON: noisyOptions,
+
+  SCON: noisyOptions,
 };
 
 
