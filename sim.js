@@ -32,7 +32,8 @@ const XRAMSize = 65536;
 const iram = Buffer.alloc(0x100, 0x00, 'binary');
 const xram = Buffer.alloc(XRAMSize, 0x00, 'binary');
 const SFR = Buffer.alloc(0x100, 0x00, 'binary');
-const code = Buffer.alloc(CODESize, 0x00, 'binary');
+//const code = Buffer.alloc(CODESize, 0x00, 'binary');
+const code = xram;              // Our code is stored in 64KB of RAM
 
 // This CPU8052 instance we are simulating
 var cpu;
