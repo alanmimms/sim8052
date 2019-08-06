@@ -831,7 +831,7 @@ function doUpload(words) {
 
   try {
     const contents = fs.readFileSync(words[1], {encoding: 'utf-8'});
-    sbufQueue.push(Array.from(contents));
+    Array.from(contents).forEach(b => sim.sbufQueue.push(b.charCodeAt(0)));
     cpu.RI = 1;                 // Interrupt for rx input
     console.log(`Uploading ${toHex4(contents.length)}h bytes...`);
   } catch(e) {
@@ -1379,13 +1379,15 @@ const sfrOptions = {
         console.log(`${toHex4(this.cpu.PC)}: ${this.name} get=${toHex2(v)}`);
       }
       
-      if (!sbufQueue.length) return 0;
-      if ((sbufQueue.length & 0xFF) === 0) console.log('.');
+      if (sbufQueue.length === 0) return 0;
+      if ((sbufQueue.length & 63) === 0) process.stdout.write('.');
 
       const ch = sbufQueue.shift();
 
       // If we still have characters, enable RI interrupt bit.
-      if (sbufQueue.length !== 0) this.cpu.RI = 1;
+      if (sbufQueue.length !== 0) {
+        this.cpu.RI = 1;
+      }
 
       return ch;
     },
