@@ -316,14 +316,14 @@ class CPU8052 {
       }};
     }
 
-    _.range(8).forEach(r => genXCH(0xC8 + r, 1, getR, putR));
-    _.range(2).forEach(i => genXCH(0xC6 + i, 1, getRi, putRi));
+    _.times(8, r => genXCH(0xC8 + r, 1, getR, putR));
+    _.times(2, i => genXCH(0xC6 + i, 1, getRi, putRi));
     genXCH(0xC5, 2, getDIR, putDIR);
     genXCH(0xC7, 1, getRi, putRi);
 
 
-    _.range(8).forEach(genAJMP);
-    _.range(8).forEach(genACALL);
+    _.times(8, genAJMP);
+    _.times(8, genACALL);
     genSimple('RET', 0x22, 1, doRET);
     genSimple('RETI', 0x32, 1, doRETI);
     genSimple('LCALL', 0x12, 3, doLCALL);
@@ -348,11 +348,11 @@ class CPU8052 {
 
     genCJNE('CJNE', 0xB4, 3, getA, getIMM);
     genCJNE('CJNE', 0xB5, 3, getA, getDIR);
-    _.range(8).forEach(r => genCJNE('CJNE', 0xB8 + r, 3, getR, getIMM));
-    _.range(2).forEach(i => genCJNE('CJNE', 0xB6 + i, 3, getRi, getIMM));
+    _.times(8, r => genCJNE('CJNE', 0xB8 + r, 3, getR, getIMM));
+    _.times(2, i => genCJNE('CJNE', 0xB6 + i, 3, getRi, getIMM));
 
     genDJNZ('DJNZ', 0xD5, 3, getDIR, putDIR);
-    _.range(8).forEach(r => genDJNZ('DJNZ', 0xD8 + r, 2, getR, putR));
+    _.times(8, r => genDJNZ('DJNZ', 0xD8 + r, 2, getR, putR));
 
     function genDJNZ(mnemonic, op, nBytes, getF, putF) {
 
@@ -379,31 +379,31 @@ class CPU8052 {
 
     genINCDEC('DEC', 0x14, 1, getA, doDEC, putA);
     genINCDEC('DEC', 0x15, 2, getDIR, doDEC, putDIR);
-    _.range(8).forEach(r => genINCDEC('DEC', 0x18 + r, 1, getR, doDEC, putR));
-    _.range(2).forEach(i => genINCDEC('DEC', 0x16 + i, 1, getRi, doDEC, putRi));
+    _.times(8, r => genINCDEC('DEC', 0x18 + r, 1, getR, doDEC, putR));
+    _.times(2, i => genINCDEC('DEC', 0x16 + i, 1, getRi, doDEC, putRi));
 
     genINCDEC('INC', 0x04, 1, getA, doINC, putA);
     genINCDEC('INC', 0x05, 2, getDIR, doINC, putDIR);
-    _.range(8).forEach(r => genINCDEC('INC', 0x08 + r, 1, getR, doINC, putR));
-    _.range(2).forEach(i => genINCDEC('INC', 0x06 + i, 1, getRi, doINC, putRi));
+    _.times(8, r => genINCDEC('INC', 0x08 + r, 1, getR, doINC, putR));
+    _.times(2, i => genINCDEC('INC', 0x06 + i, 1, getRi, doINC, putRi));
     genINCDEC('INC', 0xA3, 1, getDPTR, doINC16, putDPTR);
 
-    _.range(8).forEach(r => genMOV('MOV', 0xE8 + r, 1, getR, putA));
+    _.times(8, r => genMOV('MOV', 0xE8 + r, 1, getR, putA));
     genMOV('MOV', 0xE5, 2, getDIR, putA);
-    _.range(2).forEach(i => genMOV('MOV', 0xE6 + i, 1, getRi, putA));
+    _.times(2, i => genMOV('MOV', 0xE6 + i, 1, getRi, putA));
     genMOV('MOV', 0x74, 2, getIMM, putA);
-    _.range(8).forEach(r => genMOV('MOV', 0xF8 + r, 1, getA, putR));
-    _.range(8).forEach(r => genMOV('MOV', 0xA8 + r, 2, getDIR, putR));
-    _.range(8).forEach(r => genMOV('MOV', 0x78 + r, 2, getIMM, putR));
+    _.times(8, r => genMOV('MOV', 0xF8 + r, 1, getA, putR));
+    _.times(8, r => genMOV('MOV', 0xA8 + r, 2, getDIR, putR));
+    _.times(8, r => genMOV('MOV', 0x78 + r, 2, getIMM, putR));
     genMOV('MOV', 0xF5, 2, getA, putDIR);
-    _.range(8).forEach(r => genMOV('MOV', 0x88 + r, 2, getR, putDIR));
+    _.times(8, r => genMOV('MOV', 0x88 + r, 2, getR, putDIR));
     genMOV('MOV', 0x85, 3, getDIR, putDIR2);
-    _.range(2).forEach(i => genMOV('MOV', 0x86 + i, 2, getRi, putDIR));
-    _.range(2).forEach(i => genMOV('MOV', 0x76 + i, 2, getIMM, putRi));
+    _.times(2, i => genMOV('MOV', 0x86 + i, 2, getRi, putDIR));
+    _.times(2, i => genMOV('MOV', 0x76 + i, 2, getIMM, putRi));
     genMOV('MOV', 0x75, 3, getIMM2, putDIR);
-    _.range(2).forEach(i => genMOV('MOV', 0xA6 + i, 2, getDIR, putRi));
-    _.range(8).forEach(r => genMOV('MOV', 0xA8 + r, 2, getDIR, putR));
-    _.range(2).forEach(i => genMOV('MOV', 0xF6 + i, 1, getA, putRi));
+    _.times(2, i => genMOV('MOV', 0xA6 + i, 2, getDIR, putRi));
+    _.times(8, r => genMOV('MOV', 0xA8 + r, 2, getDIR, putR));
+    _.times(2, i => genMOV('MOV', 0xF6 + i, 1, getA, putRi));
 
     genSimple('MOV', 0xA2, 2, C => C.CY = getBIT());
     genSimple('MOV', 0x92, 2, C => putBIT(C.CY));
@@ -421,8 +421,8 @@ class CPU8052 {
     const putXRi = v => C.xram[xAddr(C.getR(C.op & 0x01))] = v;
     const putXDPTR = v => C.xram[getDPTR()] = v;
     
-    _.range(2).forEach(i => genMOV('MOVX', 0xE2 + i, 1, getXRi, putA));
-    _.range(2).forEach(i => genMOV('MOVX', 0xF2 + i, 1, getA, putXRi));
+    _.times(2, i => genMOV('MOVX', 0xE2 + i, 1, getXRi, putA));
+    _.times(2, i => genMOV('MOVX', 0xF2 + i, 1, getA, putXRi));
     genMOV('MOVX', 0xE0, 1, getXDPTR, putA);
     genMOV('MOVX', 0xF0, 1, getA, putXDPTR);
 
