@@ -1,4 +1,4 @@
-// Definitions of MCS8052 CPU architecture.
+// Definitions of 8052 CPU architecture.
 'use strict';
 const _ = require('lodash');
 const util = require('util');
@@ -174,13 +174,12 @@ class CPU8052 {
 
     C.ops = [];
     C.reset();
-    C.ipl = -1;
 
     const getA = () => C.ACC;
     const getDIR = () => C.getDIR(C.code[(C.opPC + 1) & 0xFFFF]);
     const getIMM = () => C.code[(C.opPC + 1) & 0xFFFF];
-    const getBIT = () => C.getBIT(C.code[(C.opPC + 1) & 0xFFFF]);
     const getIMM2 = () => C.code[(C.opPC + 2) & 0xFFFF];
+    const getBIT = () => C.getBIT(C.code[(C.opPC + 1) & 0xFFFF]);
     const getR = () => C.getR(C.op & 0x07);
     const getRi = () => C.iram[C.getR(C.op & 0x01)];
     const getDPTR = () => C.DPH << 8 | C.DPL;
