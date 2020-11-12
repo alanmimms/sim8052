@@ -1,6 +1,6 @@
 'use strict';
 
-// TOOD: Move SFR emulation stuff into CPU class and make callbacks to
+// TODO: Move SFR emulation stuff into CPU class and make callbacks to
 // get/put SIM related values.
 
 // For `put` style functions, convention is put(address, value).
