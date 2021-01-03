@@ -27,4 +27,9 @@ charmingly tiny and limited integer-only BASIC but is still pretty
 powerful for embedded sorts of code.
 
 Source code and listing files and Intel hex files for these are
-already present in the project.
+already present in the project. The `doc` subdirectory has a lot of
+useful background material, some of which may still be claimed as
+copyrighted by their respective owners. I include it here as it is
+publicly availables in various places and it seems consensus is that
+the owners of the copyrights no longer care how far their words and
+diagrams are dipersed.
