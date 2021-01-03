@@ -33,3 +33,7 @@ copyrighted by their respective owners. I include it here as it is
 publicly availables in various places and it seems consensus is that
 the owners of the copyrights no longer care how far their words and
 diagrams are dipersed.
+
+I also include a simple opcode chart I made and a JavaScript program
+that created the basis from which I built it.
+
